@@ -74,6 +74,7 @@ export default function Personal({ usuario }) {
     useState('Recolección de café');
   const [modalidad, setModalidad] = useState('recoleccion');
   const [cantidad, setCantidad] = useState('');
+  const [kilosLiquidacion, setKilosLiquidacion] = useState({});
   const [fecha, setFecha] = useState(hoy());
 
   // Recargar fincas y lotes por si se agregaron desde otro módulo.
@@ -252,14 +253,18 @@ export default function Personal({ usuario }) {
       return;
     }
 
-    if (!Number.isFinite(valorCantidad) || valorCantidad <= 0) {
-      alert('La cantidad debe ser un número mayor que cero.');
-      return;
-    }
+    // En recolección, los kilos se registran al finalizar la jornada,
+    // durante la liquidación. Para jornal sí se registra la cantidad de días.
+    if (modalidad === 'jornal') {
+      if (!Number.isFinite(valorCantidad) || valorCantidad <= 0) {
+        alert('Los días trabajados deben ser un número mayor que cero.');
+        return;
+      }
 
-    if (modalidad === 'jornal' && !Number.isInteger(valorCantidad)) {
-      alert('Los días trabajados deben ser un número entero.');
-      return;
+      if (!Number.isInteger(valorCantidad)) {
+        alert('Los días trabajados deben ser un número entero.');
+        return;
+      }
     }
 
     if (!Number.isFinite(valorTarifa) || valorTarifa <= 0) {
@@ -280,9 +285,10 @@ export default function Personal({ usuario }) {
       lote: loteSeleccionado.nombre,
       actividad: actividadSeleccionada,
       modalidad,
-      cantidad: valorCantidad,
+      // Los kilos de recolección se completan al liquidar.
+      cantidad: modalidad === 'recoleccion' ? null : valorCantidad,
       tarifaAplicada: valorTarifa,
-      subtotal: valorCantidad * valorTarifa,
+      subtotal: modalidad === 'recoleccion' ? 0 : valorCantidad * valorTarifa,
       fecha,
       estado: 'pendiente',
     };
@@ -305,13 +311,45 @@ export default function Personal({ usuario }) {
       fincaSeleccionada.id
     );
 
-    const monto = pendientes.reduce(
+    if (pendientes.length === 0) {
+      alert('Este trabajador no tiene pagos pendientes en esta finca.');
+      return;
+    }
+
+    const pendientesConCantidad = pendientes.map((j) => {
+      if (j.modalidad === 'recoleccion') {
+        const kilos = Number(kilosLiquidacion[j.id] ?? j.cantidad);
+        return {
+          ...j,
+          cantidad: kilos,
+          subtotal: kilos * Number(j.tarifaAplicada || tarifaKg),
+        };
+      }
+
+      return {
+        ...j,
+        subtotal: Number(j.cantidad || 0) * Number(j.tarifaAplicada || tarifaJornal),
+      };
+    });
+
+    const recoleccionIncompleta = pendientesConCantidad.some(
+      (j) =>
+        j.modalidad === 'recoleccion' &&
+        (!Number.isFinite(j.cantidad) || j.cantidad <= 0)
+    );
+
+    if (recoleccionIncompleta) {
+      alert('Ingresa los kilos recolectados en cada labor de recolección antes de liquidar.');
+      return;
+    }
+
+    const monto = pendientesConCantidad.reduce(
       (total, j) => total + Number(j.subtotal || 0),
       0
     );
 
-    if (pendientes.length === 0 || monto <= 0) {
-      alert('Este trabajador no tiene pagos pendientes en esta finca.');
+    if (monto <= 0) {
+      alert('El valor de la liquidación debe ser mayor que cero.');
       return;
     }
 
@@ -326,17 +364,19 @@ export default function Personal({ usuario }) {
     const fechaPago = hoy();
 
     setJornadas((anteriores) =>
-      anteriores.map((j) =>
-        idsPagados.has(j.id)
+      anteriores.map((j) => {
+        const liquidada = pendientesConCantidad.find((pendiente) => pendiente.id === j.id);
+        return idsPagados.has(j.id) && liquidada
           ? {
               ...j,
+              cantidad: liquidada.cantidad,
               estado: 'pagado',
               fechaPago,
-              tarifaAplicada: Number(j.tarifaAplicada || 0),
-              subtotal: Number(j.subtotal || 0),
+              tarifaAplicada: Number(liquidada.tarifaAplicada || 0),
+              subtotal: Number(liquidada.subtotal || 0),
             }
-          : j
-      )
+          : j;
+      })
     );
 
     // Registrar un solo egreso para este cierre de liquidación.
@@ -433,7 +473,7 @@ export default function Personal({ usuario }) {
         }}
       >
         {tarjeta('Liquidaciones', 'Saldos y pagos', 'lista')}
-        {tarjeta('Registrar labor', 'Anotar kilos o jornales', 'nueva_jornada')}
+        {tarjeta('Registrar labor', 'Registrar actividad o jornal', 'nueva_jornada')}
         {tarjeta('Nuevo trabajador', 'Agregar personal', 'nuevo_trabajador')}
         {tarjeta('Tarifas y actividades', 'Precios y labores', 'tarifas')}
       </div>
@@ -517,7 +557,8 @@ export default function Personal({ usuario }) {
                             <th style={{ textAlign: 'left', padding: 6 }}>Fecha</th>
                             <th style={{ textAlign: 'left', padding: 6 }}>Labor</th>
                             <th style={{ textAlign: 'left', padding: 6 }}>Lote</th>
-                            <th style={{ textAlign: 'right', padding: 6 }}>Valor</th>
+                            <th style={{ textAlign: 'right', padding: 6 }}>Kilos / días</th>
+                            <th style={{ textAlign: 'right', padding: 6 }}>Valor estimado</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -533,7 +574,33 @@ export default function Personal({ usuario }) {
                                   {loteRelacionado?.nombre || j.lote || 'Lote anterior'}
                                 </td>
                                 <td style={{ padding: 6, textAlign: 'right' }}>
-                                  {dinero(j.subtotal)}
+                                  {j.modalidad === 'recoleccion' ? (
+                                    <input
+                                      aria-label={`Kilos recolectados por ${trabajador.nombre} el ${j.fecha}`}
+                                      type="number"
+                                      min="0.1"
+                                      step="0.1"
+                                      value={kilosLiquidacion[j.id] ?? (j.cantidad ?? '')}
+                                      onChange={(e) =>
+                                        setKilosLiquidacion((anteriores) => ({
+                                          ...anteriores,
+                                          [j.id]: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="Ingresar kg"
+                                      style={{ ...campo, minWidth: 110, marginTop: 0 }}
+                                    />
+                                  ) : (
+                                    `${j.cantidad || 0} día(s)`
+                                  )}
+                                </td>
+                                <td style={{ padding: 6, textAlign: 'right' }}>
+                                  {j.modalidad === 'recoleccion'
+                                    ? dinero(
+                                        Number(kilosLiquidacion[j.id] ?? j.cantidad ?? 0) *
+                                        Number(j.tarifaAplicada || tarifaKg)
+                                      )
+                                    : dinero(j.subtotal)}
                                 </td>
                               </tr>
                             );
@@ -545,10 +612,10 @@ export default function Personal({ usuario }) {
                   <button
                     type="button"
                     style={{ ...boton, width: '100%' }}
-                    disabled={pendiente <= 0}
+                    disabled={registros.length === 0}
                     onClick={() => realizarPago(trabajador)}
                   >
-                    Registrar pago y cerrar liquidación
+                    Liquidar labores y registrar pago
                   </button>
                 </article>
               );
@@ -699,17 +766,24 @@ export default function Personal({ usuario }) {
           </label>
 
           <label style={etiqueta}>
-            {modalidad === 'recoleccion' ? 'Kilogramos recolectados' : 'Días trabajados'}
-            <input
-              type="number"
-              min="0.1"
-              step={modalidad === 'recoleccion' ? '0.1' : '1'}
-              value={cantidad}
-              onChange={(e) => setCantidad(e.target.value)}
-              required
-              style={campo}
-              placeholder={modalidad === 'recoleccion' ? 'Ej. 45.5' : 'Ej. 1'}
-            />
+            {modalidad === 'recoleccion' ? 'Kilos recolectados (se registran al liquidar)' : 'Días trabajados'}
+            {modalidad === 'jornal' ? (
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={cantidad}
+                onChange={(e) => setCantidad(e.target.value)}
+                required
+                style={campo}
+                placeholder="Ej. 1"
+              />
+            ) : (
+              <p style={{ color: '#64748b', fontWeight: 400, margin: '6px 0 0' }}>
+                No necesitas conocer los kilos ahora. Podrás ingresarlos al finalizar la jornada,
+                en la sección Liquidaciones.
+              </p>
+            )}
           </label>
 
           <label style={etiqueta}>
