@@ -1,0 +1,22 @@
+{
+  "short_name": "CafeSmart",
+  "name": "CafeSmart - Gestion Cafetera PWA",
+  "description": "Sistema de gestión cafetera offline para pequeños y medianos productores.",
+"icons": [
+  {
+    "src": "/icon.png",
+    "type": "image/png",
+    "sizes": "192x192"
+  },
+  {
+    "src": "/icon.png",
+    "type": "image/png",
+    "sizes": "512x512"
+  }
+],
+  "start_url": "/",
+  "background_color": "#064e3b",
+  "theme_color": "#047857",
+  "display": "standalone",
+  "orientation": "portrait"
+}
