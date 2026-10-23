@@ -7,7 +7,7 @@ export default function Auth({ onLogin }) {
   const [nombreProductor, setNombreProductor] = useState('');
   const [nombreFinca, setNombreFinca] = useState('');
 
-  const manejarAutenticacion = (e) => {
+  const manejarAutenticacion = (e) => {  //hola mundo
     e.preventDefault();
     if (!correo || !password) return;
 
