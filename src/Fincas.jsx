@@ -370,20 +370,21 @@ export default function Fincas({ usuario }) {
               setLoteDetalle(null);
             }}
             style={{
-              backgroundColor: '#047857',
-              color: 'white',
-              border: 'none',
-              padding: '14px',
-              borderRadius: '14px',
-              fontWeight: 'bold',
+              alignSelf: 'flex-start',
+              backgroundColor: 'transparent',
+              color: '#475569',
+              border: '1px solid #cbd5e1',
+              padding: '9px 12px',
+              borderRadius: '10px',
+              fontWeight: '500',
               cursor: 'pointer',
-              minHeight: '52px',
-              fontSize: '0.95rem',
+              minHeight: '40px',
+              fontSize: '0.85rem',
             }}
           >
             {mostrarFormFinca
-              ? 'Cancelar Registro'
-              : '+ Agregar Nueva Finca'}
+              ? 'Cancelar'
+              : '⚙ Administrar fincas (opcional)'}
           </button>
         </div>
       </div>
@@ -400,7 +401,7 @@ export default function Fincas({ usuario }) {
           }}
         >
           <h3 style={{ color: '#064e3b', marginBottom: '18px' }}>
-            Registrar Nueva Finca
+            Agregar otra finca
           </h3>
 
           <label>Nombre de la Finca:</label>
