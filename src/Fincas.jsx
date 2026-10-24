@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export default function Fincas({ usuario }) {
+export default function Fincas({ usuario, subSeccion }) {
   const userId = usuario?.id || 'default';
 
   const [fincas, setFincas] = useState(() => {
@@ -60,6 +60,31 @@ export default function Fincas({ usuario }) {
   const [nombreLote, setNombreLote] = useState('');
   const [variedadLote, setVariedadLote] = useState('Castillo');
   const [hectareasLote, setHectareasLote] = useState('');
+
+  // Sincronización con el menú lateral (App.jsx)
+  useEffect(() => {
+    if (subSeccion) {
+      if (subSeccion === 'fincas-lotes') {
+        setMostrarFormFinca(false);
+        setMostrarFormLote(false);
+        setLoteDetalle(null);
+      }
+      if (subSeccion === 'nuevo-lote') {
+        setMostrarFormLote(true);
+        setMostrarFormFinca(false);
+        setLoteEnEdicion(null);
+        setNombreLote('');
+        setVariedadLote('Castillo');
+        setHectareasLote('');
+        setLoteDetalle(null);
+      }
+      if (subSeccion === 'nueva-finca') {
+        setMostrarFormFinca(true);
+        setMostrarFormLote(false);
+        setLoteDetalle(null);
+      }
+    }
+  }, [subSeccion]);
 
   // Garantizar que siempre exista una finca seleccionada.
   useEffect(() => {
@@ -134,7 +159,6 @@ export default function Fincas({ usuario }) {
         : l.estado !== 'inactivo')
   );
 
-  // Determinar si una jornada corresponde a un lote de esta finca.
   const jornadaPerteneceAlLote = (jornada, lote) => {
     if (!jornada || !lote) return false;
 
@@ -144,8 +168,6 @@ export default function Fincas({ usuario }) {
 
     if (!mismoLote) return false;
 
-    // Las jornadas nuevas incluyen fincaId.
-    // Si existe, debe coincidir con la finca del lote.
     if (
       jornada.fincaId !== undefined &&
       jornada.fincaId !== null
@@ -153,9 +175,6 @@ export default function Fincas({ usuario }) {
       return Number(jornada.fincaId) === Number(lote.fincaId);
     }
 
-    // Para registros antiguos sin fincaId, solo se puede
-    // confirmar la relación si el nombre del lote es único
-    // entre todas las fincas.
     const coincidencias = lotes.filter(
       (l) =>
         String(l.nombre || '').trim().toLowerCase() ===
@@ -165,7 +184,6 @@ export default function Fincas({ usuario }) {
     return coincidencias.length === 1;
   };
 
-  // Calcular los kilos recolectados en un lote específico.
   const calcularProduccionLote = (lote) => {
     if (!lote) return 0;
 
@@ -213,6 +231,7 @@ export default function Fincas({ usuario }) {
     setMostrarFormFinca(false);
     setMostrarFormLote(false);
     setLoteDetalle(null);
+    alert('Finca guardada correctamente.');
   };
 
   const guardarLote = (e) => {
@@ -255,6 +274,7 @@ export default function Fincas({ usuario }) {
       );
 
       setLoteEnEdicion(null);
+      alert('Lote actualizado correctamente.');
     } else {
       const nuevoLote = {
         id: Date.now(),
@@ -266,6 +286,7 @@ export default function Fincas({ usuario }) {
       };
 
       setLotes((anteriores) => [...anteriores, nuevoLote]);
+      alert('Lote guardado correctamente.');
     }
 
     setNombreLote('');
@@ -352,6 +373,9 @@ export default function Fincas({ usuario }) {
               color: '#064e3b',
               backgroundColor: 'white',
               margin: 0,
+              padding: '10px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
             }}
           >
             {fincas.map((f) => (
@@ -360,38 +384,13 @@ export default function Fincas({ usuario }) {
               </option>
             ))}
           </select>
-
-          <button
-            type="button"
-            onClick={() => {
-              setMostrarFormFinca(!mostrarFormFinca);
-              setMostrarFormLote(false);
-              setLoteEnEdicion(null);
-              setLoteDetalle(null);
-            }}
-            style={{
-              alignSelf: 'flex-start',
-              backgroundColor: 'transparent',
-              color: '#475569',
-              border: '1px solid #cbd5e1',
-              padding: '9px 12px',
-              borderRadius: '10px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              minHeight: '40px',
-              fontSize: '0.85rem',
-            }}
-          >
-            {mostrarFormFinca
-              ? 'Cancelar'
-              : '⚙ Administrar fincas (opcional)'}
-          </button>
         </div>
       </div>
 
       {/* FORMULARIO CREAR FINCA */}
       {mostrarFormFinca && (
         <form
+          id="nueva-finca"
           onSubmit={guardarFinca}
           style={{
             backgroundColor: '#ffffff',
@@ -404,24 +403,30 @@ export default function Fincas({ usuario }) {
             Agregar otra finca
           </h3>
 
-          <label>Nombre de la Finca:</label>
-          <input
-            type="text"
-            placeholder="Ej: Finca San José"
-            value={nombreFinca}
-            onChange={(e) => setNombreFinca(e.target.value)}
-            required
-          />
+          <label style={{ display: 'block', marginBottom: '12px' }}>
+            Nombre de la Finca:
+            <input
+              type="text"
+              placeholder="Ej: Finca San José"
+              value={nombreFinca}
+              onChange={(e) => setNombreFinca(e.target.value)}
+              required
+              style={{ display: 'block', width: '100%', padding: '10px', marginTop: '6px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+            />
+          </label>
 
-          <label>Ubicación o Municipio:</label>
-          <input
-            type="text"
-            placeholder="Ej: Piendamó"
-            value={ubicacionFinca}
-            onChange={(e) => setUbicacionFinca(e.target.value)}
-          />
+          <label style={{ display: 'block', marginBottom: '16px' }}>
+            Ubicación o Municipio:
+            <input
+              type="text"
+              placeholder="Ej: Piendamó"
+              value={ubicacionFinca}
+              onChange={(e) => setUbicacionFinca(e.target.value)}
+              style={{ display: 'block', width: '100%', padding: '10px', marginTop: '6px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+            />
+          </label>
 
-          <button type="submit" className="btn-primary">
+          <button type="submit" style={{ background: '#047857', color: '#fff', border: 'none', padding: '12px 18px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}>
             Guardar Finca
           </button>
         </form>
@@ -465,35 +470,6 @@ export default function Fincas({ usuario }) {
             >
               {verInactivos ? 'Ver Activos' : 'Ver Inactivos'}
             </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (mostrarFormLote) {
-                  cancelarFormularioLote();
-                } else {
-                  setMostrarFormLote(true);
-                  setLoteEnEdicion(null);
-                  setNombreLote('');
-                  setVariedadLote('Castillo');
-                  setHectareasLote('');
-                }
-              }}
-              style={{
-                flex: 1,
-                backgroundColor: mostrarFormLote ? '#dc2626' : '#166534',
-                color: 'white',
-                border: 'none',
-                padding: '12px',
-                borderRadius: '12px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                minHeight: '48px',
-                fontSize: '0.9rem',
-              }}
-            >
-              {mostrarFormLote ? 'Cancelar' : '+ Crear Lote'}
-            </button>
           </div>
         </div>
       )}
@@ -501,6 +477,7 @@ export default function Fincas({ usuario }) {
       {/* FORMULARIO CREAR / EDITAR LOTE */}
       {mostrarFormLote && !mostrarFormFinca && (
         <form
+          id="nuevo-lote"
           onSubmit={guardarLote}
           style={{
             backgroundColor: '#ffffff',
@@ -515,39 +492,48 @@ export default function Fincas({ usuario }) {
               : `Agregar Lote a ${fincaActual?.nombre || ''}`}
           </h4>
 
-          <label>Nombre del Lote:</label>
-          <input
-            type="text"
-            placeholder="Ej: Lote El Mirador"
-            value={nombreLote}
-            onChange={(e) => setNombreLote(e.target.value)}
-            required
-          />
+          <label style={{ display: 'block', marginBottom: '12px' }}>
+            Nombre del Lote:
+            <input
+              type="text"
+              placeholder="Ej: Lote El Mirador"
+              value={nombreLote}
+              onChange={(e) => setNombreLote(e.target.value)}
+              required
+              style={{ display: 'block', width: '100%', padding: '10px', marginTop: '6px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+            />
+          </label>
 
-          <label>Variedad de Café:</label>
-          <select
-            value={variedadLote}
-            onChange={(e) => setVariedadLote(e.target.value)}
-          >
-            <option value="Castillo">Castillo</option>
-            <option value="Caturra">Caturra</option>
-            <option value="Colombia">Colombia</option>
-            <option value="Borbón">Borbón</option>
-            <option value="Geisha">Geisha</option>
-          </select>
+          <label style={{ display: 'block', marginBottom: '12px' }}>
+            Variedad de Café:
+            <select
+              value={variedadLote}
+              onChange={(e) => setVariedadLote(e.target.value)}
+              style={{ display: 'block', width: '100%', padding: '10px', marginTop: '6px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+            >
+              <option value="Castillo">Castillo</option>
+              <option value="Caturra">Caturra</option>
+              <option value="Colombia">Colombia</option>
+              <option value="Borbón">Borbón</option>
+              <option value="Geisha">Geisha</option>
+            </select>
+          </label>
 
-          <label>Área (Hectáreas):</label>
-          <input
-            type="number"
-            min="0.1"
-            step="0.1"
-            placeholder="Ej: 2.5"
-            value={hectareasLote}
-            onChange={(e) => setHectareasLote(e.target.value)}
-            required
-          />
+          <label style={{ display: 'block', marginBottom: '16px' }}>
+            Área (Hectáreas):
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              placeholder="Ej: 2.5"
+              value={hectareasLote}
+              onChange={(e) => setHectareasLote(e.target.value)}
+              required
+              style={{ display: 'block', width: '100%', padding: '10px', marginTop: '6px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+            />
+          </label>
 
-          <button type="submit" className="btn-primary">
+          <button type="submit" style={{ background: '#047857', color: '#fff', border: 'none', padding: '12px 18px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}>
             {loteEnEdicion ? 'Actualizar Lote' : 'Guardar Lote'}
           </button>
         </form>
@@ -727,11 +713,14 @@ export default function Fincas({ usuario }) {
               .map((j) => (
                 <div
                   key={j.id}
-                  className="card"
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    background: '#fff',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
                   }}
                 >
                   <div>
@@ -775,6 +764,7 @@ export default function Fincas({ usuario }) {
       {/* LISTADO DE TARJETAS DE LOTES */}
       {!loteDetalle && !mostrarFormLote && !mostrarFormFinca && (
         <div
+          id="fincas-lotes"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -783,21 +773,19 @@ export default function Fincas({ usuario }) {
         >
           {lotesDeFincaActiva.length === 0 ? (
             <div
-              className="card"
               style={{
                 textAlign: 'center',
                 color: '#64748b',
                 padding: '30px 20px',
+                background: '#fff',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
               }}
             >
               <p style={{ margin: 0, fontSize: '1rem' }}>
                 {verInactivos
                   ? 'No hay lotes inactivos en esta finca.'
                   : 'Esta finca aún no tiene lotes activos registrados.'}
-              </p>
-
-              <p style={{ fontSize: '0.9rem', marginTop: '10px' }}>
-                Presiona "+ Crear Lote" para comenzar.
               </p>
             </div>
           ) : (
@@ -808,12 +796,15 @@ export default function Fincas({ usuario }) {
                 <div
                   key={lote.id}
                   onClick={() => setLoteDetalle(lote)}
-                  className="card"
                   style={{
                     cursor: 'pointer',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    background: '#fff',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
                   }}
                 >
                   <div>
@@ -828,7 +819,7 @@ export default function Fincas({ usuario }) {
                     </h4>
 
                     <span style={{ color: '#64748b', fontSize: '0.9rem' }}>
-                      {lote.variedad} • {lote.hectareas} Ha
+                      {lote.variedad} — {lote.hectareas} Ha
                     </span>
                   </div>
 

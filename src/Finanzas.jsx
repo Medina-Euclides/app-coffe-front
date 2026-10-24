@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react';
 
 const obtenerFechaLocal = () => {
@@ -41,7 +40,7 @@ const estiloEtiqueta = {
   fontWeight: 600,
 };
 
-export default function Finanzas({ usuario }) {
+export default function Finanzas({ usuario, subSeccion }) {
   const userId = usuario?.id || 'default';
 
   const [movimientos, setMovimientos] = useState(() =>
@@ -73,7 +72,15 @@ export default function Finanzas({ usuario }) {
   const [cantidadKg, setCantidadKg] = useState('');
   const [fincaFormulario, setFincaFormulario] = useState('');
 
-  // Actualizar los datos cuando se vuelve a entrar al módulo.
+  // Sincronización con las opciones del menú lateral en App.jsx
+  useEffect(() => {
+    if (subSeccion) {
+      if (subSeccion === 'finanzas-indicadores') setVista('historial');
+      if (subSeccion === 'nuevo-movimiento') setVista('nuevo_movimiento');
+    }
+  }, [subSeccion]);
+
+  // Actualizar los datos cuando se vuelve a entrar al módulo
   useEffect(() => {
     const actualizarDatos = () => {
       setFincas(leerLocal(`cafesmart_fincas_${userId}`, []));
@@ -83,11 +90,10 @@ export default function Finanzas({ usuario }) {
     };
 
     window.addEventListener('focus', actualizarDatos);
-
     return () => window.removeEventListener('focus', actualizarDatos);
-  }, [userId]);
+  }, [userId, vista]);
 
-  // Guardar los movimientos en la misma clave que utiliza el proyecto.
+  // Guardar los movimientos en localStorage
   useEffect(() => {
     localStorage.setItem(
       `cafesmart_movimientos_${userId}`,
@@ -200,7 +206,6 @@ export default function Finanzas({ usuario }) {
 
     if (filtroPeriodo === 'mes_anterior') {
       const anterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
-
       return anio === anterior.getFullYear() && mes === anterior.getMonth() + 1;
     }
 
@@ -212,15 +217,8 @@ export default function Finanzas({ usuario }) {
   };
 
   const perteneceAFinca = (registro) => {
-    // Los movimientos antiguos no tenían fincaId.
-    // Se muestran en "Todas las fincas", pero no se asignan
-    // automáticamente a una finca específica.
     if (fincaId === '') return true;
-
-    if (registro.fincaId === undefined || registro.fincaId === null) {
-      return false;
-    }
-
+    if (registro.fincaId === undefined || registro.fincaId === null) return false;
     return String(registro.fincaId) === String(fincaId);
   };
 
@@ -236,15 +234,10 @@ export default function Finanzas({ usuario }) {
     () =>
       jornadas.filter((j) => {
         if (!filtrarPorFecha(j.fecha)) return false;
-
         if (fincaId === '') return true;
-
         if (j.fincaId !== undefined && j.fincaId !== null) {
           return String(j.fincaId) === String(fincaId);
         }
-
-        // Para jornadas antiguas, solo asignar si el nombre del lote
-        // identifica una única finca.
         const coincidencias = lotes.filter((l) => l.nombre === j.lote);
         return (
           coincidencias.length === 1 &&
@@ -315,47 +308,12 @@ export default function Finanzas({ usuario }) {
     },
   ];
 
-  const botonPestana = (destino, texto) => ({
-    flex: 1,
-    minHeight: 48,
-    padding: 12,
-    borderRadius: 10,
-    border: vista === destino ? 'none' : '1px solid #cbd5e1',
-    background: vista === destino ? '#059669' : '#fff',
-    color: vista === destino ? '#fff' : '#475569',
-    fontWeight: 700,
-    cursor: 'pointer',
-  });
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <h2 style={{ color: '#064e3b', margin: 0 }}>Gestión Financiera</h2>
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 10,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setVista('historial')}
-          style={botonPestana('historial', 'Ver balances')}
-        >
-          Ver balances
-        </button>
-        <button
-          type="button"
-          onClick={() => setVista('nuevo_movimiento')}
-          style={botonPestana('nuevo_movimiento', '+ Registrar movimiento')}
-        >
-          + Registrar movimiento
-        </button>
-      </div>
-
       {vista === 'historial' && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <section id="finanzas-indicadores" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div
             style={{
               background: '#fff',
@@ -529,6 +487,7 @@ export default function Finanzas({ usuario }) {
 
       {vista === 'nuevo_movimiento' && (
         <form
+          id="nuevo-movimiento"
           onSubmit={guardarMovimiento}
           style={{
             background: '#fff',

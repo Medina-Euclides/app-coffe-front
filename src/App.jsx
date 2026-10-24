@@ -1,14 +1,49 @@
 import { useState, useEffect } from 'react';
 import Auth from './Auth';
-import Fincas from './Fincas';
 import Personal from './Personal';
+import Fincas from './Fincas';
 import Finanzas from './Finanzas';
-import AgenteIA from './AgenteIA';
+
+const MENUS = [
+  {
+    id: 'cultivo',
+    titulo: 'Cultivo',
+    descripcion: 'Gestión de fincas y lotes',
+    modulo: 'fincas',
+    opciones: [
+      { id: 'fincas-lotes', titulo: 'Fincas y Lotes', detalle: 'Inventario general' },
+      { id: 'nuevo-lote', titulo: 'Crear Nuevo Lote', detalle: 'Agregar lote a la finca' },
+      { id: 'nueva-finca', titulo: 'Crear Nueva Finca', detalle: 'Registrar finca adicional' },
+    ],
+  },
+  {
+    id: 'personal',
+    titulo: 'Personal',
+    descripcion: 'Gestión de labores y trabajadores',
+    modulo: 'personal',
+    opciones: [
+      { id: 'liquidaciones', titulo: 'Liquidaciones', detalle: 'Saldos y pagos pendientes' },
+      { id: 'registrar-labor', titulo: 'Registrar labor', detalle: 'Asignar actividad' },
+      { id: 'nuevo-trabajador', titulo: 'Nuevo trabajador', detalle: 'Agregar personal' },
+      { id: 'tarifas-actividades', titulo: 'Tarifas y actividades', detalle: 'Precios y catálogo' },
+    ],
+  },
+  {
+    id: 'administracion',
+    titulo: 'Administración',
+    descripcion: 'Control financiero y balances',
+    modulo: 'finanzas',
+    opciones: [
+      { id: 'finanzas-indicadores', titulo: 'Finanzas e indicadores', detalle: 'Balances e historial' },
+      { id: 'nuevo-movimiento', titulo: 'Registrar movimiento', detalle: 'Ingresos y egresos' },
+    ],
+  },
+];
 
 export default function App() {
   const [usuario, setUsuario] = useState(() => {
     try {
-      const guardado = localStorage.getItem('cafesmart_usuario_activo');
+      const guardado = localStorage.getItem('cafesmart_usuario');
       return guardado ? JSON.parse(guardado) : null;
     } catch {
       return null;
@@ -16,279 +51,335 @@ export default function App() {
   });
 
   const [moduloActivo, setModuloActivo] = useState('fincas');
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+  const [subSeccionActiva, setSubSeccionActiva] = useState('fincas-lotes');
+  const [menuMobileAbierto, setMenuMobileAbierto] = useState(false);
 
-  useEffect(() => {
-    const manejarResize = () => {
-      setEsMovil(window.innerWidth <= 768);
-    };
-    window.addEventListener('resize', manejarResize);
-    return () => window.removeEventListener('resize', manejarResize);
-  }, []);
+  const [menusDesplegados, setMenusDesplegados] = useState({
+    cultivo: true,
+    personal: false,
+    administracion: false,
+  });
 
-  const iniciarSesion = (datosUsuario) => {
+  const manejarLogin = (datosUsuario) => {
+    localStorage.setItem('cafesmart_usuario', JSON.stringify(datosUsuario));
     setUsuario(datosUsuario);
-    localStorage.setItem('cafesmart_usuario_activo', JSON.stringify(datosUsuario));
+  };
+
+  const alternarDespliegue = (idMenu) => {
+    setMenusDesplegados((prev) => ({
+      ...prev,
+      [idMenu]: !prev[idMenu],
+    }));
+  };
+
+  const navegarA = (modulo, subSeccion, idMenu) => {
+    setModuloActivo(modulo);
+    setSubSeccionActiva(subSeccion);
+    setMenusDesplegados((prev) => ({
+      ...prev,
+      [idMenu]: true,
+    }));
+    setMenuMobileAbierto(false);
   };
 
   const cerrarSesion = () => {
-    setUsuario(null);
-    localStorage.removeItem('cafesmart_usuario_activo');
+    if (window.confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+      localStorage.removeItem('cafesmart_usuario');
+      setUsuario(null);
+    }
   };
 
   if (!usuario) {
-    return <Auth onLogin={iniciarSesion} />;
+    return <Auth onLogin={manejarLogin} />;
   }
 
+  // 1. LÓGICA MEJORADA PARA EXTRAER EL NOMBRE REAL (o recortar el correo)
+  const obtenerNombreMostrar = () => {
+    if (usuario?.nombre) return usuario.nombre;
+    if (usuario?.name) return usuario.name;
+    if (usuario?.displayName) return usuario.displayName;
+    if (usuario?.username) return usuario.username;
+    
+    // Si solo hay correo, recortamos lo que está antes de la @
+    if (usuario?.correo) return usuario.correo.split('@')[0];
+    if (usuario?.email) return usuario.email.split('@')[0];
+    
+    return 'Usuario';
+  };
+
+  const nombreMostrar = obtenerNombreMostrar();
+  const inicialMostrar = nombreMostrar.charAt(0).toUpperCase();
+
   return (
-    <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', minHeight: '100vh', backgroundColor: '#f3f6f4' }}>
-      
-      {/* NAVEGACIÓN EN PC: SIDEBAR EN VERDE BOSQUE PROFUNDO */}
-      {!esMovil && (
-        <aside style={{
-          width: '270px',
-          backgroundColor: '#124d2d', // Color principal de image_0.png
-          color: 'white',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '28px 20px',
-          boxShadow: '4px 0 20px rgba(18, 77, 45, 0.15)',
-          position: 'sticky',
-          top: 0,
-          height: '100vh',
-          boxSizing: 'border-box'
-        }}>
-          <div>
-            {/* LOGO Y MARCA EN PC */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '40px' }}>
-              <img 
-                src="/icon.png" 
-                alt="Logo CafeSmart" 
-                style={{ width: '46px', height: '46px', borderRadius: '12px', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.4)' }} 
-              />
+    <>
+      <style>{`
+        .app-container {
+          display: flex;
+          min-height: 100vh;
+          font-family: system-ui, sans-serif;
+          background-color: #f8fafc;
+        }
+        .sidebar {
+          width: 280px;
+          background-color: #064e3b;
+          color: #ffffff;
+          padding: 24px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          box-sizing: border-box;
+          flex-shrink: 0;
+          transition: transform 0.3s ease;
+        }
+        .main-content {
+          flex: 1;
+          padding: 32px;
+          box-sizing: border-box;
+          max-width: 1000px;
+          width: 100%;
+          overflow-x: hidden;
+        }
+        .header-mobile {
+          display: none;
+          align-items: center;
+          justify-content: space-between;
+          background-color: #064e3b;
+          padding: 16px 20px;
+          color: white;
+        }
+        .btn-hamburguesa {
+          background: transparent;
+          border: none;
+          color: #6ee7b7;
+          font-size: 1.8rem;
+          cursor: pointer;
+        }
+        .overlay {
+          display: none;
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.5);
+          z-index: 40;
+        }
+        
+        @media (max-width: 768px) {
+          .app-container {
+            flex-direction: column;
+          }
+          .header-mobile {
+            display: flex;
+          }
+          .main-content {
+            padding: 16px;
+          }
+          .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 50;
+            transform: translateX(-100%);
+            overflow-y: auto;
+          }
+          .sidebar.abierto {
+            transform: translateX(0);
+          }
+          .overlay.abierto {
+            display: block;
+          }
+          .btn-cerrar-movil {
+            display: block !important;
+          }
+        }
+      `}</style>
+
+      <div className="app-container">
+        <div className="header-mobile">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src="/icon.png" alt="Logo CafeSmart" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+            <h1 style={{ margin: 0, fontSize: '1.2rem', color: '#6ee7b7' }}>CafeSmart</h1>
+          </div>
+          <button className="btn-hamburguesa" onClick={() => setMenuMobileAbierto(true)}>
+            ☰
+          </button>
+        </div>
+
+        <div 
+          className={`overlay ${menuMobileAbierto ? 'abierto' : ''}`} 
+          onClick={() => setMenuMobileAbierto(false)}
+        ></div>
+
+        <aside className={`sidebar ${menuMobileAbierto ? 'abierto' : ''}`}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            paddingBottom: '16px', 
+            borderBottom: '1px solid #047857' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <img src="/icon.png" alt="Logo CafeSmart" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
               <div>
-                <h1 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 'bold', color: '#ffffff', letterSpacing: '-0.3px' }}>CafeSmart</h1>
-                <span style={{ fontSize: '0.8rem', color: '#9be0a2', fontWeight: '500' }}>{usuario?.nombreProductor || 'Productor'}</span>
+                <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#6ee7b7' }}>CafeSmart</h1>
+                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#a7f3d0' }}>Gestión Cafetera</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setMenuMobileAbierto(false)}
+              style={{ display: 'none', background: 'transparent', border: 'none', color: '#a7f3d0', fontSize: '2rem', cursor: 'pointer' }}
+              className="btn-cerrar-movil"
+            >
+              ×
+            </button>
+          </div>
+
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {MENUS.map((grupo) => {
+              const estaDesplegado = menusDesplegados[grupo.id];
+
+              return (
+                <div key={grupo.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <button
+                    type="button"
+                    onClick={() => alternarDespliegue(grupo.id)}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      color: '#a7f3d0',
+                      padding: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    {grupo.titulo}
+                    <span style={{ 
+                      fontSize: '0.8rem', 
+                      transform: estaDesplegado ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease'
+                    }}>
+                      ▼
+                    </span>
+                  </button>
+
+                  {estaDesplegado && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                      {grupo.opciones.map((opcion) => {
+                        const estaActivo = moduloActivo === grupo.modulo && subSeccionActiva === opcion.id;
+
+                        return (
+                          <button
+                            key={opcion.id}
+                            type="button"
+                            onClick={() => navegarA(grupo.modulo, opcion.id, grupo.id)}
+                            style={{
+                              textAlign: 'left',
+                              padding: '10px 12px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              backgroundColor: estaActivo ? '#047857' : 'transparent',
+                              color: estaActivo ? '#ffffff' : '#d1fae5',
+                              fontWeight: estaActivo ? 'bold' : 'normal',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              fontSize: '0.9rem'
+                            }}
+                          >
+                            <div>{opcion.titulo}</div>
+                            <div style={{ fontSize: '0.75rem', color: estaActivo ? '#a7f3d0' : '#6ee7b7', opacity: 0.8 }}>
+                              {opcion.detalle}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+
+          <div style={{ 
+            marginTop: 'auto', 
+            paddingTop: '16px', 
+            borderTop: '1px solid #047857',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: '#047857',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '1.2rem',
+                color: '#6ee7b7',
+                flexShrink: 0
+              }}>
+                {inicialMostrar}
+              </div>
+              <div style={{ overflow: 'hidden' }}>
+                <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 'bold', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', textTransform: 'capitalize' }}>
+                  {nombreMostrar}
+                </p>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: '#a7f3d0' }}>Sesión activa</p>
               </div>
             </div>
 
-            {/* MENÚ PC */}
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button 
-                onClick={() => setModuloActivo('fincas')}
-                style={{
-                  textAlign: 'left',
-                  backgroundColor: moduloActivo === 'fincas' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                  color: 'white',
-                  border: 'none',
-                  padding: '14px 18px',
-                  borderRadius: '12px',
-                  fontWeight: moduloActivo === 'fincas' ? 'bold' : 'normal',
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  borderLeft: moduloActivo === 'fincas' ? '4px solid #9be0a2' : '4px solid transparent'
-                }}
-              >
-                Fincas y Lotes
-              </button>
-
-              <button 
-                onClick={() => setModuloActivo('personal')}
-                style={{
-                  textAlign: 'left',
-                  backgroundColor: moduloActivo === 'personal' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                  color: 'white',
-                  border: 'none',
-                  padding: '14px 18px',
-                  borderRadius: '12px',
-                  fontWeight: moduloActivo === 'personal' ? 'bold' : 'normal',
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  borderLeft: moduloActivo === 'personal' ? '4px solid #9be0a2' : '4px solid transparent'
-                }}
-              >
-                Personal y Jornadas
-              </button>
-
-              <button 
-                onClick={() => setModuloActivo('finanzas')}
-                style={{
-                  textAlign: 'left',
-                  backgroundColor: moduloActivo === 'finanzas' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                  color: 'white',
-                  border: 'none',
-                  padding: '14px 18px',
-                  borderRadius: '12px',
-                  fontWeight: moduloActivo === 'finanzas' ? 'bold' : 'normal',
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  borderLeft: moduloActivo === 'finanzas' ? '4px solid #9be0a2' : '4px solid transparent'
-                }}
-              >
-                Finanzas e Indicadores
-              </button>
-            </nav>
+            <button
+              type="button"
+              onClick={cerrarSesion}
+              style={{
+                width: '100%',
+                backgroundColor: 'transparent',
+                color: '#fca5a5',
+                border: '1px solid #f87171',
+                padding: '10px',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontSize: '0.85rem'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = '#fef2f2';
+                e.target.style.color = '#dc2626';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.color = '#fca5a5';
+              }}
+            >
+              Cerrar Sesión
+            </button>
           </div>
-
-          <button 
-            onClick={cerrarSesion} 
-            style={{ 
-              backgroundColor: '#ef4444', 
-              color: 'white', 
-              border: 'none', 
-              padding: '14px', 
-              borderRadius: '12px', 
-              fontSize: '0.95rem', 
-              fontWeight: 'bold', 
-              cursor: 'pointer',
-              width: '100%'
-            }}
-          >
-            Cerrar Sesión
-          </button>
         </aside>
-      )}
 
-      {/* ENCABEZADO MÓVIL AMPLIO Y LIMPIO */}
-      {esMovil && (
-        <header style={{ 
-          backgroundColor: '#124d2d', // Verde original image_0.png
-          color: 'white', 
-          padding: '16px 20px', 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          boxShadow: '0 4px 12px rgba(18, 77, 45, 0.12)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <img 
-              src="/icon.png" 
-              alt="Logo CafeSmart" 
-              style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'cover', border: '1.5px solid rgba(255,255,255,0.4)' }} 
-            />
-            <div>
-              <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 'bold', lineHeight: '1.1' }}>CafeSmart</h1>
-              <span style={{ fontSize: '0.78rem', color: '#9be0a2' }}>{usuario?.nombreProductor || 'Productor'}</span>
-            </div>
-          </div>
+        <main className="main-content">
+          {moduloActivo === 'fincas' && (
+            <Fincas usuario={usuario} subSeccion={subSeccionActiva} />
+          )}
 
-          <button 
-            onClick={cerrarSesion} 
-            style={{ 
-              backgroundColor: '#ef4444', 
-              color: 'white', 
-              border: 'none', 
-              padding: '8px 14px', 
-              borderRadius: '10px', 
-              fontSize: '0.85rem', 
-              fontWeight: 'bold', 
-              cursor: 'pointer' 
-            }}
-          >
-            Salir
-          </button>
-        </header>
-      )}
+          {moduloActivo === 'personal' && (
+            <Personal usuario={usuario} subSeccion={subSeccionActiva} />
+          )}
 
-      {/* ÁREA DE CONTENIDO CON MÁRGENES Y AIRE (AMI) */}
-      <main style={{ 
-        flex: 1, 
-        padding: esMovil ? '22px 18px' : '36px', 
-        paddingBottom: esMovil ? '105px' : '36px', 
-        maxWidth: esMovil ? '100%' : '940px', 
-        margin: esMovil ? '0' : '0 auto',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        {moduloActivo === 'fincas' && <Fincas usuario={usuario} />}
-        {moduloActivo === 'personal' && <Personal usuario={usuario} />}
-        {moduloActivo === 'finanzas' && <Finanzas usuario={usuario} />}
-      </main>
-
-      {/* ASISTENTE FLOTANTE IA */}
-      <AgenteIA usuario={usuario} />
-
-      {/* NAVEGACIÓN INFERIOR (BOTTOM NAV) MODERNA Y ESPACIOSA */}
-      {esMovil && (
-        <nav style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: '#ffffff',
-          borderTop: '1px solid #e1e8e4',
-          display: 'flex',
-          justifyContent: 'space-around',
-          alignItems: 'center',
-          padding: '12px 14px',
-          zIndex: 90,
-          boxShadow: '0 -4px 18px rgba(18, 77, 45, 0.05)'
-        }}>
-          <button 
-            onClick={() => setModuloActivo('fincas')}
-            style={{
-              flex: 1,
-              background: moduloActivo === 'fincas' ? '#edf5edf0' : 'transparent', // Verde y blanco suave de acento
-              border: 'none',
-              color: moduloActivo === 'fincas' ? '#124d2d' : '#64748b',
-              fontWeight: moduloActivo === 'fincas' ? 'bold' : '600',
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              padding: '12px 6px',
-              borderRadius: '14px',
-              margin: '0 4px',
-              transition: 'all 0.15s ease-in-out'
-            }}
-          >
-            Fincas
-          </button>
-
-          <button 
-            onClick={() => setModuloActivo('personal')}
-            style={{
-              flex: 1,
-              background: moduloActivo === 'personal' ? '#edf5edf0' : 'transparent',
-              border: 'none',
-              color: moduloActivo === 'personal' ? '#124d2d' : '#64748b',
-              fontWeight: moduloActivo === 'personal' ? 'bold' : '600',
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              padding: '12px 6px',
-              borderRadius: '14px',
-              margin: '0 4px',
-              transition: 'all 0.15s ease-in-out'
-            }}
-          >
-            Personal
-          </button>
-
-          <button 
-            onClick={() => setModuloActivo('finanzas')}
-            style={{
-              flex: 1,
-              background: moduloActivo === 'finanzas' ? '#edf5edf0' : 'transparent',
-              border: 'none',
-              color: moduloActivo === 'finanzas' ? '#124d2d' : '#64748b',
-              fontWeight: moduloActivo === 'finanzas' ? 'bold' : '600',
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              padding: '12px 6px',
-              borderRadius: '14px',
-              margin: '0 4px',
-              transition: 'all 0.15s ease-in-out'
-            }}
-          >
-            Finanzas
-          </button>
-        </nav>
-      )}
-    </div>
+          {moduloActivo === 'finanzas' && (
+            <Finanzas usuario={usuario} subSeccion={subSeccionActiva} />
+          )}
+        </main>
+      </div>
+    </>
   );
 }

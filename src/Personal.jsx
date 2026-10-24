@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react';
 
 const ACTIVIDADES_INICIALES = [
@@ -31,7 +30,7 @@ const dinero = (valor) =>
     maximumFractionDigits: 2,
   });
 
-export default function Personal({ usuario }) {
+export default function Personal({ usuario, subSeccion }) {
   const userId = usuario?.id || 'default';
 
   const [trabajadores, setTrabajadores] = useState(() =>
@@ -71,8 +70,17 @@ export default function Personal({ usuario }) {
   const [modalidad, setModalidad] = useState('recoleccion');
   const [fecha, setFecha] = useState(hoy());
 
-  // Las cantidades se registran al liquidar, no al asignar la labor.
   const [cantidadesLiquidacion, setCantidadesLiquidacion] = useState({});
+
+  // Control de vista desde la barra lateral
+  useEffect(() => {
+    if (subSeccion) {
+      if (subSeccion === 'liquidaciones') setVista('lista');
+      if (subSeccion === 'registrar-labor') setVista('nueva_jornada');
+      if (subSeccion === 'nuevo-trabajador') setVista('nuevo_trabajador');
+      if (subSeccion === 'tarifas-actividades') setVista('tarifas');
+    }
+  }, [subSeccion]);
 
   useEffect(() => {
     const actualizar = () => {
@@ -234,7 +242,6 @@ export default function Personal({ usuario }) {
       return;
     }
 
-    // No se solicitan kilos ni días al asignar una labor.
     const nuevaJornada = {
       id: Date.now(),
       trabajadorId: Number(trabajadorId),
@@ -399,26 +406,6 @@ export default function Personal({ usuario }) {
     [jornadas, fincaSeleccionada, lotes, lotesPorId]
   );
 
-  const tarjeta = (titulo, subtitulo, destino) => (
-    <button
-      key={destino}
-      type="button"
-      onClick={() => setVista(destino)}
-      style={{
-        background: vista === destino ? '#ecfdf5' : '#fff',
-        border: vista === destino ? '2px solid #047857' : '1px solid #cbd5e1',
-        borderRadius: 14,
-        padding: 16,
-        textAlign: 'left',
-        cursor: 'pointer',
-        color: '#1e293b',
-      }}
-    >
-      <strong style={{ display: 'block', marginBottom: 5 }}>{titulo}</strong>
-      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{subtitulo}</span>
-    </button>
-  );
-
   const campo = {
     width: '100%',
     boxSizing: 'border-box',
@@ -449,19 +436,7 @@ export default function Personal({ usuario }) {
 
   return (
     <div>
-      <h2 style={{ color: '#064e3b' }}>Personal y Gestión Laboral</h2>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: 12,
-        marginBottom: 24,
-      }}>
-        {tarjeta('Liquidaciones', 'Saldos y pagos', 'lista')}
-        {tarjeta('Registrar labor', 'Asignar una actividad', 'nueva_jornada')}
-        {tarjeta('Nuevo trabajador', 'Agregar personal', 'nuevo_trabajador')}
-        {tarjeta('Tarifas y actividades', 'Precios y labores', 'tarifas')}
-      </div>
+      <h2 style={{ color: '#064e3b', marginBottom: 20 }}>Personal y Gestión Laboral</h2>
 
       <section style={{
         background: '#f8fafc',
@@ -485,13 +460,13 @@ export default function Personal({ usuario }) {
       </section>
 
       {vista === 'lista' && (
-        <section>
+        <section id="liquidaciones">
           <h3>Liquidaciones pendientes</h3>
 
           {!fincaSeleccionada ? (
             <p>Selecciona una finca para consultar sus liquidaciones.</p>
           ) : trabajadores.length === 0 ? (
-            <p>No tienes trabajadores registrados. Agrega uno para comenzar.</p>
+            <p>No tienes trabajadores registrados. Agrega uno desde el menú lateral.</p>
           ) : trabajadoresConPendientes.length === 0 ? (
             <p>No hay liquidaciones pendientes para {fincaSeleccionada.nombre}.</p>
           ) : (
@@ -512,7 +487,7 @@ export default function Personal({ usuario }) {
                     {registros.length} labor(es) pendiente(s) en {fincaSeleccionada.nombre}
                   </p>
                   <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#b91c1c' }}>
-                    Valor calculado: {dinero(pendiente)}
+                    Valor calculated: {dinero(pendiente)}
                   </p>
 
                   <div style={{ overflowX: 'auto', marginBottom: 12 }}>
@@ -627,7 +602,7 @@ export default function Personal({ usuario }) {
       )}
 
       {vista === 'nueva_jornada' && (
-        <form onSubmit={guardarJornada} style={{
+        <form id="registrar-labor" onSubmit={guardarJornada} style={{
           background: '#fff',
           padding: 20,
           border: '1px solid #e2e8f0',
@@ -721,32 +696,66 @@ export default function Personal({ usuario }) {
       )}
 
       {vista === 'nuevo_trabajador' && (
-        <form onSubmit={guardarTrabajador} style={{
-          background: '#fff',
-          padding: 20,
-          border: '1px solid #e2e8f0',
-          borderRadius: 12,
-        }}>
-          <h3>Crear nuevo trabajador</h3>
-          <label style={etiqueta}>
-            Nombre completo
-            <input
-              type="text"
-              value={nombreTrabajador}
-              onChange={(e) => setNombreTrabajador(e.target.value)}
-              required
-              minLength={2}
-              maxLength={100}
-              style={campo}
-              placeholder="Ej. Carlos Ramírez"
-            />
-          </label>
-          <button type="submit" style={boton}>Guardar trabajador</button>
-        </form>
+        <section id="nuevo-trabajador">
+          <form onSubmit={guardarTrabajador} style={{
+            background: '#fff',
+            padding: 20,
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            marginBottom: 20,
+          }}>
+            <h3>Crear nuevo trabajador</h3>
+            <label style={etiqueta}>
+              Nombre completo
+              <input
+                type="text"
+                value={nombreTrabajador}
+                onChange={(e) => setNombreTrabajador(e.target.value)}
+                required
+                minLength={2}
+                maxLength={100}
+                style={campo}
+                placeholder="Ej. Carlos Ramírez"
+              />
+            </label>
+            <button type="submit" style={boton}>Guardar trabajador</button>
+          </form>
+
+          <article style={{
+            background: '#fff',
+            padding: 20,
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+          }}>
+            <h3>Lista de Trabajadores Registrados</h3>
+            {trabajadores.length === 0 ? (
+              <p style={{ color: '#64748b' }}>No hay trabajadores registrados en la base de datos.</p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e2e8f0' }}>ID</th>
+                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e2e8f0' }}>Nombre</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trabajadores.map((t) => (
+                      <tr key={t.id}>
+                        <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>{t.id}</td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 600 }}>{t.nombre}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
+        </section>
       )}
 
       {vista === 'tarifas' && (
-        <section>
+        <section id="tarifas-actividades">
           <article style={{
             background: '#fff',
             border: '1px solid #e2e8f0',
