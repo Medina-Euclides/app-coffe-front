@@ -9,6 +9,22 @@ const ACTIVIDADES_INICIALES = [
   'Fumigación / Control de plagas',
 ];
 
+// LISTA CORTA Y DIRECTA
+const opcionesJornal = [
+  { valor: '0.25', etiqueta: 'Un cuarto de día (1/4)' },
+  { valor: '0.5', etiqueta: 'Medio día (1/2)' },
+  { valor: '0.75', etiqueta: 'Tres cuartos de día (3/4)' },
+  { valor: '1', etiqueta: '1 Día completo' },
+  { valor: '1.5', etiqueta: '1 Día y medio' },
+  { valor: '2', etiqueta: '2 Días' },
+  { valor: '2.5', etiqueta: '2 Días y medio' },
+  { valor: '3', etiqueta: '3 Días' },
+  { valor: '3.5', etiqueta: '3 Días y medio' },
+  { valor: '4', etiqueta: '4 Días' },
+  { valor: '5', etiqueta: '5 Días' },
+  { valor: '6', etiqueta: '6 Días (Semana)' },
+];
+
 const hoy = () => {
   const fecha = new Date();
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
@@ -29,6 +45,17 @@ const dinero = (valor) =>
     currency: 'COP',
     maximumFractionDigits: 2,
   });
+
+const formatearMiles = (valor) => {
+  if (!valor && valor !== 0) return '';
+  const soloNumeros = String(valor).replace(/\D/g, '');
+  if (!soloNumeros) return '';
+  return Number(soloNumeros).toLocaleString('es-CO');
+};
+
+const desformatearNumero = (valorFormateado) => {
+  return String(valorFormateado).replace(/\D/g, '');
+};
 
 export default function Personal({ usuario, subSeccion }) {
   const userId = usuario?.id || 'default';
@@ -63,6 +90,7 @@ export default function Personal({ usuario, subSeccion }) {
 
   const [vista, setVista] = useState('lista');
   const [nombreTrabajador, setNombreTrabajador] = useState('');
+  const [cedulaTrabajador, setCedulaTrabajador] = useState('');
   const [nuevaActividadNombre, setNuevaActividadNombre] = useState('');
   const [trabajadorId, setTrabajadorId] = useState('');
   const [loteId, setLoteId] = useState('');
@@ -72,7 +100,7 @@ export default function Personal({ usuario, subSeccion }) {
 
   const [cantidadesLiquidacion, setCantidadesLiquidacion] = useState({});
 
-  // Control de vista desde la barra lateral
+  // Control de vista desde la barra lateral (App.jsx)
   useEffect(() => {
     if (subSeccion) {
       if (subSeccion === 'liquidaciones') setVista('lista');
@@ -183,24 +211,32 @@ export default function Personal({ usuario, subSeccion }) {
   const guardarTrabajador = (e) => {
     e.preventDefault();
     const nombre = nombreTrabajador.trim();
+    const cedula = cedulaTrabajador.trim();
 
     if (nombre.length < 2) {
       alert('Escribe el nombre completo del trabajador.');
       return;
     }
 
-    if (trabajadores.some((t) => t.nombre.trim().toLowerCase() === nombre.toLowerCase())) {
-      alert('Ya existe un trabajador con ese nombre.');
+    if (cedula.length !== 10) {
+      alert('La cédula debe contener exactamente 10 dígitos.');
+      return;
+    }
+
+    if (trabajadores.some((t) => String(t.cedula).trim() === cedula)) {
+      alert('Ya existe un trabajador registrado con este número de cédula.');
       return;
     }
 
     setTrabajadores((anteriores) => [
       ...anteriores,
-      { id: Date.now(), nombre },
+      { id: Date.now(), nombre, cedula },
     ]);
 
     setNombreTrabajador('');
+    setCedulaTrabajador('');
     setVista('lista');
+    alert('Trabajador registrado correctamente.');
   };
 
   const guardarJornada = (e) => {
@@ -291,15 +327,12 @@ export default function Personal({ usuario, subSeccion }) {
     });
 
     const cantidadInvalida = pendientesConCantidad.some(
-      (j) =>
-        !Number.isFinite(j.cantidad) ||
-        j.cantidad <= 0 ||
-        (j.modalidad === 'jornal' && !Number.isInteger(j.cantidad))
+      (j) => !Number.isFinite(j.cantidad) || j.cantidad <= 0
     );
 
     if (cantidadInvalida) {
       alert(
-        'Completa las cantidades de todas las labores: kilos para recolección y días enteros para jornal.'
+        'Completa las cantidades de todas las labores para poder liquidar.'
       );
       return;
     }
@@ -351,7 +384,7 @@ export default function Personal({ usuario, subSeccion }) {
       id: Date.now(),
       tipo: 'gasto',
       categoria: 'Mano de Obra',
-      descripcion: `Pago laboral: ${trabajador.nombre} - ${fincaSeleccionada.nombre}`,
+      descripcion: `Pago laboral: ${trabajador.nombre} (${fincaSeleccionada.nombre})`,
       valor: monto,
       fecha: fechaPago,
       fincaId: fincaSeleccionada.id,
@@ -405,6 +438,34 @@ export default function Personal({ usuario, subSeccion }) {
       : [],
     [jornadas, fincaSeleccionada, lotes, lotesPorId]
   );
+
+  // AGRUPACIÓN DEL HISTORIAL POR TRABAJADOR Y FECHA
+  const historialAgrupado = useMemo(() => {
+    const grupos = {};
+    
+    historialPagado.forEach(j => {
+      const t = trabajadores.find(trab => Number(trab.id) === Number(j.trabajadorId));
+      const nombreTrabajador = t ? t.nombre : 'Trabajador anterior';
+      
+      const clave = `${j.fecha}_${j.trabajadorId}`;
+      
+      if (!grupos[clave]) {
+        grupos[clave] = {
+          idUnico: clave,
+          fecha: j.fecha,
+          fechaPago: j.fechaPago,
+          trabajador: nombreTrabajador,
+          totalPagado: 0,
+          labores: []
+        };
+      }
+      
+      grupos[clave].totalPagado += Number(j.subtotal);
+      grupos[clave].labores.push(j);
+    });
+    
+    return Object.values(grupos).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  }, [historialPagado, trabajadores]);
 
   const campo = {
     width: '100%',
@@ -487,7 +548,7 @@ export default function Personal({ usuario, subSeccion }) {
                     {registros.length} labor(es) pendiente(s) en {fincaSeleccionada.nombre}
                   </p>
                   <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#b91c1c' }}>
-                    Valor calculated: {dinero(pendiente)}
+                    Valor calculado: {dinero(pendiente)}
                   </p>
 
                   <div style={{ overflowX: 'auto', marginBottom: 12 }}>
@@ -497,14 +558,13 @@ export default function Personal({ usuario, subSeccion }) {
                           <th style={{ textAlign: 'left', padding: 6 }}>Fecha</th>
                           <th style={{ textAlign: 'left', padding: 6 }}>Actividad</th>
                           <th style={{ textAlign: 'left', padding: 6 }}>Lote</th>
-                          <th style={{ textAlign: 'right', padding: 6 }}>Cantidad para liquidar</th>
+                          <th style={{ textAlign: 'right', padding: 6 }}>Tiempo / Cantidad</th>
                           <th style={{ textAlign: 'right', padding: 6 }}>Valor</th>
                         </tr>
                       </thead>
                       <tbody>
                         {registros.map((j) => {
-                          const cantidadActual =
-                            cantidadesLiquidacion[j.id] ?? j.cantidad ?? '';
+                          const cantidadActual = cantidadesLiquidacion[j.id] ?? j.cantidad ?? '';
                           const cantidadNumerica = Number(cantidadActual);
                           const tarifa = Number(
                             j.tarifaAplicada ||
@@ -522,22 +582,42 @@ export default function Personal({ usuario, subSeccion }) {
                                 {lotesPorId.get(String(j.loteId))?.nombre || j.lote || 'Lote anterior'}
                               </td>
                               <td style={{ padding: 6, textAlign: 'right' }}>
-                                <input
-                                  type="number"
-                                  min="0.1"
-                                  step={j.modalidad === 'jornal' ? '1' : '0.1'}
-                                  value={cantidadActual}
-                                  onChange={(e) => setCantidadesLiquidacion((prev) => ({
-                                    ...prev,
-                                    [j.id]: e.target.value,
-                                  }))}
-                                  placeholder={j.modalidad === 'recoleccion' ? 'Kilos' : 'Días'}
-                                  aria-label={j.modalidad === 'recoleccion' ? 'Kilos recolectados' : 'Días trabajados'}
-                                  style={{ ...campo, minWidth: 100, marginTop: 0 }}
-                                />
-                                <small style={{ display: 'block', color: '#64748b' }}>
-                                  {j.modalidad === 'recoleccion' ? 'Kilogramos' : 'Días trabajados'}
-                                </small>
+                                {j.modalidad === 'recoleccion' ? (
+                                  <>
+                                    <input
+                                      type="number"
+                                      min="0.1"
+                                      step="0.1"
+                                      value={cantidadActual}
+                                      onChange={(e) => setCantidadesLiquidacion((prev) => ({
+                                        ...prev,
+                                        [j.id]: e.target.value,
+                                      }))}
+                                      placeholder="Kilos"
+                                      style={{ ...campo, minWidth: 100, marginTop: 0 }}
+                                    />
+                                    <small style={{ display: 'block', color: '#64748b' }}>Kilogramos</small>
+                                  </>
+                                ) : (
+                                  <>
+                                    <select
+                                      value={cantidadActual}
+                                      onChange={(e) => setCantidadesLiquidacion((prev) => ({
+                                        ...prev,
+                                        [j.id]: e.target.value,
+                                      }))}
+                                      style={{ ...campo, minWidth: 140, marginTop: 0 }}
+                                    >
+                                      <option value="">Selecciona tiempo...</option>
+                                      {opcionesJornal.map((opc) => (
+                                        <option key={opc.valor} value={opc.valor}>
+                                          {opc.etiqueta}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <small style={{ display: 'block', color: '#64748b' }}>Tiempo trabajado</small>
+                                  </>
+                                )}
                               </td>
                               <td style={{ padding: 6, textAlign: 'right' }}>{dinero(valor)}</td>
                             </tr>
@@ -558,44 +638,60 @@ export default function Personal({ usuario, subSeccion }) {
           <h3 style={{ marginTop: 28 }}>Historial de labores pagadas</h3>
           {!fincaSeleccionada ? (
             <p>Selecciona una finca para consultar el historial.</p>
+          ) : historialAgrupado.length === 0 ? (
+            <p style={{ color: '#64748b', padding: 16, background: '#f8fafc', borderRadius: 12 }}>
+              No hay labores pagadas registradas para {fincaSeleccionada.nombre}.
+            </p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', padding: 8 }}>Fecha labor</th>
-                    <th style={{ textAlign: 'left', padding: 8 }}>Trabajador</th>
-                    <th style={{ textAlign: 'left', padding: 8 }}>Actividad</th>
-                    <th style={{ textAlign: 'left', padding: 8 }}>Cantidad</th>
-                    <th style={{ textAlign: 'left', padding: 8 }}>Fecha pago</th>
-                    <th style={{ textAlign: 'right', padding: 8 }}>Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historialPagado.map((j) => {
-                    const t = trabajadores.find((trab) => Number(trab.id) === Number(j.trabajadorId));
-                    return (
-                      <tr key={j.id}>
-                        <td style={{ padding: 8 }}>{j.fecha}</td>
-                        <td style={{ padding: 8 }}>{t?.nombre || 'Trabajador anterior'}</td>
-                        <td style={{ padding: 8 }}>{j.actividad}</td>
-                        <td style={{ padding: 8 }}>
-                          {j.cantidad} {j.modalidad === 'recoleccion' ? 'kg' : 'día(s)'}
-                        </td>
-                        <td style={{ padding: 8 }}>{j.fechaPago || 'Sin fecha'}</td>
-                        <td style={{ padding: 8, textAlign: 'right' }}>{dinero(j.subtotal)}</td>
-                      </tr>
-                    );
-                  })}
-                  {historialPagado.length === 0 && (
-                    <tr>
-                      <td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#64748b' }}>
-                        No hay labores pagadas registradas para {fincaSeleccionada.nombre}.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {historialAgrupado.map((grupo) => (
+                <article key={grupo.idUnico} style={{
+                  background: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: 18
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 10, marginBottom: 12 }}>
+                    <div>
+                      <strong style={{ fontSize: '1.1rem', color: '#047857', display: 'block' }}>{grupo.trabajador}</strong>
+                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Día laborado: {grupo.fecha}</span>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>Pagado el: {grupo.fechaPago}</span>
+                    </div>
+                  </div>
+
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px 0' }}>
+                    {grupo.labores.map((labor) => {
+                      let textoCantidad = `${labor.cantidad} días`;
+                      if (labor.modalidad === 'jornal') {
+                        const opc = opcionesJornal.find(o => o.valor === String(labor.cantidad));
+                        if (opc) textoCantidad = opc.etiqueta;
+                      } else {
+                        textoCantidad = `${labor.cantidad} kg`;
+                      }
+
+                      return (
+                        <li key={labor.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', marginBottom: 8 }}>
+                          <span style={{ color: '#334155' }}>
+                            • {labor.actividad} ({textoCantidad})
+                          </span>
+                          <span style={{ color: '#64748b' }}>
+                            {dinero(labor.subtotal)}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  <div style={{ textAlign: 'right', borderTop: '1px dashed #cbd5e1', paddingTop: 10 }}>
+                    <span style={{ fontSize: '0.9rem', color: '#475569', marginRight: 10 }}>Total del día:</span>
+                    <strong style={{ fontSize: '1.2rem', color: '#15803d' }}>
+                      {dinero(grupo.totalPagado)}
+                    </strong>
+                  </div>
+                </article>
+              ))}
             </div>
           )}
         </section>
@@ -620,7 +716,11 @@ export default function Personal({ usuario, subSeccion }) {
             Trabajador
             <select value={trabajadorId} onChange={(e) => setTrabajadorId(e.target.value)} required style={campo}>
               <option value="">Selecciona un trabajador...</option>
-              {trabajadores.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              {trabajadores.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nombre} {t.cedula ? `(C.C. ${t.cedula})` : ''}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -681,7 +781,7 @@ export default function Personal({ usuario, subSeccion }) {
           }}>
             {modalidad === 'recoleccion'
               ? 'Los kilos recolectados se ingresarán cuando vayas a liquidar el pago.'
-              : 'Los días trabajados se ingresarán cuando vayas a liquidar el pago.'}
+              : 'El tiempo trabajado (medio día, día completo, etc.) se seleccionará cuando vayas a liquidar el pago.'}
           </div>
 
           <label style={etiqueta}>
@@ -705,12 +805,13 @@ export default function Personal({ usuario, subSeccion }) {
             marginBottom: 20,
           }}>
             <h3>Crear nuevo trabajador</h3>
+
             <label style={etiqueta}>
-              Nombre completo
+              Nombre completo (Solo letras)
               <input
                 type="text"
                 value={nombreTrabajador}
-                onChange={(e) => setNombreTrabajador(e.target.value)}
+                onChange={(e) => setNombreTrabajador(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
                 required
                 minLength={2}
                 maxLength={100}
@@ -718,6 +819,22 @@ export default function Personal({ usuario, subSeccion }) {
                 placeholder="Ej. Carlos Ramírez"
               />
             </label>
+
+            <label style={etiqueta}>
+              Número de Cédula (Exactamente 10 números)
+              <input
+                type="text"
+                inputMode="numeric"
+                value={cedulaTrabajador}
+                onChange={(e) => setCedulaTrabajador(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                required
+                minLength={10}
+                maxLength={10}
+                style={campo}
+                placeholder="Ej. 1061234567"
+              />
+            </label>
+
             <button type="submit" style={boton}>Guardar trabajador</button>
           </form>
 
@@ -735,15 +852,19 @@ export default function Personal({ usuario, subSeccion }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e2e8f0' }}>ID</th>
+                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e2e8f0' }}>Cédula</th>
                       <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e2e8f0' }}>Nombre</th>
                     </tr>
                   </thead>
                   <tbody>
                     {trabajadores.map((t) => (
                       <tr key={t.id}>
-                        <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>{t.id}</td>
-                        <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 600 }}>{t.nombre}</td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', color: '#047857', fontWeight: 600 }}>
+                          {t.cedula || 'Sin cédula'}
+                        </td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 600 }}>
+                          {t.nombre}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -770,12 +891,28 @@ export default function Personal({ usuario, subSeccion }) {
 
             <label style={etiqueta}>
               Tarifa por kilogramo (COP)
-              <input type="number" min="1" step="1" value={tarifaKg} onChange={(e) => setTarifaKg(e.target.value)} required style={campo} />
+              <input
+                type="text"
+                inputMode="numeric"
+                value={formatearMiles(tarifaKg)}
+                onChange={(e) => setTarifaKg(desformatearNumero(e.target.value))}
+                required
+                style={campo}
+                placeholder="Ej. 1.000"
+              />
             </label>
 
             <label style={etiqueta}>
               Tarifa por jornal/día (COP)
-              <input type="number" min="1" step="1" value={tarifaJornal} onChange={(e) => setTarifaJornal(e.target.value)} required style={campo} />
+              <input
+                type="text"
+                inputMode="numeric"
+                value={formatearMiles(tarifaJornal)}
+                onChange={(e) => setTarifaJornal(desformatearNumero(e.target.value))}
+                required
+                style={campo}
+                placeholder="Ej. 50.000"
+              />
             </label>
 
             <button
