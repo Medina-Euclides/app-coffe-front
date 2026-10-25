@@ -122,13 +122,13 @@ export default function App() {
           background-color: #f8fafc;
         }
         .sidebar {
-          width: 280px;
-          background-color: #064e3b;
+          width: 290px;
+          background: linear-gradient(180deg, #065f46 0%, #064e3b 40%, #052e16 100%);
           color: #ffffff;
-          padding: 24px 16px;
+          padding: 28px 18px;
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 26px;
           box-sizing: border-box;
           flex-shrink: 0;
           transition: transform 0.3s ease;
@@ -136,6 +136,21 @@ export default function App() {
           top: 0;
           height: 100vh;
           overflow-y: auto;
+          border-right: 1px solid rgba(167, 243, 208, 0.18);
+          box-shadow: 10px 0 40px -20px rgba(6, 78, 59, 0.9);
+        }
+        .sidebar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+          background: rgba(110, 231, 183, 0.4);
+          border-radius: 10px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover {
+          background: rgba(110, 231, 183, 0.7);
         }
         .main-content {
           flex: 1;
@@ -246,14 +261,25 @@ export default function App() {
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between',
-            paddingBottom: '16px', 
-            borderBottom: '1px solid #047857' 
+            paddingBottom: '18px', 
+            borderBottom: '1px solid rgba(167, 243, 208, 0.18)' 
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <img src="/icon.png" alt="Logo CafeSmart" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '14px',
+                background: 'radial-gradient(circle at top, rgba(167, 243, 208, 0.35), rgba(5, 150, 105, 0.25))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 20px 40px -24px rgba(52, 211, 153, 0.9)'
+              }}>
+                <img src="/icon.png" alt="Logo CafeSmart" style={{ width: '38px', height: '38px', objectFit: 'contain' }} />
+              </div>
               <div>
-                <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#6ee7b7' }}>CafeSmart</h1>
-                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#a7f3d0' }}>Gestión Cafetera</p>
+                <h1 style={{ margin: 0, fontSize: '1.42rem', color: '#ecfdf5', letterSpacing: '-0.01em' }}>CafeSmart</h1>
+                <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: '#a7f3d0', opacity: 0.8 }}>Gestión Cafetera</p>
               </div>
             </div>
             <button 
@@ -278,30 +304,33 @@ export default function App() {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      color: '#a7f3d0',
-                      padding: '8px',
+                      backgroundColor: estaDesplegado ? 'rgba(167, 243, 208, 0.08)' : 'transparent',
+                      border: '1px solid transparent',
+                      borderRadius: '10px',
+                      color: '#d1fae5',
+                      padding: '9px 12px',
                       cursor: 'pointer',
                       textAlign: 'left',
-                      fontWeight: 'bold',
+                      fontWeight: '700',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      fontSize: '0.75rem',
+                      letterSpacing: '0.6px',
+                      fontSize: '0.72rem',
+                      transition: 'all 0.2s ease',
                     }}
                   >
                     {grupo.titulo}
                     <span style={{ 
-                      fontSize: '0.8rem', 
+                      fontSize: '0.75rem', 
                       transform: estaDesplegado ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s ease'
+                      transition: 'transform 0.2s ease',
+                      opacity: 0.8
                     }}>
                       ▼
                     </span>
                   </button>
 
                   {estaDesplegado && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', paddingLeft: '6px' }}>
                       {grupo.opciones.map((opcion) => {
                         const estaActivo = moduloActivo === grupo.modulo && subSeccionActiva === opcion.id;
 
@@ -312,19 +341,22 @@ export default function App() {
                             onClick={() => navegarA(grupo.modulo, opcion.id, grupo.id)}
                             style={{
                               textAlign: 'left',
-                              padding: '10px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: estaActivo ? '#047857' : 'transparent',
-                              color: estaActivo ? '#ffffff' : '#d1fae5',
-                              fontWeight: estaActivo ? 'bold' : 'normal',
+                              padding: '11px 14px',
+                              borderRadius: '12px',
+                              border: estaActivo ? '1px solid rgba(167, 243, 208, 0.45)' : '1px solid transparent',
+                              background: estaActivo
+                                ? 'linear-gradient(90deg, rgba(16, 185, 129, 0.28) 0%, rgba(4, 120, 87, 0.18) 100%)'
+                                : 'transparent',
+                              color: estaActivo ? '#f0fdf4' : '#d1fae5',
+                              fontWeight: estaActivo ? '700' : '500',
                               cursor: 'pointer',
-                              transition: 'all 0.2s',
-                              fontSize: '0.9rem'
+                              transition: 'all 0.2s ease',
+                              fontSize: '0.92rem',
+                              boxShadow: estaActivo ? '0 10px 30px -18px rgba(52, 211, 153, 0.9)' : 'none',
                             }}
                           >
                             <div>{opcion.titulo}</div>
-                            <div style={{ fontSize: '0.75rem', color: estaActivo ? '#a7f3d0' : '#6ee7b7', opacity: 0.8 }}>
+                            <div style={{ fontSize: '0.74rem', color: estaActivo ? '#a7f3d0' : '#86efac', opacity: estaActivo ? 0.9 : 0.8, marginTop: '2px' }}>
                               {opcion.detalle}
                             </div>
                           </button>
@@ -339,11 +371,11 @@ export default function App() {
 
           <div style={{ 
             marginTop: 'auto', 
-            paddingTop: '16px', 
-            borderTop: '1px solid #047857',
+            paddingTop: '18px', 
+            borderTop: '1px solid rgba(167, 243, 208, 0.18)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '14px'
+            gap: '16px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isOnline ? '#a7f3d0' : '#fbbf24', fontSize: '0.8rem' }}>
               <span
@@ -358,27 +390,28 @@ export default function App() {
             </div>
 
             <SyncStatus />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '14px', background: 'rgba(167, 243, 208, 0.08)', border: '1px solid rgba(167, 243, 208, 0.16)' }}>
               <div style={{
-                width: '40px',
-                height: '40px',
+                width: '42px',
+                height: '42px',
                 borderRadius: '50%',
-                backgroundColor: '#047857',
+                background: 'radial-gradient(circle at top, #a7f3d0, #22c55e)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 'bold',
-                fontSize: '1.2rem',
-                color: '#6ee7b7',
-                flexShrink: 0
+                fontWeight: '800',
+                fontSize: '1.1rem',
+                color: '#052e16',
+                flexShrink: 0,
+                boxShadow: '0 18px 40px -22px rgba(74, 222, 128, 0.9)'
               }}>
                 {inicialMostrar}
               </div>
               <div style={{ overflow: 'hidden' }}>
-                <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 'bold', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', textTransform: 'capitalize' }}>
+                <p style={{ margin: 0, fontSize: '0.96rem', fontWeight: '700', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', textTransform: 'capitalize', color: '#f0fdf4' }}>
                   {nombreMostrar}
                 </p>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: '#a7f3d0' }}>Sesión activa</p>
+                <p style={{ margin: 0, fontSize: '0.74rem', color: '#a7f3d0', opacity: 0.8 }}>Sesión activa</p>
               </div>
             </div>
 
@@ -388,22 +421,23 @@ export default function App() {
               style={{
                 width: '100%',
                 backgroundColor: 'transparent',
-                color: '#fca5a5',
-                border: '1px solid #f87171',
-                padding: '10px',
-                borderRadius: '8px',
-                fontWeight: 'bold',
+                color: '#fecaca',
+                border: '1px solid rgba(248, 113, 113, 0.6)',
+                padding: '11px',
+                borderRadius: '12px',
+                fontWeight: '700',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                fontSize: '0.85rem'
+                transition: 'all 0.2s ease',
+                fontSize: '0.88rem',
+                letterSpacing: '0.01em'
               }}
               onMouseOver={(e) => {
-                e.target.style.backgroundColor = '#fef2f2';
-                e.target.style.color = '#dc2626';
+                e.target.style.backgroundColor = 'rgba(248, 113, 113, 0.18)';
+                e.target.style.color = '#fee2e2';
               }}
               onMouseOut={(e) => {
                 e.target.style.backgroundColor = 'transparent';
-                e.target.style.color = '#fca5a5';
+                e.target.style.color = '#fecaca';
               }}
             >
               Cerrar Sesión
