@@ -39,6 +39,7 @@ const MENUS = [
     modulo: 'finanzas',
     opciones: [
       { id: 'finanzas-indicadores', titulo: 'Finanzas e indicadores', detalle: 'Balances e historial' },
+      { id: 'finanzas-graficos', titulo: 'Gráficas y análisis', detalle: 'Visualización gráfica' },
       { id: 'nuevo-movimiento', titulo: 'Registrar movimiento', detalle: 'Ingresos y egresos' },
     ],
   },
