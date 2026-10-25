@@ -3,6 +3,9 @@ import Auth from './Auth';
 import Personal from './Personal';
 import Fincas from './Fincas';
 import Finanzas from './Finanzas';
+import AgenteIA from './AgenteIA';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
+import SyncStatus from './components/SyncStatus';
 
 const MENUS = [
   {
@@ -59,6 +62,7 @@ export default function App() {
     personal: false,
     administracion: false,
   });
+  const isOnline = useOnlineStatus();
 
   const manejarLogin = (datosUsuario) => {
     localStorage.setItem('cafesmart_usuario', JSON.stringify(datosUsuario));
@@ -93,14 +97,12 @@ export default function App() {
     return <Auth onLogin={manejarLogin} />;
   }
 
-  // 1. LÓGICA MEJORADA PARA EXTRAER EL NOMBRE REAL (o recortar el correo)
   const obtenerNombreMostrar = () => {
     if (usuario?.nombre) return usuario.nombre;
     if (usuario?.name) return usuario.name;
     if (usuario?.displayName) return usuario.displayName;
     if (usuario?.username) return usuario.username;
     
-    // Si solo hay correo, recortamos lo que está antes de la @
     if (usuario?.correo) return usuario.correo.split('@')[0];
     if (usuario?.email) return usuario.email.split('@')[0];
     
@@ -130,6 +132,10 @@ export default function App() {
           box-sizing: border-box;
           flex-shrink: 0;
           transition: transform 0.3s ease;
+          position: sticky;
+          top: 0;
+          height: 100vh;
+          overflow-y: auto;
         }
         .main-content {
           flex: 1;
@@ -138,6 +144,7 @@ export default function App() {
           max-width: 1000px;
           width: 100%;
           overflow-x: hidden;
+          overflow-y: auto;
         }
         .header-mobile {
           display: none;
@@ -193,11 +200,36 @@ export default function App() {
         }
       `}</style>
 
+      {!isOnline && (
+        <div
+          style={{
+            backgroundColor: '#f59e0b',
+            color: '#1f2937',
+            textAlign: 'center',
+            padding: '8px 12px',
+            fontWeight: '600',
+            fontSize: '0.9rem'
+          }}
+        >
+          Modo sin conexión. Los datos se guardarán localmente y se sincronizarán al recuperar conexión.
+        </div>
+      )}
+
       <div className="app-container">
         <div className="header-mobile">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <img src="/icon.png" alt="Logo CafeSmart" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
             <h1 style={{ margin: 0, fontSize: '1.2rem', color: '#6ee7b7' }}>CafeSmart</h1>
+            <span
+              title={isOnline ? 'Conectado' : 'Sin conexión'}
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: isOnline ? '#22c55e' : '#f59e0b',
+                boxShadow: isOnline ? '0 0 6px rgba(34, 197, 94, 0.8)' : '0 0 6px rgba(245, 158, 11, 0.8)'
+              }}
+            />
           </div>
           <button className="btn-hamburguesa" onClick={() => setMenuMobileAbierto(true)}>
             ☰
@@ -313,6 +345,19 @@ export default function App() {
             flexDirection: 'column',
             gap: '14px'
           }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isOnline ? '#a7f3d0' : '#fbbf24', fontSize: '0.8rem' }}>
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: isOnline ? '#22c55e' : '#f59e0b'
+                }}
+              />
+              {isOnline ? 'Conectado' : 'Sin conexión - Modo offline'}
+            </div>
+
+            <SyncStatus />
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
                 width: '40px',
@@ -380,6 +425,8 @@ export default function App() {
           )}
         </main>
       </div>
+
+      <AgenteIA usuario={usuario} />
     </>
   );
 }

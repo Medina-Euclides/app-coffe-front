@@ -1,10 +1,11 @@
-const CACHE_NAME = 'cafesmart-v2';
+const CACHE_NAME = 'cafesmart-v3';
 
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.png'
+  '/icon.png',
+  '/icons.svg'
 ];
 
 // Instalar el Service Worker y guardar los recursos esenciales.

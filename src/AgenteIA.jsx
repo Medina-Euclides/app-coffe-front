@@ -9,8 +9,19 @@ export default function AgenteIA({ usuario }) {
       texto: 'Hola, soy tu asistente CafeSmart. ¿En qué puedo ayudarte hoy con tus lotes, cosechas o finanzas?'
     }
   ]);
+  const [enLinea, setEnLinea] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   const finMensajesRef = useRef(null);
+
+  useEffect(() => {
+    const actualizarEstado = () => setEnLinea(navigator.onLine);
+    window.addEventListener('online', actualizarEstado);
+    window.addEventListener('offline', actualizarEstado);
+    return () => {
+      window.removeEventListener('online', actualizarEstado);
+      window.removeEventListener('offline', actualizarEstado);
+    };
+  }, []);
 
   useEffect(() => {
     if (abierto) {
@@ -20,6 +31,7 @@ export default function AgenteIA({ usuario }) {
 
   const enviarMensaje = (e) => {
     e.preventDefault();
+    if (!enLinea) return;
     if (!mensaje.trim()) return;
 
     const nuevoHistorial = [
@@ -165,55 +177,89 @@ export default function AgenteIA({ usuario }) {
               <div ref={finMensajesRef} />
             </div>
 
-            {/* CAJA DE TEXTO Y BOTÓN BIEN DIMENSIONADOS (AMI) */}
-            <form
-              onSubmit={enviarMensaje}
-              style={{
-                padding: '12px 16px',
-                backgroundColor: '#ffffff',
-                borderTop: '1px solid #e2e8f0',
-                display: 'flex',
-                gap: '10px',
-                alignItems: 'center'
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Escribe tu consulta..."
-                value={mensaje}
-                onChange={(e) => setMensaje(e.target.value)}
+            {/* AVISO FUERA DE LÍNEA Y DISCLAIMER */}
+            <div style={{ backgroundColor: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
+              {!enLinea && (
+                <div
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#fef3c7',
+                    color: '#92400e',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    textAlign: 'center'
+                  }}
+                >
+                  El asistente necesita estar conectado a Internet para operar
+                </div>
+              )}
+
+              <div
                 style={{
-                  flex: 1,
-                  minHeight: '52px',
-                  marginBottom: 0,
-                  padding: '12px 16px',
-                  borderRadius: '14px',
-                  border: '1.5px solid #cbd5e1',
-                  fontSize: '0.95rem',
-                  outline: 'none',
-                  backgroundColor: '#ffffff'
-                }}
-              />
-              <button
-                type="submit"
-                style={{
-                  minHeight: '52px',
-                  padding: '0 20px',
-                  backgroundColor: '#059669',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '14px',
-                  fontWeight: 'bold',
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)',
-                  marginBottom: 0
+                  padding: '8px 16px',
+                  backgroundColor: '#f8fafc',
+                  color: '#475569',
+                  fontSize: '0.75rem',
+                  lineHeight: '1.3',
+                  textAlign: 'center'
                 }}
               >
-                Enviar
-              </button>
-            </form>
+                Las respuestas generadas son de carácter estrictamente informativo y administrativo, y no reemplazan el juicio o asesoría técnica especializada.
+              </div>
+
+              {/* CAJA DE TEXTO Y BOTÓN BIEN DIMENSIONADOS (AMI) */}
+              <form
+                onSubmit={enviarMensaje}
+                style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#ffffff',
+                  display: 'flex',
+                  gap: '10px',
+                  alignItems: 'center'
+                }}
+              >
+                <input
+                  type="text"
+                  placeholder={enLinea ? 'Escribe tu consulta...' : 'Conexión requerida'}
+                  value={mensaje}
+                  onChange={(e) => setMensaje(e.target.value)}
+                  disabled={!enLinea}
+                  style={{
+                    flex: 1,
+                    minHeight: '52px',
+                    marginBottom: 0,
+                    padding: '12px 16px',
+                    borderRadius: '14px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    backgroundColor: enLinea ? '#ffffff' : '#f1f5f9',
+                    color: enLinea ? '#0f172a' : '#64748b',
+                    cursor: enLinea ? 'text' : 'not-allowed'
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={!enLinea}
+                  style={{
+                    minHeight: '52px',
+                    padding: '0 20px',
+                    backgroundColor: enLinea ? '#059669' : '#94a3b8',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '14px',
+                    fontWeight: 'bold',
+                    fontSize: '0.95rem',
+                    cursor: enLinea ? 'pointer' : 'not-allowed',
+                    whiteSpace: 'nowrap',
+                    boxShadow: enLinea ? '0 2px 8px rgba(5, 150, 105, 0.25)' : 'none',
+                    marginBottom: 0
+                  }}
+                >
+                  Enviar
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}

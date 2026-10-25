@@ -9,7 +9,6 @@ const ACTIVIDADES_INICIALES = [
   'Fumigación / Control de plagas',
 ];
 
-// LISTA CORTA Y DIRECTA
 const opcionesJornal = [
   { valor: '0.25', etiqueta: 'Un cuarto de día (1/4)' },
   { valor: '0.5', etiqueta: 'Medio día (1/2)' },
@@ -100,13 +99,19 @@ export default function Personal({ usuario, subSeccion }) {
 
   const [cantidadesLiquidacion, setCantidadesLiquidacion] = useState({});
 
-  // Control de vista desde la barra lateral (App.jsx)
+  // ESTADOS PARA FILTRO Y BÚSQUEDA PROTEGIDOS
+  const [busquedaHistorial, setBusquedaHistorial] = useState('');
+  const [periodoHistorial, setPeriodoHistorial] = useState('todos');
+
   useEffect(() => {
     if (subSeccion) {
       if (subSeccion === 'liquidaciones') setVista('lista');
-      if (subSeccion === 'registrar-labor') setVista('nueva_jornada');
-      if (subSeccion === 'nuevo-trabajador') setVista('nuevo_trabajador');
-      if (subSeccion === 'tarifas-actividades') setVista('tarifas');
+      else if (subSeccion === 'registrar-labor') setVista('nueva_jornada');
+      else if (subSeccion === 'nuevo-trabajador') setVista('nuevo_trabajador');
+      else if (subSeccion === 'tarifas-actividades') setVista('tarifas');
+      else setVista('lista');
+    } else {
+      setVista('lista');
     }
   }, [subSeccion]);
 
@@ -206,6 +211,26 @@ export default function Personal({ usuario, subSeccion }) {
     setModalidad(nombre === 'Recolección de café' ? 'recoleccion' : 'jornal');
     setNuevaActividadNombre('');
     alert('Actividad agregada correctamente.');
+  };
+
+  const eliminarActividad = (actividadAEliminar) => {
+    if (actividades.length <= 1) {
+      alert('Debes mantener al menos una actividad registrada en el catálogo.');
+      return;
+    }
+
+    const confirmado = window.confirm(`¿Estás seguro de que deseas eliminar la actividad "${actividadAEliminar}"?`);
+    if (!confirmado) return;
+
+    setActividades((anteriores) => {
+      const filtradas = anteriores.filter((a) => a !== actividadAEliminar);
+      if (actividadSeleccionada === actividadAEliminar) {
+        setActividadSeleccionada(filtradas[0]);
+      }
+      return filtradas;
+    });
+
+    alert(`La actividad "${actividadAEliminar}" fue eliminada.`);
   };
 
   const guardarTrabajador = (e) => {
@@ -439,33 +464,61 @@ export default function Personal({ usuario, subSeccion }) {
     [jornadas, fincaSeleccionada, lotes, lotesPorId]
   );
 
-  // AGRUPACIÓN DEL HISTORIAL POR TRABAJADOR Y FECHA
+  // AGRUPACIÓN Y BÚSQUEDA BLINDADA CONTRA ERRORES
   const historialAgrupado = useMemo(() => {
     const grupos = {};
-    
-    historialPagado.forEach(j => {
-      const t = trabajadores.find(trab => Number(trab.id) === Number(j.trabajadorId));
-      const nombreTrabajador = t ? t.nombre : 'Trabajador anterior';
-      
+
+    historialPagado.forEach((j) => {
+      const t = trabajadores.find((trab) => Number(trab.id) === Number(j.trabajadorId));
+      const nombreTrabajador = String(t?.nombre || 'Trabajador anterior');
+      const cedulaTrabajador = String(t?.cedula || '');
+
+      // Filtro por período seguro
+      if (periodoHistorial !== 'todos' && j.fecha) {
+        const partes = String(j.fecha).split('-').map(Number);
+        if (partes.length === 3 && !partes.some(Number.isNaN)) {
+          const [anio, mes] = partes;
+          const ahora = new Date();
+
+          if (periodoHistorial === 'este_mes') {
+            if (anio !== ahora.getFullYear() || mes !== ahora.getMonth() + 1) return;
+          } else if (periodoHistorial === 'mes_anterior') {
+            const anterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+            if (anio !== anterior.getFullYear() || mes !== anterior.getMonth() + 1) return;
+          } else if (periodoHistorial === 'este_ano') {
+            if (anio !== ahora.getFullYear()) return;
+          }
+        }
+      }
+
+      // Búsqueda segura (Garantiza que siempre compare strings válidas)
+      const termino = String(busquedaHistorial || '').trim().toLowerCase();
+      if (termino) {
+        const coincideNombre = nombreTrabajador.toLowerCase().includes(termino);
+        const coincideCedula = cedulaTrabajador.toLowerCase().includes(termino);
+        if (!coincideNombre && !coincideCedula) return;
+      }
+
       const clave = `${j.fecha}_${j.trabajadorId}`;
-      
+
       if (!grupos[clave]) {
         grupos[clave] = {
           idUnico: clave,
           fecha: j.fecha,
           fechaPago: j.fechaPago,
           trabajador: nombreTrabajador,
+          cedula: cedulaTrabajador,
           totalPagado: 0,
           labores: []
         };
       }
-      
-      grupos[clave].totalPagado += Number(j.subtotal);
+
+      grupos[clave].totalPagado += Number(j.subtotal || 0);
       grupos[clave].labores.push(j);
     });
-    
+
     return Object.values(grupos).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-  }, [historialPagado, trabajadores]);
+  }, [historialPagado, trabajadores, busquedaHistorial, periodoHistorial]);
 
   const campo = {
     width: '100%',
@@ -636,11 +689,57 @@ export default function Personal({ usuario, subSeccion }) {
           )}
 
           <h3 style={{ marginTop: 28 }}>Historial de labores pagadas</h3>
+          
+          {/* BARRA DE BÚSQUEDA Y FILTRO */}
+          {fincaSeleccionada && (
+            <div style={{
+              background: '#fff',
+              border: '1px solid #cbd5e1',
+              padding: 16,
+              borderRadius: 12,
+              marginBottom: 16,
+              display: 'flex',
+              gap: 12,
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ flex: '1 1 200px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', display: 'block' }}>
+                  Buscar trabajador por nombre o cédula
+                  <input
+                    type="text"
+                    value={busquedaHistorial}
+                    onChange={(e) => setBusquedaHistorial(e.target.value || '')}
+                    placeholder="Ej. Carlos o 1061..."
+                    style={{ ...campo, marginTop: 4, minHeight: 40 }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ flex: '1 1 180px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', display: 'block' }}>
+                  Filtrar por período
+                  <select
+                    value={periodoHistorial}
+                    onChange={(e) => setPeriodoHistorial(e.target.value)}
+                    style={{ ...campo, marginTop: 4, minHeight: 40 }}
+                  >
+                    <option value="todos">Histórico completo</option>
+                    <option value="este_mes">Este mes</option>
+                    <option value="mes_anterior">Mes anterior</option>
+                    <option value="este_ano">Año actual</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          )}
+
           {!fincaSeleccionada ? (
             <p>Selecciona una finca para consultar el historial.</p>
           ) : historialAgrupado.length === 0 ? (
-            <p style={{ color: '#64748b', padding: 16, background: '#f8fafc', borderRadius: 12 }}>
-              No hay labores pagadas registradas para {fincaSeleccionada.nombre}.
+            <p style={{ color: '#64748b', padding: 16, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              {busquedaHistorial || periodoHistorial !== 'todos' 
+                ? 'No se encontraron pagos con los filtros aplicados.' 
+                : `No hay labores pagadas registradas para ${fincaSeleccionada.nombre}.`}
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -653,7 +752,9 @@ export default function Personal({ usuario, subSeccion }) {
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 10, marginBottom: 12 }}>
                     <div>
-                      <strong style={{ fontSize: '1.1rem', color: '#047857', display: 'block' }}>{grupo.trabajador}</strong>
+                      <strong style={{ fontSize: '1.1rem', color: '#047857', display: 'block' }}>
+                        {grupo.trabajador} {grupo.cedula ? `(C.C. ${grupo.cedula})` : ''}
+                      </strong>
                       <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Día laborado: {grupo.fecha}</span>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -937,9 +1038,9 @@ export default function Personal({ usuario, subSeccion }) {
             padding: 20,
           }}>
             <h3>Catálogo de actividades laborales</h3>
-            <form onSubmit={agregarActividad}>
+            <form onSubmit={agregarActividad} style={{ marginBottom: 24 }}>
               <label style={etiqueta}>
-                Nombre de la actividad
+                Nombre de la nueva actividad
                 <input
                   type="text"
                   value={nuevaActividadNombre}
@@ -952,9 +1053,48 @@ export default function Personal({ usuario, subSeccion }) {
               </label>
               <button type="submit" style={boton}>Agregar actividad</button>
             </form>
-            <ul>
-              {actividades.map((a) => <li key={a} style={{ padding: 6 }}>{a}</li>)}
-            </ul>
+
+            <h4 style={{ color: '#1e293b', marginBottom: 12, fontSize: '1rem' }}>Actividades actuales</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {actividades.map((a) => (
+                <div
+                  key={a}
+                  style={{
+                    display: 'flex',
+                    justify: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    background: '#fff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 10,
+                    gap: 16,
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: '#334155', fontSize: '0.95rem' }}>{a}</span>
+                  <button
+                    type="button"
+                    onClick={() => eliminarActividad(a)}
+                    style={{
+                      background: '#fef2f2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                      borderRadius: 8,
+                      padding: '8px 14px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <span>✕</span> Eliminar
+                  </button>
+                </div>
+              ))}
+            </div>
           </article>
         </section>
       )}

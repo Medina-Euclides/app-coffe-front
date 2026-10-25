@@ -21,6 +21,17 @@ const formatoDinero = (valor) =>
     maximumFractionDigits: 0,
   });
 
+const formatearMiles = (valor) => {
+  if (!valor && valor !== 0) return '';
+  const soloNumeros = String(valor).replace(/\D/g, '');
+  if (!soloNumeros) return '';
+  return Number(soloNumeros).toLocaleString('es-CO');
+};
+
+const desformatearNumero = (valorFormateado) => {
+  return String(valorFormateado).replace(/\D/g, '');
+};
+
 const estiloCampo = {
   display: 'block',
   width: '100%',
@@ -59,36 +70,66 @@ export default function Finanzas({ usuario, subSeccion }) {
     leerLocal(`cafesmart_lotes_${userId}`, [])
   );
 
-  const [fincaId, setFincaId] = useState('');
+  const [fincaId, setFincaId] = useState(() => {
+    const activa = localStorage.getItem(`cafesmart_finca_activa_${userId}`);
+    return activa ? String(activa) : '';
+  });
+
   const [vista, setVista] = useState('historial');
   const [filtroPeriodo, setFiltroPeriodo] = useState('todos');
 
   const [tipo, setTipo] = useState('ingreso');
   const [categoria, setCategoria] = useState('Venta de café');
-  const [valor, setValor] = useState('');
+  const [valorTexto, setValorTexto] = useState('');
   const [fecha, setFecha] = useState(obtenerFechaLocal());
   const [descripcion, setDescripcion] = useState('');
   const [comprador, setComprador] = useState('');
   const [cantidadKg, setCantidadKg] = useState('');
-  const [fincaFormulario, setFincaFormulario] = useState('');
+  const [fincaFormulario, setFincaFormulario] = useState(() => {
+    const activa = localStorage.getItem(`cafesmart_finca_activa_${userId}`);
+    return activa ? String(activa) : '';
+  });
 
   // Sincronización con las opciones del menú lateral en App.jsx
   useEffect(() => {
     if (subSeccion) {
-      if (subSeccion === 'finanzas-indicadores') setVista('historial');
-      if (subSeccion === 'nuevo-movimiento') setVista('nuevo_movimiento');
+      if (subSeccion === 'finanzas-indicadores' || subSeccion === 'historial-movimientos' || subSeccion === 'resumen') {
+        setVista('historial');
+      }
+      if (subSeccion === 'nuevo-movimiento' || subSeccion === 'nuevo-gasto' || subSeccion === 'nuevo-ingreso') {
+        if (subSeccion === 'nuevo-ingreso') {
+          setTipo('ingreso');
+          setCategoria('Venta de café');
+        } else if (subSeccion === 'nuevo-gasto') {
+          setTipo('gasto');
+          setCategoria('Insumos y Fertilizantes');
+        }
+        setVista('nuevo_movimiento');
+      }
+    } else {
+      setVista('historial');
     }
   }, [subSeccion]);
 
   // Actualizar los datos cuando se vuelve a entrar al módulo
   useEffect(() => {
     const actualizarDatos = () => {
-      setFincas(leerLocal(`cafesmart_fincas_${userId}`, []));
+      const fincasCargadas = leerLocal(`cafesmart_fincas_${userId}`, []);
+      setFincas(fincasCargadas);
       setLotes(leerLocal(`cafesmart_lotes_${userId}`, []));
       setJornadas(leerLocal(`cafesmart_jornadas_${userId}`, []));
       setMovimientos(leerLocal(`cafesmart_movimientos_${userId}`, []));
+
+      const activa = localStorage.getItem(`cafesmart_finca_activa_${userId}`);
+      if (activa) {
+        setFincaId(String(activa));
+        setFincaFormulario(String(activa));
+      } else if (fincasCargadas.length > 0 && !fincaFormulario) {
+        setFincaFormulario(String(fincasCargadas[0].id));
+      }
     };
 
+    actualizarDatos();
     window.addEventListener('focus', actualizarDatos);
     return () => window.removeEventListener('focus', actualizarDatos);
   }, [userId, vista]);
@@ -116,7 +157,7 @@ export default function Finanzas({ usuario, subSeccion }) {
     setCategoria(
       nuevoTipo === 'ingreso' ? 'Venta de café' : 'Insumos y Fertilizantes'
     );
-    setValor('');
+    setValorTexto('');
     setDescripcion('');
     setComprador('');
     setCantidadKg('');
@@ -125,7 +166,7 @@ export default function Finanzas({ usuario, subSeccion }) {
   const guardarMovimiento = (e) => {
     e.preventDefault();
 
-    const valorNumerico = Number(valor);
+    const valorNumerico = Number(valorTexto);
 
     if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) {
       alert('El valor debe ser un número mayor que cero.');
@@ -181,7 +222,9 @@ export default function Finanzas({ usuario, subSeccion }) {
     setMovimientos((anteriores) => [nuevoMovimiento, ...anteriores]);
 
     setFincaId(String(fincaDelFormulario.id));
-    setValor('');
+    localStorage.setItem(`cafesmart_finca_activa_${userId}`, String(fincaDelFormulario.id));
+
+    setValorTexto('');
     setDescripcion('');
     setComprador('');
     setCantidadKg('');
@@ -248,23 +291,23 @@ export default function Finanzas({ usuario, subSeccion }) {
   );
 
   const totalIngresos = movimientosFiltrados
-    .filter((m) => m.tipo === 'ingreso')
+    .filter((m) => m.tipo === 'ingreso' || m.tipo === 'venta')
     .reduce((suma, m) => suma + Number(m.valor || 0), 0);
 
   const totalEgresos = movimientosFiltrados
-    .filter((m) => m.tipo === 'gasto')
+    .filter((m) => m.tipo === 'gasto' || m.tipo === 'egreso')
     .reduce((suma, m) => suma + Number(m.valor || 0), 0);
 
   const balanceNeto = totalIngresos - totalEgresos;
 
   const produccionTotalKg = jornadasFiltradas
-    .filter((j) => j.modalidad === 'recoleccion')
+    .filter((j) => j.modalidad === 'recoleccion' && j.estado === 'pagado')
     .reduce((suma, j) => suma + Number(j.cantidad || 0), 0);
 
   const kilosVendidos = movimientosFiltrados
     .filter(
       (m) =>
-        m.tipo === 'ingreso' &&
+        (m.tipo === 'ingreso' || m.tipo === 'venta') &&
         m.categoria === 'Venta de café' &&
         Number(m.cantidadKg) > 0
     )
@@ -326,7 +369,15 @@ export default function Finanzas({ usuario, subSeccion }) {
               Filtrar por finca
               <select
                 value={fincaId}
-                onChange={(e) => setFincaId(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFincaId(val);
+                  if (val) {
+                    localStorage.setItem(`cafesmart_finca_activa_${userId}`, val);
+                  } else {
+                    localStorage.removeItem(`cafesmart_finca_activa_${userId}`);
+                  }
+                }}
                 style={estiloCampo}
               >
                 <option value="">Todas las fincas</option>
@@ -420,6 +471,8 @@ export default function Finanzas({ usuario, subSeccion }) {
                     (f) => String(f.id) === String(m.fincaId)
                   );
 
+                  const esIngreso = m.tipo === 'ingreso' || m.tipo === 'venta';
+
                   return (
                     <article
                       key={m.id}
@@ -439,7 +492,7 @@ export default function Finanzas({ usuario, subSeccion }) {
                         <strong
                           style={{
                             display: 'block',
-                            color: m.tipo === 'ingreso' ? '#15803d' : '#dc2626',
+                            color: esIngreso ? '#15803d' : '#dc2626',
                             overflowWrap: 'anywhere',
                           }}
                         >
@@ -469,12 +522,12 @@ export default function Finanzas({ usuario, subSeccion }) {
 
                       <strong
                         style={{
-                          color: m.tipo === 'ingreso' ? '#15803d' : '#dc2626',
+                          color: esIngreso ? '#15803d' : '#dc2626',
                           fontSize: '1.1rem',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {m.tipo === 'ingreso' ? '+' : '-'} {formatoDinero(m.valor)}
+                        {esIngreso ? '+' : '-'} {formatoDinero(m.valor)}
                       </strong>
                     </article>
                   );
@@ -491,13 +544,14 @@ export default function Finanzas({ usuario, subSeccion }) {
           onSubmit={guardarMovimiento}
           style={{
             background: '#fff',
-            border: '1px solid #a7f3d0',
+            border: `2px solid ${tipo === 'ingreso' ? '#a7f3d0' : '#fecaca'}`,
             padding: 20,
             borderRadius: 14,
+            maxWidth: '600px',
           }}
         >
-          <h3 style={{ color: '#064e3b', marginTop: 0 }}>
-            Registrar movimiento financiero
+          <h3 style={{ color: tipo === 'ingreso' ? '#064e3b' : '#991b1b', marginTop: 0 }}>
+            Registrar {tipo === 'ingreso' ? 'Ingreso' : 'Gasto'} Financiero
           </h3>
 
           <label style={estiloEtiqueta}>
@@ -596,14 +650,13 @@ export default function Finanzas({ usuario, subSeccion }) {
           <label style={estiloEtiqueta}>
             Valor total (COP)
             <input
-              type="number"
-              min="1"
-              step="1"
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
+              type="text"
+              inputMode="numeric"
+              value={formatearMiles(valorTexto)}
+              onChange={(e) => setValorTexto(desformatearNumero(e.target.value))}
               required
               style={estiloCampo}
-              placeholder="Ej. 850000"
+              placeholder="Ej. 850.000"
             />
           </label>
 
@@ -639,13 +692,14 @@ export default function Finanzas({ usuario, subSeccion }) {
               minHeight: 48,
               border: 0,
               borderRadius: 9,
-              background: fincas.length === 0 ? '#94a3b8' : '#047857',
+              background: fincas.length === 0 ? '#94a3b8' : tipo === 'ingreso' ? '#047857' : '#dc2626',
               color: '#fff',
               fontWeight: 700,
               cursor: fincas.length === 0 ? 'not-allowed' : 'pointer',
+              marginTop: 10,
             }}
           >
-            Guardar movimiento
+            Guardar {tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
           </button>
         </form>
       )}
