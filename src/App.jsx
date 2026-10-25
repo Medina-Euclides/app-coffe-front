@@ -6,6 +6,7 @@ import Finanzas from './Finanzas';
 import AgenteIA from './AgenteIA';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import SyncStatus from './components/SyncStatus';
+import Onboarding from './components/Onboarding';
 
 const MENUS = [
   {
@@ -69,6 +70,21 @@ export default function App() {
     setUsuario(datosUsuario);
   };
 
+  const completarOnboarding = () => {
+    if (!usuario) return;
+    const usuariosGuardados = JSON.parse(localStorage.getItem('cafesmart_usuarios')) || [];
+    const actualizados = usuariosGuardados.map((u) => {
+      if (u.id === usuario.id) {
+        return { ...u, primerIngreso: false };
+      }
+      return u;
+    });
+    localStorage.setItem('cafesmart_usuarios', JSON.stringify(actualizados));
+    const usuarioActualizado = { ...usuario, primerIngreso: false };
+    localStorage.setItem('cafesmart_usuario', JSON.stringify(usuarioActualizado));
+    setUsuario(usuarioActualizado);
+  };
+
   const alternarDespliegue = (idMenu) => {
     setMenusDesplegados((prev) => ({
       ...prev,
@@ -95,6 +111,10 @@ export default function App() {
 
   if (!usuario) {
     return <Auth onLogin={manejarLogin} />;
+  }
+
+  if (usuario.primerIngreso) {
+    return <Onboarding usuario={usuario} onComplete={completarOnboarding} />;
   }
 
   const obtenerNombreMostrar = () => {

@@ -5,9 +5,8 @@ export default function Auth({ onLogin }) {
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [nombreProductor, setNombreProductor] = useState('');
-  const [nombreFinca, setNombreFinca] = useState('');
 
-  const manejarAutenticacion = (e) => {  //hola mundo
+  const manejarAutenticacion = (e) => {
     e.preventDefault();
     if (!correo || !password) return;
 
@@ -25,19 +24,12 @@ export default function Auth({ onLogin }) {
           id: Date.now(),
           correo,
           password,
-          nombreProductor: nombreProductor || 'Productor'
+          nombreProductor: nombreProductor || 'Productor',
+          primerIngreso: true
         };
 
         usuariosGuardados.push(nuevoUsuario);
         localStorage.setItem('cafesmart_usuarios', JSON.stringify(usuariosGuardados));
-
-        // Crear Finca por defecto
-        const fincaInicial = [{
-          id: Date.now(),
-          nombre: nombreFinca || 'Mi Finca Principal',
-          ubicacion: 'Principal'
-        }];
-        localStorage.setItem(`cafesmart_fincas_${nuevoUsuario.id}`, JSON.stringify(fincaInicial));
 
         onLogin(nuevoUsuario);
       } else {
@@ -72,30 +64,17 @@ export default function Auth({ onLogin }) {
 
       <form onSubmit={manejarAutenticacion}>
         {esRegistro && (
-          <>
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', fontSize: '0.85rem' }}>Nombre Completo:</label>
-              <input 
-                type="text" 
-                placeholder="Ej: Juan Pérez" 
-                value={nombreProductor} 
-                onChange={e => setNombreProductor(e.target.value)} 
-                required 
-                style={{ width: '100%', minHeight: '48px', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1' }} 
-              />
-            </div>
-
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', fontSize: '0.85rem' }}>Nombre de tu Finca Principal:</label>
-              <input 
-                type="text" 
-                placeholder="Ej: Mi Finca Principal" 
-                value={nombreFinca} 
-                onChange={e => setNombreFinca(e.target.value)} 
-                style={{ width: '100%', minHeight: '48px', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1' }} 
-              />
-            </div>
-          </>
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', fontSize: '0.85rem' }}>Nombre Completo:</label>
+            <input 
+              type="text" 
+              placeholder="Ej: Juan Pérez" 
+              value={nombreProductor} 
+              onChange={e => setNombreProductor(e.target.value)} 
+              required 
+              style={{ width: '100%', minHeight: '48px', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1' }} 
+            />
+          </div>
         )}
 
         <div style={{ marginBottom: '14px' }}>
@@ -123,7 +102,7 @@ export default function Auth({ onLogin }) {
         </div>
 
         <button type="submit" className="btn-primary" style={{ width: '100%', minHeight: '50px', fontSize: '1rem', fontWeight: 'bold' }}>
-          {esRegistro ? 'Registrar Finca y Cuenta' : 'Ingresar'}
+          {esRegistro ? 'Crear Cuenta' : 'Ingresar'}
         </button>
       </form>
 
