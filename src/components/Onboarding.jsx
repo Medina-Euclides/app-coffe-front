@@ -104,10 +104,10 @@ export default function Onboarding({ usuario, onComplete }) {
               color: '#ffffff'
             }}>
               <h2 style={{ margin: '0 0 8px', fontSize: '1.5rem', fontWeight: '800' }}>
-                Registra tu Finca
+                Configura tu Finca
               </h2>
               <p style={{ margin: 0, fontSize: '0.95rem', opacity: 0.95 }}>
-                Paso 1 de 3
+                Paso 1 de 2
               </p>
             </div>
             <div style={{ padding: '32px' }}>
@@ -136,7 +136,13 @@ export default function Onboarding({ usuario, onComplete }) {
                 />
               </div>
               <button
-                onClick={crearFinca}
+                onClick={() => {
+                  if (!nombreFinca.trim()) {
+                    alert('Por favor, ingresa el nombre de tu finca.');
+                    return;
+                  }
+                  setPaso(3);
+                }}
                 style={{
                   width: '100%',
                   backgroundColor: '#047857',
@@ -170,7 +176,7 @@ export default function Onboarding({ usuario, onComplete }) {
                 Guía Rápida PWA
               </h2>
               <p style={{ margin: 0, fontSize: '0.95rem', opacity: 0.95 }}>
-                Paso 2 de 3
+                Paso 2 de 2
               </p>
             </div>
             <div style={{ padding: '32px' }}>
@@ -198,13 +204,13 @@ export default function Onboarding({ usuario, onComplete }) {
                   <div>
                     <h4 style={{ margin: '0 0 6px', color: '#065f46', fontSize: '0.95rem' }}>Sincronización automática</h4>
                     <p style={{ margin: 0, color: '#475569', fontSize: '0.85rem', lineHeight: '1.5' }}>
-                      Cuando recuperes conexión, todo se sincroniza automáticamente. Verás el estado en el indicador de sincronización.
+                      Cuando recuperes conexión, todo se sincroniza automatically. Verás the estado en el indicador de sincronización.
                     </p>
                   </div>
                 </div>
               </div>
               <button
-                onClick={() => setPaso(4)}
+                onClick={crearFinca}
                 style={{
                   width: '100%',
                   backgroundColor: '#047857',
@@ -220,53 +226,7 @@ export default function Onboarding({ usuario, onComplete }) {
                 onMouseOver={(e) => e.target.style.backgroundColor = '#065f46'}
                 onMouseOut={(e) => e.target.style.backgroundColor = '#047857'}
               >
-                Siguiente
-              </button>
-            </div>
-          </>
-        )}
-
-        {paso === 4 && (
-          <>
-            <div style={{
-              background: 'linear-gradient(135deg, #065f46 0%, #047857 100%)',
-              padding: '32px',
-              textAlign: 'center',
-              color: '#ffffff'
-            }}>
-              <h2 style={{ margin: '0 0 8px', fontSize: '1.5rem', fontWeight: '800' }}>
-                ¡Todo Listo!
-              </h2>
-              <p style={{ margin: 0, fontSize: '0.95rem', opacity: 0.95 }}>
-                Paso 3 de 3
-              </p>
-            </div>
-            <div style={{ padding: '32px', textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>✅</div>
-              <h3 style={{ margin: '0 0 12px', color: '#065f46', fontSize: '1.3rem' }}>
-                Tu finca está configurada
-              </h3>
-              <p style={{ margin: '0 0 28px', color: '#475569', lineHeight: '1.6' }}>
-                Ya puedes empezar a gestionar tu producción cafetera. Usa el menú lateral para navegar entre los módulos.
-              </p>
-              <button
-                onClick={onComplete}
-                style={{
-                  width: '100%',
-                  backgroundColor: '#047857',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '14px',
-                  borderRadius: '12px',
-                  fontSize: '1rem',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#065f46'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#047857'}
-              >
-                Empezar a Usar CafeSmart
+                Terminar y Empezar
               </button>
             </div>
           </>
