@@ -351,6 +351,28 @@ export default function Finanzas({ usuario, subSeccion }) {
     },
   ];
 
+  const resumenPorCategoria = useMemo(() => {
+    const mapa = new Map();
+    movimientosFiltrados.forEach((m) => {
+      const clave = m.categoria || 'Sin categoría';
+      const actual = mapa.get(clave) || { categoria: clave, ingreso: 0, gasto: 0, total: 0 };
+      const valor = Number(m.valor || 0);
+      if (m.tipo === 'ingreso' || m.tipo === 'venta') {
+        actual.ingreso += valor;
+      } else {
+        actual.gasto += valor;
+      }
+      actual.total = actual.ingreso - actual.gasto;
+      mapa.set(clave, actual);
+    });
+    return Array.from(mapa.values()).sort((a, b) => (b.gasto + b.ingreso) - (a.gasto + a.ingreso));
+  }, [movimientosFiltrados]);
+
+  const maxCategoriaValor = resumenPorCategoria.reduce((max, item) => {
+    const val = Math.max(item.ingreso, item.gasto);
+    return val > max ? val : max;
+  }, 1);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <h2 style={{ color: '#064e3b', margin: 0 }}>Gestión Financiera</h2>
@@ -449,8 +471,86 @@ export default function Finanzas({ usuario, subSeccion }) {
             ))}
           </div>
 
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+            <article style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#0f172a' }}>Comparativo Ingresos vs Egresos</h3>
+                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>Visualización sencilla de lo registrado en el periodo</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 180 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 140 }}>
+                    <div style={{ width: '48%', background: 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)', borderRadius: '10px 10px 0 0', height: totalIngresos > 0 ? `${Math.max((totalIngresos / Math.max(totalIngresos, totalEgresos, 1)) * 120, 12)}px` : '12px' }}></div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <strong style={{ color: '#15803d' }}>Ingresos</strong>
+                    <div style={{ color: '#64748b', fontSize: 12 }}>{formatoDinero(totalIngresos)}</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 140 }}>
+                    <div style={{ width: '48%', background: 'linear-gradient(180deg, #f87171 0%, #dc2626 100%)', borderRadius: '10px 10px 0 0', height: totalEgresos > 0 ? `${Math.max((totalEgresos / Math.max(totalIngresos, totalEgresos, 1)) * 120, 12)}px` : '12px' }}></div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <strong style={{ color: '#dc2626' }}>Egresos</strong>
+                    <div style={{ color: '#64748b', fontSize: 12 }}>{formatoDinero(totalEgresos)}</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ textAlign: 'center', color: '#64748b', fontSize: 13 }}>
+                Balance neto: <strong style={{ color: balanceNeto >= 0 ? '#047857' : '#dc2626' }}>{formatoDinero(balanceNeto)}</strong>
+              </div>
+            </article>
+
+            <article style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#0f172a' }}>Distribución por categoría</h3>
+                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>Agrupado con base en los movimientos registrados</p>
+              </div>
+              {resumenPorCategoria.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#64748b', padding: 16 }}>Sin movimientos para graficar</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {resumenPorCategoria.slice(0, 6).map((item) => {
+                    const ingresoPct = (item.ingreso / maxCategoriaValor) * 100;
+                    const gastoPct = (item.gasto / maxCategoriaValor) * 100;
+                    return (
+                      <div key={item.categoria} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: '#1e293b', fontWeight: 600, fontSize: 13 }}>{item.categoria}</span>
+                          <span style={{ color: '#64748b', fontSize: 12 }}>{formatoDinero(item.ingreso + item.gasto)}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {item.ingreso > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ flex: 1, height: 10, background: '#f1f5f9', borderRadius: 999 }}>
+                                <div style={{ height: '100%', width: `${ingresoPct}%`, background: '#22c55e', borderRadius: 999 }}></div>
+                              </div>
+                              <span style={{ fontSize: 12, color: '#15803d', minWidth: 90, textAlign: 'right' }}>+{formatoDinero(item.ingreso)}</span>
+                            </div>
+                          )}
+                          {item.gasto > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ flex: 1, height: 10, background: '#f1f5f9', borderRadius: 999 }}>
+                                <div style={{ height: '100%', width: `${gastoPct}%`, background: '#f87171', borderRadius: 999 }}></div>
+                              </div>
+                              <span style={{ fontSize: 12, color: '#dc2626', minWidth: 90, textAlign: 'right' }}>-{formatoDinero(item.gasto)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </article>
+          </section>
+
           <section>
-            <h3 style={{ color: '#0f172a' }}>Historial de transacciones</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <h3 style={{ color: '#0f172a', margin: 0 }}>Tabla de transacciones registradas</h3>
+              <span style={{ color: '#64748b', fontSize: 13 }}>{movimientosFiltrados.length} registro(s)</span>
+            </div>
 
             {movimientosFiltrados.length === 0 ? (
               <div
@@ -460,78 +560,55 @@ export default function Finanzas({ usuario, subSeccion }) {
                   padding: 24,
                   border: '1px solid #e2e8f0',
                   borderRadius: 12,
+                  marginTop: 12,
                 }}
               >
                 No hay movimientos en el periodo y finca seleccionados.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {movimientosFiltrados.map((m) => {
-                  const fincaMovimiento = fincas.find(
-                    (f) => String(f.id) === String(m.fincaId)
-                  );
-
-                  const esIngreso = m.tipo === 'ingreso' || m.tipo === 'venta';
-
-                  return (
-                    <article
-                      key={m.id}
-                      style={{
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 12,
-                        padding: 16,
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 12,
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        background: '#fff',
-                      }}
-                    >
-                      <div style={{ minWidth: 0, flex: '1 1 220px' }}>
-                        <strong
-                          style={{
-                            display: 'block',
-                            color: esIngreso ? '#15803d' : '#dc2626',
-                            overflowWrap: 'anywhere',
-                          }}
-                        >
-                          {m.descripcion || m.categoria}
-                        </strong>
-
-                        <span style={{ display: 'block', color: '#64748b', fontSize: 13 }}>
-                          {m.fecha} · {m.categoria}
-                        </span>
-
-                        <span style={{ display: 'block', color: '#64748b', fontSize: 13 }}>
-                          Finca: {fincaMovimiento?.nombre || 'Sin finca asociada'}
-                        </span>
-
-                        {m.comprador && (
-                          <span style={{ display: 'block', color: '#64748b', fontSize: 13 }}>
-                            Comprador: {m.comprador}
-                          </span>
-                        )}
-
-                        {Number(m.cantidadKg) > 0 && (
-                          <span style={{ display: 'block', color: '#64748b', fontSize: 13 }}>
-                            Cantidad: {Number(m.cantidadKg).toLocaleString('es-CO')} kg
-                          </span>
-                        )}
-                      </div>
-
-                      <strong
-                        style={{
-                          color: esIngreso ? '#15803d' : '#dc2626',
-                          fontSize: '1.1rem',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {esIngreso ? '+' : '-'} {formatoDinero(m.valor)}
-                      </strong>
-                    </article>
-                  );
-                })}
+              <div style={{ marginTop: 12, overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 14 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', color: '#475569', fontSize: 13 }}>Fecha</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', color: '#475569', fontSize: 13 }}>Finca</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', color: '#475569', fontSize: 13 }}>Tipo</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', color: '#475569', fontSize: 13 }}>Categoría</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', color: '#475569', fontSize: 13 }}>Descripción</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', color: '#475569', fontSize: 13 }}>Valor (COP)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movimientosFiltrados.map((m) => {
+                      const fincaMovimiento = fincas.find(
+                        (f) => String(f.id) === String(m.fincaId)
+                      );
+                      const esIngreso = m.tipo === 'ingreso' || m.tipo === 'venta';
+                      return (
+                        <tr key={m.id} style={{ borderTop: '1px solid #e2e8f0', background: '#fff' }}>
+                          <td style={{ padding: '12px 16px', color: '#1e293b', fontSize: 14 }}>{m.fecha}</td>
+                          <td style={{ padding: '12px 16px', color: '#475569', fontSize: 14 }}>{fincaMovimiento?.nombre || 'Sin finca'}</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: esIngreso ? '#dcfce7' : '#fee2e2', color: esIngreso ? '#166534' : '#991b1b' }}>
+                              {esIngreso ? 'Ingreso' : 'Egreso'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: '#475569', fontSize: 14 }}>{m.categoria}</td>
+                          <td style={{ padding: '12px 16px', color: '#475569', fontSize: 14, maxWidth: 320 }}>
+                            <div style={{ overflowWrap: 'anywhere' }}>
+                              {m.descripcion || '-'}
+                              {m.comprador ? ` | Comprador: ${m.comprador}` : ''}
+                              {Number(m.cantidadKg) > 0 ? ` | ${Number(m.cantidadKg).toLocaleString('es-CO')} kg` : ''}
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: esIngreso ? '#15803d' : '#dc2626' }}>
+                            {esIngreso ? '+' : '-'} {formatoDinero(m.valor)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>
