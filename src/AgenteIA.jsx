@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 
-export default function AgenteIA({ usuario }) {
+export default function AgenteIA({ usuario: _usuario }) {
   const [abierto, setAbierto] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [historial, setHistorial] = useState([

@@ -1,76 +1,17 @@
+@import './styles/layout.css';
+@import './styles/components.css';
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
 body {
   /* Fondo moderno claro con matiz verde orgánico muy suave */
-  background-color: #f3f6f4;
+  background-color: #f8fafc;
   color: #1e293b;
   line-height: 1.6;
   -webkit-tap-highlight-color: transparent;
-}
-
-/* TARJETAS ESPACIOSAS, BLANCAS, CON BORDES REDONDEADOS Y MUCHO AIRE */
-.card {
-  background-color: #ffffff !important;
-  border: 1px solid #e1e8e4 !important;
-  border-radius: 20px !important;
-  padding: 24px 20px !important;
-  margin-bottom: 20px !important;
-  box-shadow: 0 4px 12px rgba(18, 77, 45, 0.04) !important;
-}
-
-/* BOTONES TÁCTILES GRANDES CON EL VERDE FOREST ORIGINAL */
-.btn-primary {
-  width: 100% !important;
-  min-height: 54px !important;
-  background-color: #124d2d !important; /* Verde exacto de tu logo */
-  color: #ffffff !important;
-  border: none !important;
-  border-radius: 16px !important;
-  font-weight: 700 !important;
-  font-size: 1.05rem !important;
-  cursor: pointer;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-shadow: 0 4px 14px rgba(18, 77, 45, 0.22) !important;
-  margin-top: 10px !important;
-  transition: all 0.15s ease-in-out;
-}
-
-.btn-primary:active {
-  background-color: #0c331e !important;
-  transform: scale(0.98);
-}
-
-/* CAMPOS DE FORMULARIO CON Bordes AMPLIOS Y CONFORTABLES */
-input, select, textarea {
-  width: 100% !important;
-  min-height: 54px !important;
-  padding: 14px 18px !important;
-  margin-bottom: 20px !important;
-  border: 1.5px solid #cbd5e1 !important;
-  border-radius: 14px !important;
-  font-size: 1.05rem !important;
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  outline: none;
-  box-sizing: border-box !important;
-}
-
-input:focus, select:focus, textarea:focus {
-  border-color: #124d2d !important;
-  box-shadow: 0 0 0 4px rgba(18, 77, 45, 0.12) !important;
-}
-
-label {
-  display: block !important;
-  margin-bottom: 8px !important;
-  font-weight: 700 !important;
-  font-size: 0.95rem !important;
-  color: #0f172a !important;
 }
