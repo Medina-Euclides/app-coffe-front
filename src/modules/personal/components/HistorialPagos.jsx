@@ -8,21 +8,11 @@ export default function HistorialPagos({
   periodoHistorial,
   setPeriodoHistorial,
   historialAgrupado,
+  campo,
 }) {
-  const campoEstilo = {
-    width: '100%',
-    boxSizing: 'border-box',
-    minHeight: 40,
-    padding: '8px 10px',
-    border: '1px solid #cbd5e1',
-    borderRadius: 8,
-    marginTop: 4,
-    background: '#fff',
-  };
-
   return (
-    <section style={{ marginTop: 28 }}>
-      <h3 style={{ marginBottom: 14 }}>Historial de labores pagadas</h3>
+    <>
+      <h3 style={{ marginTop: 28 }}>Historial de labores pagadas</h3>
 
       {/* BARRA DE BÚSQUEDA Y FILTRO */}
       {fincaSeleccionada && (
@@ -53,7 +43,7 @@ export default function HistorialPagos({
                 value={busquedaHistorial}
                 onChange={(e) => setBusquedaHistorial(e.target.value || '')}
                 placeholder="Ej. Carlos o 1061..."
-                style={campoEstilo}
+                style={{ ...campo, marginTop: 4, minHeight: 40 }}
               />
             </label>
           </div>
@@ -71,7 +61,7 @@ export default function HistorialPagos({
               <select
                 value={periodoHistorial}
                 onChange={(e) => setPeriodoHistorial(e.target.value)}
-                style={campoEstilo}
+                style={{ ...campo, marginTop: 4, minHeight: 40 }}
               >
                 <option value="todos">Histórico completo</option>
                 <option value="este_mes">Este mes</option>
@@ -84,7 +74,7 @@ export default function HistorialPagos({
       )}
 
       {!fincaSeleccionada ? (
-        <p style={{ color: '#64748b' }}>Selecciona una finca para consultar el historial.</p>
+        <p>Selecciona una finca para consultar el historial.</p>
       ) : historialAgrupado.length === 0 ? (
         <p
           style={{
@@ -184,6 +174,6 @@ export default function HistorialPagos({
           ))}
         </div>
       )}
-    </section>
+    </>
   );
 }

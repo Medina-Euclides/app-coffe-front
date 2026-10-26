@@ -8,7 +8,6 @@ export default function LoteForm({
   hectareasLote,
   setHectareasLote,
   onGuardar,
-  onCancelar,
 }) {
   return (
     <form
@@ -21,13 +20,13 @@ export default function LoteForm({
         borderRadius: '18px',
       }}
     >
-      <h4 style={{ color: '#047857', marginBottom: '18px', fontSize: '1.15rem' }}>
+      <h4 style={{ color: '#047857', marginBottom: '18px' }}>
         {loteEnEdicion
           ? `Editar Lote: ${loteEnEdicion.nombre}`
           : `Agregar Lote a ${fincaActual?.nombre || ''}`}
       </h4>
 
-      <label style={{ display: 'block', marginBottom: '12px', fontWeight: 600, color: '#334155' }}>
+      <label style={{ display: 'block', marginBottom: '12px' }}>
         Nombre del Lote:
         <input
           type="text"
@@ -42,13 +41,11 @@ export default function LoteForm({
             marginTop: '6px',
             borderRadius: '8px',
             border: '1px solid #cbd5e1',
-            minHeight: '44px',
-            boxSizing: 'border-box',
           }}
         />
       </label>
 
-      <label style={{ display: 'block', marginBottom: '12px', fontWeight: 600, color: '#334155' }}>
+      <label style={{ display: 'block', marginBottom: '12px' }}>
         Variedad de Café:
         <select
           value={variedadLote}
@@ -60,9 +57,6 @@ export default function LoteForm({
             marginTop: '6px',
             borderRadius: '8px',
             border: '1px solid #cbd5e1',
-            minHeight: '44px',
-            backgroundColor: '#fff',
-            boxSizing: 'border-box',
           }}
         >
           <option value="Castillo">Castillo</option>
@@ -73,7 +67,7 @@ export default function LoteForm({
         </select>
       </label>
 
-      <label style={{ display: 'block', marginBottom: '16px', fontWeight: 600, color: '#334155' }}>
+      <label style={{ display: 'block', marginBottom: '16px' }}>
         Área en Hectáreas (Opcional):
         <input
           type="number"
@@ -89,49 +83,25 @@ export default function LoteForm({
             marginTop: '6px',
             borderRadius: '8px',
             border: '1px solid #cbd5e1',
-            minHeight: '44px',
-            boxSizing: 'border-box',
           }}
         />
       </label>
 
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button
-          type="submit"
-          style={{
-            flex: 1,
-            background: '#047857',
-            color: '#fff',
-            border: 'none',
-            padding: '12px 18px',
-            borderRadius: '10px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            minHeight: '46px',
-          }}
-        >
-          {loteEnEdicion ? 'Actualizar Lote' : 'Guardar Lote'}
-        </button>
-
-        {onCancelar && (
-          <button
-            type="button"
-            onClick={onCancelar}
-            style={{
-              background: '#f1f5f9',
-              color: '#475569',
-              border: '1px solid #cbd5e1',
-              padding: '12px 18px',
-              borderRadius: '10px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              minHeight: '46px',
-            }}
-          >
-            Cancelar
-          </button>
-        )}
-      </div>
+      <button
+        type="submit"
+        style={{
+          background: '#047857',
+          color: '#fff',
+          border: 'none',
+          padding: '12px 18px',
+          borderRadius: '10px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          width: '100%',
+        }}
+      >
+        {loteEnEdicion ? 'Actualizar Lote' : 'Guardar Lote'}
+      </button>
     </form>
   );
 }

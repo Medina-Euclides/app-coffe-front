@@ -10,36 +10,10 @@ export default function TarifasCatalogo({
   setNuevaActividadNombre,
   onAgregarActividad,
   onEliminarActividad,
+  campo,
+  etiqueta,
+  boton,
 }) {
-  const campoEstilo = {
-    width: '100%',
-    boxSizing: 'border-box',
-    minHeight: 44,
-    padding: 10,
-    border: '1px solid #cbd5e1',
-    borderRadius: 8,
-    marginTop: 6,
-    background: '#fff',
-  };
-
-  const etiquetaEstilo = {
-    display: 'block',
-    marginBottom: 16,
-    fontWeight: 600,
-    color: '#334155',
-  };
-
-  const botonEstilo = {
-    minHeight: 44,
-    border: 0,
-    borderRadius: 8,
-    padding: '10px 16px',
-    background: '#047857',
-    color: '#fff',
-    fontWeight: 700,
-    cursor: 'pointer',
-  };
-
   return (
     <section id="tarifas-actividades">
       <article
@@ -51,12 +25,12 @@ export default function TarifasCatalogo({
           marginBottom: 20,
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 8 }}>Tarifas de mano de obra</h3>
-        <p style={{ color: '#64748b', marginBottom: 16, fontSize: '0.9rem' }}>
+        <h3>Tarifas de mano de obra</h3>
+        <p style={{ color: '#64748b' }}>
           Los nuevos registros guardan la tarifa aplicada. Cambiar una tarifa no modifica los pagos ya cerrados.
         </p>
 
-        <label style={etiquetaEstilo}>
+        <label style={etiqueta}>
           Tarifa por kilogramo (COP)
           <input
             type="text"
@@ -64,12 +38,12 @@ export default function TarifasCatalogo({
             value={formatearMiles(tarifaKg)}
             onChange={(e) => setTarifaKg(desformatearNumero(e.target.value))}
             required
-            style={campoEstilo}
+            style={campo}
             placeholder="Ej. 1.000"
           />
         </label>
 
-        <label style={etiquetaEstilo}>
+        <label style={etiqueta}>
           Tarifa por jornal/día (COP)
           <input
             type="text"
@@ -77,14 +51,14 @@ export default function TarifasCatalogo({
             value={formatearMiles(tarifaJornal)}
             onChange={(e) => setTarifaJornal(desformatearNumero(e.target.value))}
             required
-            style={campoEstilo}
+            style={campo}
             placeholder="Ej. 50.000"
           />
         </label>
 
         <button
           type="button"
-          style={botonEstilo}
+          style={boton}
           onClick={() => {
             if (Number(tarifaKg) <= 0 || Number(tarifaJornal) <= 0) {
               alert('Las tarifas deben ser mayores que cero.');
@@ -105,9 +79,9 @@ export default function TarifasCatalogo({
           padding: 20,
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 16 }}>Catálogo de actividades laborales</h3>
+        <h3>Catálogo de actividades laborales</h3>
         <form onSubmit={onAgregarActividad} style={{ marginBottom: 24 }}>
-          <label style={etiquetaEstilo}>
+          <label style={etiqueta}>
             Nombre de la nueva actividad
             <input
               type="text"
@@ -115,11 +89,11 @@ export default function TarifasCatalogo({
               onChange={(e) => setNuevaActividadNombre(e.target.value)}
               maxLength={100}
               required
-              style={campoEstilo}
+              style={campo}
               placeholder="Ej. Preparación de almácigo"
             />
           </label>
-          <button type="submit" style={botonEstilo}>
+          <button type="submit" style={boton}>
             Agregar actividad
           </button>
         </form>

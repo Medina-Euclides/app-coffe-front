@@ -112,26 +112,31 @@ export default function Personal({ usuario, subSeccion }) {
     [lotes]
   );
 
-  const perteneceAFinca = useCallback((jornada, idFinca) => {
-    if (jornada.fincaId !== undefined && jornada.fincaId !== null) {
-      return Number(jornada.fincaId) === Number(idFinca);
-    }
+  const perteneceAFinca = useCallback(
+    (jornada, idFinca) => {
+      if (jornada.fincaId !== undefined && jornada.fincaId !== null) {
+        return Number(jornada.fincaId) === Number(idFinca);
+      }
 
-    if (jornada.loteId !== undefined && jornada.loteId !== null) {
-      const lote = lotesPorId.get(String(jornada.loteId));
-      return Boolean(lote && Number(lote.fincaId) === Number(idFinca));
-    }
+      if (jornada.loteId !== undefined && jornada.loteId !== null) {
+        const lote = lotesPorId.get(String(jornada.loteId));
+        return Boolean(lote && Number(lote.fincaId) === Number(idFinca));
+      }
 
-    const nombreLote = String(jornada.lote || '').trim().toLowerCase();
-    if (!nombreLote) return false;
+      const nombreLote = String(jornada.lote || '').trim().toLowerCase();
+      if (!nombreLote) return false;
 
-    const coincidencias = lotes.filter(
-      (l) => String(l.nombre || '').trim().toLowerCase() === nombreLote
-    );
+      const coincidencias = lotes.filter(
+        (l) => String(l.nombre || '').trim().toLowerCase() === nombreLote
+      );
 
-    return coincidencias.length === 1 &&
-      Number(coincidencias[0].fincaId) === Number(idFinca);
-  }, [lotes, lotesPorId]);
+      return (
+        coincidencias.length === 1 &&
+        Number(coincidencias[0].fincaId) === Number(idFinca)
+      );
+    },
+    [lotes, lotesPorId]
+  );
 
   const jornadasPendientes = (idTrabajador, idFinca) =>
     jornadas.filter(
@@ -174,7 +179,9 @@ export default function Personal({ usuario, subSeccion }) {
       return;
     }
 
-    const confirmado = window.confirm(`¿Estás seguro de que deseas eliminar la actividad "${actividadAEliminar}"?`);
+    const confirmado = window.confirm(
+      `¿Estás seguro de que deseas eliminar la actividad "${actividadAEliminar}"?`
+    );
     if (!confirmado) return;
 
     setActividades((anteriores) => {
@@ -249,9 +256,8 @@ export default function Personal({ usuario, subSeccion }) {
       return;
     }
 
-    const tarifa = modalidad === 'recoleccion'
-      ? Number(tarifaKg)
-      : Number(tarifaJornal);
+    const tarifa =
+      modalidad === 'recoleccion' ? Number(tarifaKg) : Number(tarifaJornal);
 
     if (!Number.isFinite(tarifa) || tarifa <= 0) {
       alert('La tarifa debe ser mayor que cero.');
@@ -276,7 +282,9 @@ export default function Personal({ usuario, subSeccion }) {
     setJornadas((anteriores) => [...anteriores, nuevaJornada]);
     setLoteId('');
     setVista('lista');
-    alert('Labor asignada correctamente. Podrás ingresar la cantidad al liquidar.');
+    alert(
+      'Labor asignada correctamente. Podrás ingresar la cantidad al liquidar.'
+    );
   };
 
   const realizarPago = (trabajador) => {
@@ -294,9 +302,10 @@ export default function Personal({ usuario, subSeccion }) {
 
     const pendientesConCantidad = pendientes.map((j) => {
       const cantidad = Number(cantidadesLiquidacion[j.id] ?? j.cantidad);
-      const tarifa = Number(j.tarifaAplicada || (
-        j.modalidad === 'recoleccion' ? tarifaKg : tarifaJornal
-      ));
+      const tarifa = Number(
+        j.tarifaAplicada ||
+          (j.modalidad === 'recoleccion' ? tarifaKg : tarifaJornal)
+      );
 
       return {
         ...j,
@@ -409,7 +418,8 @@ export default function Personal({ usuario, subSeccion }) {
     () =>
       fincaSeleccionada
         ? jornadas.filter(
-            (j) => j.estado === 'pagado' && perteneceAFinca(j, fincaSeleccionada.id)
+            (j) =>
+              j.estado === 'pagado' && perteneceAFinca(j, fincaSeleccionada.id)
           )
         : [],
     [jornadas, fincaSeleccionada, perteneceAFinca]
@@ -419,7 +429,9 @@ export default function Personal({ usuario, subSeccion }) {
     const grupos = {};
 
     historialPagado.forEach((j) => {
-      const t = trabajadores.find((trab) => Number(trab.id) === Number(j.trabajadorId));
+      const t = trabajadores.find(
+        (trab) => Number(trab.id) === Number(j.trabajadorId)
+      );
       const nombreTrabajadorTexto = String(t?.nombre || 'Trabajador anterior');
       const cedulaTrabajadorTexto = String(t?.cedula || '');
 
@@ -430,10 +442,19 @@ export default function Personal({ usuario, subSeccion }) {
           const ahora = new Date();
 
           if (periodoHistorial === 'este_mes') {
-            if (anio !== ahora.getFullYear() || mes !== ahora.getMonth() + 1) return;
+            if (anio !== ahora.getFullYear() || mes !== ahora.getMonth() + 1)
+              return;
           } else if (periodoHistorial === 'mes_anterior') {
-            const anterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
-            if (anio !== anterior.getFullYear() || mes !== anterior.getMonth() + 1) return;
+            const anterior = new Date(
+              ahora.getFullYear(),
+              ahora.getMonth() - 1,
+              1
+            );
+            if (
+              anio !== anterior.getFullYear() ||
+              mes !== anterior.getMonth() + 1
+            )
+              return;
           } else if (periodoHistorial === 'este_ano') {
             if (anio !== ahora.getFullYear()) return;
           }
@@ -442,8 +463,12 @@ export default function Personal({ usuario, subSeccion }) {
 
       const termino = String(busquedaHistorial || '').trim().toLowerCase();
       if (termino) {
-        const coincideNombre = nombreTrabajadorTexto.toLowerCase().includes(termino);
-        const coincideCedula = cedulaTrabajadorTexto.toLowerCase().includes(termino);
+        const coincideNombre = nombreTrabajadorTexto
+          .toLowerCase()
+          .includes(termino);
+        const coincideCedula = cedulaTrabajadorTexto
+          .toLowerCase()
+          .includes(termino);
         if (!coincideNombre && !coincideCedula) return;
       }
 
@@ -465,18 +490,52 @@ export default function Personal({ usuario, subSeccion }) {
       grupos[clave].labores.push(j);
     });
 
-    return Object.values(grupos).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    return Object.values(grupos).sort(
+      (a, b) => new Date(b.fecha) - new Date(a.fecha)
+    );
   }, [historialPagado, trabajadores, busquedaHistorial, periodoHistorial]);
+
+  const campo = {
+    width: '100%',
+    boxSizing: 'border-box',
+    minHeight: 44,
+    padding: 10,
+    border: '1px solid #cbd5e1',
+    borderRadius: 8,
+    marginTop: 6,
+  };
+
+  const etiqueta = {
+    display: 'block',
+    marginBottom: 16,
+    fontWeight: 600,
+    color: '#334155',
+  };
+
+  const boton = {
+    minHeight: 44,
+    border: 0,
+    borderRadius: 8,
+    padding: '10px 16px',
+    background: '#047857',
+    color: '#fff',
+    fontWeight: 700,
+    cursor: 'pointer',
+  };
 
   return (
     <div>
-      <h2 style={{ color: '#064e3b', marginBottom: 20 }}>Personal y Gestión Laboral</h2>
+      <h2 style={{ color: '#064e3b', marginBottom: 20 }}>
+        Personal y Gestión Laboral
+      </h2>
 
       <FincaPersonalFilter
         fincas={fincas}
         fincaId={fincaId}
         fincaSeleccionada={fincaSeleccionada}
         onCambiarFinca={cambiarFinca}
+        campo={campo}
+        etiqueta={etiqueta}
       />
 
       {vista === 'lista' && (
@@ -493,6 +552,8 @@ export default function Personal({ usuario, subSeccion }) {
             tarifaJornal={tarifaJornal}
             lotesPorId={lotesPorId}
             onRealizarPago={realizarPago}
+            campo={campo}
+            boton={boton}
           />
 
           <HistorialPagos
@@ -502,6 +563,7 @@ export default function Personal({ usuario, subSeccion }) {
             periodoHistorial={periodoHistorial}
             setPeriodoHistorial={setPeriodoHistorial}
             historialAgrupado={historialAgrupado}
+            campo={campo}
           />
         </>
       )}
@@ -525,6 +587,9 @@ export default function Personal({ usuario, subSeccion }) {
           fecha={fecha}
           setFecha={setFecha}
           onGuardarJornada={guardarJornada}
+          campo={campo}
+          etiqueta={etiqueta}
+          boton={boton}
         />
       )}
 
@@ -536,6 +601,9 @@ export default function Personal({ usuario, subSeccion }) {
           setCedulaTrabajador={setCedulaTrabajador}
           trabajadores={trabajadores}
           onGuardarTrabajador={guardarTrabajador}
+          campo={campo}
+          etiqueta={etiqueta}
+          boton={boton}
         />
       )}
 
@@ -550,6 +618,9 @@ export default function Personal({ usuario, subSeccion }) {
           setNuevaActividadNombre={setNuevaActividadNombre}
           onAgregarActividad={agregarActividad}
           onEliminarActividad={eliminarActividad}
+          campo={campo}
+          etiqueta={etiqueta}
+          boton={boton}
         />
       )}
     </div>

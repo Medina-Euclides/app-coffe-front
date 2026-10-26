@@ -43,8 +43,6 @@ export default function FincaSelector({
             padding: '10px',
             borderRadius: '8px',
             border: '1px solid #cbd5e1',
-            minHeight: '44px',
-            width: '100%',
           }}
         >
           {fincas.map((f) => (

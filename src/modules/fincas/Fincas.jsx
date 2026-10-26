@@ -215,7 +215,10 @@ export default function Fincas({ usuario, subSeccion }) {
       alert('Lote guardado correctamente.');
     }
 
-    cancelarFormularioLote();
+    setNombreLote('');
+    setVariedadLote('Castillo');
+    setHectareasLote('');
+    setMostrarFormLote(false);
   };
 
   const iniciarEdicionLote = (lote) => {
@@ -263,8 +266,14 @@ export default function Fincas({ usuario, subSeccion }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* SELECTOR DE FINCA PRINCIPAL */}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px',
+      }}
+    >
+      {/* SELECCIÓN DE FINCA */}
       <FincaSelector
         fincas={fincas}
         fincaActivaId={fincaActual?.id}
@@ -282,8 +291,49 @@ export default function Fincas({ usuario, subSeccion }) {
           nombreFinca={nombreFinca}
           setNombreFinca={setNombreFinca}
           onGuardar={guardarFinca}
-          onCancelar={() => setMostrarFormFinca(false)}
         />
+      )}
+
+      {/* ENCABEZADO Y ACCIONES DE LOTES */}
+      {!loteDetalle && !mostrarFormFinca && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
+          }}
+        >
+          <h3
+            style={{
+              color: '#0f172a',
+              margin: 0,
+              fontSize: '1.2rem',
+            }}
+          >
+            Lotes en {fincaActual?.nombre || 'Finca Principal'}
+          </h3>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={() => setVerInactivos(!verInactivos)}
+              style={{
+                flex: 1,
+                backgroundColor: verInactivos ? '#334155' : '#f1f5f9',
+                color: verInactivos ? '#ffffff' : '#475569',
+                border: '1px solid #cbd5e1',
+                padding: '12px',
+                borderRadius: '12px',
+                fontSize: '0.9rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                minHeight: '48px',
+              }}
+            >
+              {verInactivos ? 'Ver Activos' : 'Ver Inactivos'}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* FORMULARIO CREAR / EDITAR LOTE */}
@@ -298,7 +348,6 @@ export default function Fincas({ usuario, subSeccion }) {
           hectareasLote={hectareasLote}
           setHectareasLote={setHectareasLote}
           onGuardar={guardarLote}
-          onCancelar={cancelarFormularioLote}
         />
       )}
 
@@ -307,7 +356,9 @@ export default function Fincas({ usuario, subSeccion }) {
         <LoteDetalle
           lote={loteDetalle}
           produccionTotal={calcularProduccionLote(loteDetalle)}
-          historialJornadas={jornadas.filter((j) => jornadaPerteneceAlLote(j, loteDetalle))}
+          historialJornadas={jornadas.filter((j) =>
+            jornadaPerteneceAlLote(j, loteDetalle)
+          )}
           obtenerNombreTrabajador={obtenerNombreTrabajador}
           onVolver={() => setLoteDetalle(null)}
           onIniciarEdicion={iniciarEdicionLote}
@@ -318,10 +369,8 @@ export default function Fincas({ usuario, subSeccion }) {
       {/* LISTADO DE TARJETAS DE LOTES */}
       {!loteDetalle && !mostrarFormLote && !mostrarFormFinca && (
         <LotesList
-          fincaNombre={fincaActual?.nombre}
           lotes={lotesDeFincaActiva}
           verInactivos={verInactivos}
-          onToggleVerInactivos={() => setVerInactivos(!verInactivos)}
           onSeleccionarLote={setLoteDetalle}
           calcularProduccionLote={calcularProduccionLote}
         />

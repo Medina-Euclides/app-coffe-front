@@ -13,40 +13,19 @@ export default function LiquidacionesList({
   tarifaJornal,
   lotesPorId,
   onRealizarPago,
+  campo,
+  boton,
 }) {
-  const campoEstilo = {
-    width: '100%',
-    boxSizing: 'border-box',
-    minHeight: 40,
-    padding: '6px 10px',
-    border: '1px solid #cbd5e1',
-    borderRadius: 8,
-    marginTop: 0,
-    background: '#fff',
-  };
-
-  const botonEstilo = {
-    minHeight: 44,
-    border: 0,
-    borderRadius: 8,
-    padding: '10px 16px',
-    background: '#047857',
-    color: '#fff',
-    fontWeight: 700,
-    cursor: 'pointer',
-    width: '100%',
-  };
-
   return (
     <section id="liquidaciones">
-      <h3 style={{ marginBottom: 16 }}>Liquidaciones pendientes</h3>
+      <h3>Liquidaciones pendientes</h3>
 
       {!fincaSeleccionada ? (
-        <p style={{ color: '#64748b' }}>Selecciona una finca para consultar sus liquidaciones.</p>
+        <p>Selecciona una finca para consultar sus liquidaciones.</p>
       ) : trabajadores.length === 0 ? (
-        <p style={{ color: '#64748b' }}>No tienes trabajadores registrados. Agrega uno desde el menú lateral.</p>
+        <p>No tienes trabajadores registrados. Agrega uno desde el menú lateral.</p>
       ) : trabajadoresConPendientes.length === 0 ? (
-        <p style={{ color: '#64748b' }}>No hay liquidaciones pendientes para {fincaSeleccionada.nombre}.</p>
+        <p>No hay liquidaciones pendientes para {fincaSeleccionada.nombre}.</p>
       ) : (
         trabajadoresConPendientes.map((trabajador) => {
           const registros = jornadasPendientes(trabajador.id, fincaSeleccionada.id);
@@ -64,22 +43,22 @@ export default function LiquidacionesList({
               }}
             >
               <h3 style={{ margin: '0 0 8px' }}>{trabajador.nombre}</h3>
-              <p style={{ color: '#64748b', margin: '0 0 8px' }}>
+              <p style={{ color: '#64748b' }}>
                 {registros.length} labor(es) pendiente(s) en {fincaSeleccionada.nombre}
               </p>
-              <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#b91c1c', margin: '0 0 14px' }}>
+              <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#b91c1c' }}>
                 Valor calculado: {dinero(pendiente)}
               </p>
 
               <div style={{ overflowX: 'auto', marginBottom: 12 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 500 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <th style={{ textAlign: 'left', padding: 8, color: '#475569', fontSize: 13 }}>Fecha</th>
-                      <th style={{ textAlign: 'left', padding: 8, color: '#475569', fontSize: 13 }}>Actividad</th>
-                      <th style={{ textAlign: 'left', padding: 8, color: '#475569', fontSize: 13 }}>Lote</th>
-                      <th style={{ textAlign: 'right', padding: 8, color: '#475569', fontSize: 13 }}>Tiempo / Cantidad</th>
-                      <th style={{ textAlign: 'right', padding: 8, color: '#475569', fontSize: 13 }}>Valor</th>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: 6 }}>Fecha</th>
+                      <th style={{ textAlign: 'left', padding: 6 }}>Actividad</th>
+                      <th style={{ textAlign: 'left', padding: 6 }}>Lote</th>
+                      <th style={{ textAlign: 'right', padding: 6 }}>Tiempo / Cantidad</th>
+                      <th style={{ textAlign: 'right', padding: 6 }}>Valor</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -96,15 +75,15 @@ export default function LiquidacionesList({
                           : 0;
 
                       return (
-                        <tr key={j.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: 8, fontSize: 13 }}>{j.fecha}</td>
-                          <td style={{ padding: 8, fontSize: 13 }}>{j.actividad}</td>
-                          <td style={{ padding: 8, fontSize: 13 }}>
+                        <tr key={j.id}>
+                          <td style={{ padding: 6 }}>{j.fecha}</td>
+                          <td style={{ padding: 6 }}>{j.actividad}</td>
+                          <td style={{ padding: 6 }}>
                             {lotesPorId.get(String(j.loteId))?.nombre || j.lote || 'Lote anterior'}
                           </td>
-                          <td style={{ padding: 8, textAlign: 'right' }}>
+                          <td style={{ padding: 6, textAlign: 'right' }}>
                             {j.modalidad === 'recoleccion' ? (
-                              <div style={{ display: 'inline-block', textAlign: 'right' }}>
+                              <>
                                 <input
                                   type="number"
                                   min="0.1"
@@ -117,12 +96,12 @@ export default function LiquidacionesList({
                                     }))
                                   }
                                   placeholder="Kilos"
-                                  style={{ ...campoEstilo, minWidth: 100 }}
+                                  style={{ ...campo, minWidth: 100, marginTop: 0 }}
                                 />
                                 <small style={{ display: 'block', color: '#64748b' }}>Kilogramos</small>
-                              </div>
+                              </>
                             ) : (
-                              <div style={{ display: 'inline-block', textAlign: 'right' }}>
+                              <>
                                 <select
                                   value={cantidadActual}
                                   onChange={(e) =>
@@ -131,7 +110,7 @@ export default function LiquidacionesList({
                                       [j.id]: e.target.value,
                                     }))
                                   }
-                                  style={{ ...campoEstilo, minWidth: 140 }}
+                                  style={{ ...campo, minWidth: 140, marginTop: 0 }}
                                 >
                                   <option value="">Selecciona tiempo...</option>
                                   {OPCIONES_JORNAL.map((opc) => (
@@ -141,12 +120,10 @@ export default function LiquidacionesList({
                                   ))}
                                 </select>
                                 <small style={{ display: 'block', color: '#64748b' }}>Tiempo trabajado</small>
-                              </div>
+                              </>
                             )}
                           </td>
-                          <td style={{ padding: 8, textAlign: 'right', fontWeight: 600, fontSize: 13 }}>
-                            {dinero(valor)}
-                          </td>
+                          <td style={{ padding: 6, textAlign: 'right' }}>{dinero(valor)}</td>
                         </tr>
                       );
                     })}
@@ -156,7 +133,7 @@ export default function LiquidacionesList({
 
               <button
                 type="button"
-                style={botonEstilo}
+                style={{ ...boton, width: '100%' }}
                 onClick={() => onRealizarPago(trabajador)}
               >
                 Liquidar labores y registrar pago

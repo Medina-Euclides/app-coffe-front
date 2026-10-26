@@ -18,37 +18,10 @@ export default function LaborForm({
   fecha,
   setFecha,
   onGuardarJornada,
+  campo,
+  etiqueta,
+  boton,
 }) {
-  const campoEstilo = {
-    width: '100%',
-    boxSizing: 'border-box',
-    minHeight: 44,
-    padding: 10,
-    border: '1px solid #cbd5e1',
-    borderRadius: 8,
-    marginTop: 6,
-    background: '#fff',
-  };
-
-  const etiquetaEstilo = {
-    display: 'block',
-    marginBottom: 16,
-    fontWeight: 600,
-    color: '#334155',
-  };
-
-  const botonEstilo = {
-    minHeight: 44,
-    border: 0,
-    borderRadius: 8,
-    padding: '10px 16px',
-    background: '#047857',
-    color: '#fff',
-    fontWeight: 700,
-    cursor: 'pointer',
-    width: '100%',
-  };
-
   return (
     <form
       id="registrar-labor"
@@ -60,21 +33,21 @@ export default function LaborForm({
         borderRadius: 12,
       }}
     >
-      <h3 style={{ marginTop: 0, marginBottom: 16 }}>Asignar labor a un trabajador</h3>
+      <h3>Asignar labor a un trabajador</h3>
 
       {!fincaSeleccionada && (
-        <p style={{ color: '#b45309', marginBottom: 16 }}>
+        <p style={{ color: '#b45309' }}>
           Selecciona primero una finca en el selector de arriba.
         </p>
       )}
 
-      <label style={etiquetaEstilo}>
+      <label style={etiqueta}>
         Trabajador
         <select
           value={trabajadorId}
           onChange={(e) => setTrabajadorId(e.target.value)}
           required
-          style={campoEstilo}
+          style={campo}
         >
           <option value="">Selecciona un trabajador...</option>
           {trabajadores.map((t) => (
@@ -85,7 +58,7 @@ export default function LaborForm({
         </select>
       </label>
 
-      <label style={etiquetaEstilo}>
+      <label style={etiqueta}>
         Actividad
         <select
           value={actividadSeleccionada}
@@ -95,7 +68,7 @@ export default function LaborForm({
             setModalidad(act === 'Recolección de café' ? 'recoleccion' : 'jornal');
           }}
           required
-          style={campoEstilo}
+          style={campo}
         >
           {actividades.map((a) => (
             <option key={a} value={a}>
@@ -105,13 +78,13 @@ export default function LaborForm({
         </select>
       </label>
 
-      <label style={etiquetaEstilo}>
+      <label style={etiqueta}>
         Lote
         <select
           value={loteId}
           onChange={(e) => setLoteId(e.target.value)}
           required
-          style={campoEstilo}
+          style={campo}
           disabled={!fincaSeleccionada || lotesDeFinca.length === 0}
         >
           <option value="">
@@ -130,12 +103,12 @@ export default function LaborForm({
         </select>
       </label>
 
-      <label style={etiquetaEstilo}>
+      <label style={etiqueta}>
         Modalidad de pago
         <select
           value={modalidad}
           onChange={(e) => setModalidad(e.target.value)}
-          style={campoEstilo}
+          style={campo}
         >
           <option value="recoleccion">Por kilogramo — {dinero(Number(tarifaKg))}</option>
           <option value="jornal">Por jornal/día — {dinero(Number(tarifaJornal))}</option>
@@ -150,7 +123,6 @@ export default function LaborForm({
           padding: 12,
           marginBottom: 16,
           color: '#166534',
-          fontSize: '0.9rem',
         }}
       >
         {modalidad === 'recoleccion'
@@ -158,7 +130,7 @@ export default function LaborForm({
           : 'El tiempo trabajado (medio día, día completo, etc.) se seleccionará cuando vayas a liquidar el pago.'}
       </div>
 
-      <label style={etiquetaEstilo}>
+      <label style={etiqueta}>
         Fecha de la labor
         <input
           type="date"
@@ -166,15 +138,11 @@ export default function LaborForm({
           onChange={(e) => setFecha(e.target.value)}
           max={hoy()}
           required
-          style={campoEstilo}
+          style={campo}
         />
       </label>
 
-      <button
-        type="submit"
-        style={botonEstilo}
-        disabled={!fincaSeleccionada}
-      >
+      <button type="submit" style={boton} disabled={!fincaSeleccionada}>
         Asignar labor
       </button>
     </form>
