@@ -488,9 +488,9 @@ export default function Finanzas({ usuario, subSeccion }) {
                 cursor: 'pointer'
               }}
             >
-              Volver a indicadores
+              Volver a Finanzas e indicadores
             </button>
-            <span style={{ color: '#64748b', fontSize: 13 }}>Usa el menú lateral para ir a "Finanzas e indicadores" o "Gráficas y análisis"</span>
+            <span style={{ color: '#64748b', fontSize: 13 }}>Usa el menú lateral para cambiar entre las vistas de Administración</span>
           </div>
 
           <section>
