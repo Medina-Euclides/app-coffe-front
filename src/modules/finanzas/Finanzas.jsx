@@ -127,37 +127,38 @@ export default function Finanzas({ usuario, subSeccion }) {
   };
 
   const guardarMovimiento = (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
 
     const valorNumerico = Number(valorTexto);
 
     if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) {
-      alert('El valor debe ser un número mayor que cero.');
+      window.alert('El valor debe ser un número mayor que cero.');
       return;
     }
 
     if (!fecha) {
-      alert('Selecciona la fecha del movimiento.');
+      window.alert('Selecciona la fecha del movimiento.');
       return;
     }
 
     if (!fincaDelFormulario) {
-      alert('Selecciona la finca a la que corresponde el movimiento.');
+      window.alert('Selecciona la finca a la que corresponde el movimiento.');
       return;
     }
 
     let kilos = null;
 
     if (esVentaCafe) {
-      kilos = Number(cantidadKg);
+      const kilosTexto = String(cantidadKg || '').replace(',', '.');
+      kilos = Number(kilosTexto);
 
       if (!Number.isFinite(kilos) || kilos <= 0) {
-        alert('Los kilogramos vendidos deben ser mayores que cero.');
+        window.alert('Los kilogramos vendidos deben ser mayores que cero.');
         return;
       }
 
       if (!comprador.trim()) {
-        alert('Escribe el nombre del comprador.');
+        window.alert('Escribe el nombre del comprador.');
         return;
       }
     }
@@ -193,7 +194,7 @@ export default function Finanzas({ usuario, subSeccion }) {
     setCantidadKg('');
     setVista('historial');
 
-    alert('Movimiento financiero guardado correctamente.');
+    window.alert('Movimiento financiero guardado correctamente.');
   };
 
   const filtrarPorFecha = useCallback((fechaItem) => {

@@ -43,13 +43,19 @@ export default function MovimientoForm({
   return (
     <form
       id="nuevo-movimiento"
-      onSubmit={onGuardarMovimiento}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onGuardarMovimiento(e);
+      }}
+      noValidate
       style={{
         background: '#fff',
         border: `2px solid ${tipo === 'ingreso' ? '#a7f3d0' : '#fecaca'}`,
-        padding: 20,
+        padding: 18,
         borderRadius: 14,
         maxWidth: '600px',
+        width: '100%',
+        boxSizing: 'border-box',
       }}
     >
       <h3 style={{ color: tipo === 'ingreso' ? '#064e3b' : '#991b1b', marginTop: 0 }}>
@@ -136,14 +142,18 @@ export default function MovimientoForm({
           <label style={estiloEtiqueta}>
             Cantidad vendida (kg)
             <input
-              type="number"
-              min="0.1"
-              step="0.1"
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*[.,]?[0-9]*"
               value={cantidadKg}
-              onChange={(e) => setCantidadKg(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                setCantidadKg(val);
+              }}
               required
               style={estiloCampo}
               placeholder="Ej. 125.5"
+              autoComplete="off"
             />
           </label>
         </>
@@ -191,14 +201,15 @@ export default function MovimientoForm({
         disabled={fincas.length === 0}
         style={{
           width: '100%',
-          minHeight: 48,
+          minHeight: 52,
           border: 0,
-          borderRadius: 9,
+          borderRadius: 12,
           background: fincas.length === 0 ? '#94a3b8' : tipo === 'ingreso' ? '#047857' : '#dc2626',
           color: '#fff',
           fontWeight: 700,
           cursor: fincas.length === 0 ? 'not-allowed' : 'pointer',
-          marginTop: 10,
+          marginTop: 12,
+          fontSize: '1rem',
         }}
       >
         Guardar {tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
