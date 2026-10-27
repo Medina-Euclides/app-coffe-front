@@ -3,6 +3,8 @@ import { formatoDinero } from '../../../utils/formatters';
 export default function MovimientosTabla({
   movimientos,
   fincas,
+  busqueda = '',
+  setBusqueda = () => {},
 }) {
   return (
     <section>
@@ -22,6 +24,42 @@ export default function MovimientosTabla({
         <span style={{ color: '#64748b', fontSize: 12 }}>
           {movimientos.length} registro(s)
         </span>
+      </div>
+
+      <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por descripción, categoría, comprador, finca o fecha..."
+          style={{
+            flex: '1 1 280px',
+            minHeight: 44,
+            padding: '10px 14px',
+            borderRadius: 12,
+            border: '1px solid #cbd5e1',
+            background: '#fff',
+            fontSize: '0.9rem',
+            boxSizing: 'border-box',
+          }}
+        />
+        {busqueda && (
+          <button
+            type="button"
+            onClick={() => setBusqueda('')}
+            style={{
+              padding: '10px 16px',
+              borderRadius: 12,
+              border: '1px solid #cbd5e1',
+              background: '#f8fafc',
+              color: '#475569',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Limpiar
+          </button>
+        )}
       </div>
 
       {movimientos.length === 0 ? (

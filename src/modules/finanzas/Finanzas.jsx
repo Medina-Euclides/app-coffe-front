@@ -31,6 +31,7 @@ export default function Finanzas({ usuario, subSeccion }) {
 
   const [vista, setVista] = useState('historial');
   const [filtroPeriodo, setFiltroPeriodo] = useState('todos');
+  const [busquedaMovimientos, setBusquedaMovimientos] = useState('');
 
   const [tipo, setTipo] = useState('ingreso');
   const [categoria, setCategoria] = useState('Venta de café');
@@ -227,13 +228,27 @@ export default function Finanzas({ usuario, subSeccion }) {
     return String(registro.fincaId) === String(fincaId);
   }, [fincaId]);
 
-  const movimientosFiltrados = useMemo(
-    () =>
-      movimientos.filter(
-        (m) => filtrarPorFecha(m.fecha) && perteneceAFinca(m)
-      ),
-    [movimientos, filtrarPorFecha, perteneceAFinca]
-  );
+  const movimientosFiltrados = useMemo(() => {
+    const term = busquedaMovimientos.trim().toLowerCase();
+    return movimientos.filter((m) => {
+      if (!filtrarPorFecha(m.fecha) || !perteneceAFinca(m)) return false;
+      if (!term) return true;
+
+      const fincaMovimiento = fincas.find((f) => String(f.id) === String(m.fincaId));
+      const campos = [
+        m.descripcion,
+        m.categoria,
+        m.comprador,
+        m.fecha,
+        fincaMovimiento?.nombre,
+        m.tipo,
+      ]
+        .filter(Boolean)
+        .map((c) => String(c).toLowerCase());
+
+      return campos.some((c) => c.includes(term));
+    });
+  }, [movimientos, filtrarPorFecha, perteneceAFinca, busquedaMovimientos, fincas]);
 
   const jornadasFiltradas = useMemo(
     () =>
@@ -353,30 +368,11 @@ export default function Finanzas({ usuario, subSeccion }) {
 
           <IndicadoresCards tarjetas={tarjetas} />
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={() => setVista('historial')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 10,
-                border: '1px solid #cbd5e1',
-                background: '#fff',
-                color: '#0f172a',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Volver a Finanzas e indicadores
-            </button>
-            <span style={{ color: '#64748b', fontSize: 13 }}>
-              Usa el menú lateral para cambiar entre las vistas de Administración
-            </span>
-          </div>
-
           <MovimientosTabla
             movimientos={movimientosFiltrados}
             fincas={fincas}
+            busqueda={busquedaMovimientos}
+            setBusqueda={setBusquedaMovimientos}
           />
         </section>
       )}
