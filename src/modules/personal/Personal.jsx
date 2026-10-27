@@ -380,6 +380,36 @@ export default function Personal({ usuario, subSeccion }) {
 
     guardarLocal(claveMovimientos, [nuevoEgreso, ...movimientos]);
 
+    // Entrada automática al inventario al liquidar recolección
+    try {
+      const claveInventario = `cafesmart_inventario_${userId}`;
+      const inventarioActual = leerLocal(claveInventario, []);
+      const entradasInventario = [];
+
+      pendientesConCantidad.forEach((j) => {
+        if (j.modalidad === 'recoleccion' && Number(j.cantidad) > 0) {
+          entradasInventario.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            fincaId: fincaSeleccionada.id,
+            loteId: j.loteId || null,
+            tipo: 'entrada',
+            presentacion: 'pergamino',
+            cantidad: Number(j.cantidad),
+            fecha: fechaPago,
+            descripcion: `Entrada por recolección liquidada - ${trabajador.nombre} (${j.actividad})`,
+            registradoPor: userId,
+            jornadaId: j.id,
+          });
+        }
+      });
+
+      if (entradasInventario.length > 0) {
+        guardarLocal(claveInventario, [...entradasInventario, ...inventarioActual]);
+      }
+    } catch (error) {
+      console.error('Error al actualizar inventario por liquidación:', error);
+    }
+
     setCantidadesLiquidacion((anteriores) => {
       const nuevas = { ...anteriores };
       idsPagados.forEach((id) => delete nuevas[id]);
