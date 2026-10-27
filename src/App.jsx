@@ -236,7 +236,7 @@ export default function App() {
             <Inventario usuario={usuario} subSeccion={subSeccionActiva} />
           )}
 
-          {moduloActivo === 'administracion' && (
+          {moduloActivo === 'finanzas' && (
             <Finanzas usuario={usuario} subSeccion={subSeccionActiva} />
           )}
         </main>
