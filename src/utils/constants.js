@@ -51,6 +51,16 @@ export const MENUS_NAVEGACION = [
     ],
   },
   {
+    id: 'inventario',
+    titulo: 'Inventario',
+    descripcion: 'Control de café pergamino/oro',
+    modulo: 'inventario',
+    opciones: [
+      { id: 'inventario-cafe', titulo: 'Inventario de Café', detalle: 'Stock y existencias' },
+      { id: 'inventario-movimientos', titulo: 'Movimientos de Inventario', detalle: 'Entradas y salidas' },
+    ],
+  },
+  {
     id: 'administracion',
     titulo: 'Administración',
     descripcion: 'Control financiero y balances',

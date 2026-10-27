@@ -3,6 +3,7 @@ import Auth from './Auth';
 import Onboarding from './components/Onboarding';
 import Fincas from './modules/fincas/Fincas';
 import Personal from './modules/personal/Personal';
+import Inventario from './modules/inventario/Inventario';
 import Finanzas from './modules/finanzas/Finanzas';
 import AgenteIA from './AgenteIA';
 
@@ -25,7 +26,9 @@ export default function App() {
   const [menusDesplegados, setMenusDesplegados] = useState({
     cultivo: true,
     personal: false,
+    inventario: false,
     administracion: false,
+    ia: false,
   });
 
   const isOnline = useOnlineStatus();
@@ -229,7 +232,11 @@ export default function App() {
             <Personal usuario={usuario} subSeccion={subSeccionActiva} />
           )}
 
-          {moduloActivo === 'finanzas' && (
+          {moduloActivo === 'inventario' && (
+            <Inventario usuario={usuario} subSeccion={subSeccionActiva} />
+          )}
+
+          {moduloActivo === 'administracion' && (
             <Finanzas usuario={usuario} subSeccion={subSeccionActiva} />
           )}
         </main>

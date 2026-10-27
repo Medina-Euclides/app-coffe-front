@@ -183,10 +183,44 @@ export default function Finanzas({ usuario, subSeccion }) {
         : {}),
     };
 
-    setMovimientos((anteriores) => [nuevoMovimiento, ...anteriores]);
+    try {
+      const claveMovs = `cafesmart_movimientos_${userId}`;
+      const listaActual = leerLocal(claveMovs, []);
+      const nuevaLista = [nuevoMovimiento, ...(Array.isArray(listaActual) ? listaActual : [])];
+      guardarLocal(claveMovs, nuevaLista);
+      setMovimientos(nuevaLista);
+
+      if (esVentaCafe && kilos) {
+        try {
+          const claveInv = `cafesmart_inventario_${userId}`;
+          const invActual = leerLocal(claveInv, []);
+          const salidaInventario = {
+            id: Date.now() + 1,
+            fincaId: fincaDelFormulario.id,
+            loteId: null,
+            tipo: 'salida',
+            presentacion: 'pergamino',
+            cantidad: kilos,
+            fecha,
+            descripcion: `Salida por venta de café a ${comprador.trim()}`,
+            registradoPor: userId,
+            movimientoId: nuevoMovimiento.id,
+          };
+          const invNueva = [salidaInventario, ...(Array.isArray(invActual) ? invActual : [])];
+          guardarLocal(claveInv, invNueva);
+        } catch (errInv) {
+          console.error('Error actualizando inventario por venta:', errInv);
+        }
+      }
+    } catch (error) {
+      console.error('Error guardando movimiento:', error);
+      setMovimientos((anteriores) => [nuevoMovimiento, ...anteriores]);
+    }
 
     setFincaId(String(fincaDelFormulario.id));
-    localStorage.setItem(`cafesmart_finca_activa_${userId}`, String(fincaDelFormulario.id));
+    try {
+      localStorage.setItem(`cafesmart_finca_activa_${userId}`, String(fincaDelFormulario.id));
+    } catch {}
 
     setValorTexto('');
     setDescripcion('');
