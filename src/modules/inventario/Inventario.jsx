@@ -115,8 +115,6 @@ export default function Inventario({ usuario, subSeccion }) {
           <option value=''>Selecciona finca</option>
           {fincas.map((f) => (<option key={f.id} value={f.id}>{f.nombre}</option>))}
         </select>
-        <button onClick={() => setVista('resumen')} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #cbd5e1', background: vista==='resumen'?'#ecfdf5':'#fff' }}>Resumen</button>
-        <button onClick={() => setVista('movimientos')} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #cbd5e1', background: vista==='movimientos'?'#ecfdf5':'#fff' }}>Registrar movimiento</button>
       </div>
 
       {vista === 'resumen' && fincaSeleccionada && (
