@@ -26,9 +26,7 @@ export default function App() {
   const [menusDesplegados, setMenusDesplegados] = useState({
     cultivo: true,
     personal: false,
-    inventario: false,
     administracion: false,
-    ia: false,
   });
 
   const isOnline = useOnlineStatus();
