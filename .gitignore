@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Herramientas y extensiones de desarrollo
+.agents/
+skills-lock.json
