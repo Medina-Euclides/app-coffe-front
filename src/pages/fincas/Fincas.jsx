@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
-import { obtenerFechaLocal } from '#lib/formatters';
 import { leerLocal, guardarLocal } from '#lib/storage';
+import { api } from '#services/api';
+import {
+  guardarCacheFincasYLotes,
+  guardarFincaActiva,
+} from '#services/farmStorage';
 import FincaSelector from './components/FincaSelector.jsx';
 import FincaForm from './components/FincaForm.jsx';
 import LoteForm from './components/LoteForm.jsx';
@@ -11,14 +15,12 @@ export default function Fincas({ usuario, subSeccion }) {
   const userId = usuario?.id || 'default';
 
   const [fincas, setFincas] = useState(() =>
-    leerLocal(`cafesmart_fincas_${userId}`, [
-      { id: Date.now(), nombre: 'Mi Finca Principal' },
-    ])
+    leerLocal(`cafesmart_fincas_${userId}`, [])
   );
 
   const [fincaActivaId, setFincaActivaId] = useState(() => {
     const guardada = localStorage.getItem(`cafesmart_finca_activa_${userId}`);
-    return guardada ? Number(guardada) : null;
+    return guardada || null;
   });
 
   const [lotes, setLotes] = useState(() =>
@@ -35,9 +37,52 @@ export default function Fincas({ usuario, subSeccion }) {
   const [verInactivos, setVerInactivos] = useState(false);
 
   const [nombreFinca, setNombreFinca] = useState('');
+  const [ubicacionFinca, setUbicacionFinca] = useState('');
+  const [descripcionFinca, setDescripcionFinca] = useState('');
   const [nombreLote, setNombreLote] = useState('');
   const [variedadLote, setVariedadLote] = useState('Castillo');
   const [hectareasLote, setHectareasLote] = useState('');
+  const [descripcionLote, setDescripcionLote] = useState('');
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [aviso, setAviso] = useState('');
+  const [avisoEsError, setAvisoEsError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([api.farms.list(), api.lots.list()])
+      .then(([fincasCargadas, lotesCargados]) => {
+        if (!active) return;
+        setFincas(fincasCargadas);
+        setLotes(lotesCargados);
+        guardarCacheFincasYLotes(userId, fincasCargadas, lotesCargados);
+        const fincaGuardada = localStorage.getItem(
+          `cafesmart_finca_activa_${userId}`,
+        );
+        setFincaActivaId(
+          fincasCargadas.some(
+            (finca) => String(finca.id) === String(fincaGuardada),
+          )
+            ? fincaGuardada
+            : fincasCargadas[0]?.id || null,
+        );
+      })
+      .catch((error) => {
+        if (active) {
+          console.error('Error al cargar fincas y lotes:', error);
+          setAviso(error.message || 'No se pudieron cargar las fincas y los lotes.');
+          setAvisoEsError(true);
+        }
+      })
+      .finally(() => {
+        if (active) setCargando(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   // Sincronización con el menú lateral (App.jsx)
   useEffect(() => {
@@ -69,7 +114,7 @@ export default function Fincas({ usuario, subSeccion }) {
     if (fincas.length === 0) return;
 
     const seleccionValida = fincas.some(
-      (f) => Number(f.id) === Number(fincaActivaId)
+      (f) => String(f.id) === String(fincaActivaId)
     );
 
     if (!seleccionValida) {
@@ -97,13 +142,13 @@ export default function Fincas({ usuario, subSeccion }) {
   }, [lotes, userId]);
 
   const fincaActual =
-    fincas.find((f) => Number(f.id) === Number(fincaActivaId)) ||
+    fincas.find((f) => String(f.id) === String(fincaActivaId)) ||
     fincas[0] ||
     null;
 
   const lotesDeFincaActiva = lotes.filter(
     (l) =>
-      Number(l.fincaId) === Number(fincaActivaId) &&
+      String(l.fincaId) === String(fincaActivaId) &&
       (verInactivos ? l.estado === 'inactivo' : l.estado !== 'inactivo')
   );
 
@@ -117,7 +162,7 @@ export default function Fincas({ usuario, subSeccion }) {
     if (!mismoLote) return false;
 
     if (jornada.fincaId !== undefined && jornada.fincaId !== null) {
-      return Number(jornada.fincaId) === Number(lote.fincaId);
+      return String(jornada.fincaId) === String(lote.fincaId);
     }
 
     const coincidencias = lotes.filter(
@@ -145,85 +190,106 @@ export default function Fincas({ usuario, subSeccion }) {
     return trabajador ? trabajador.nombre : 'Trabajador';
   };
 
-  const guardarFinca = (e) => {
+  const guardarFinca = async (e) => {
     e.preventDefault();
-    const nombre = nombreFinca.trim();
-
-    if (!nombre) {
-      alert('Ingresa el nombre de la finca.');
-      return;
+    setAviso('');
+    setGuardando(true);
+    try {
+      const nuevaFinca = await api.farms.create({
+        name: nombreFinca.trim(),
+        location: ubicacionFinca.trim(),
+        description: descripcionFinca.trim(),
+      });
+      const fincasActualizadas = [...fincas, nuevaFinca];
+      setFincas(fincasActualizadas);
+      setFincaActivaId(nuevaFinca.id);
+      guardarCacheFincasYLotes(userId, fincasActualizadas, lotes);
+      setNombreFinca('');
+      setUbicacionFinca('');
+      setDescripcionFinca('');
+      setMostrarFormFinca(false);
+      setMostrarFormLote(false);
+      setLoteDetalle(null);
+      setAviso('Finca guardada correctamente.');
+      setAvisoEsError(false);
+    } catch (error) {
+      console.error('Error al guardar la finca:', error);
+      setAviso(error.message || 'No se pudo guardar la finca.');
+      setAvisoEsError(true);
+    } finally {
+      setGuardando(false);
     }
-
-    const nuevaFinca = {
-      id: Date.now(),
-      nombre,
-    };
-
-    setFincas((anteriores) => [...anteriores, nuevaFinca]);
-    setFincaActivaId(nuevaFinca.id);
-    setNombreFinca('');
-    setMostrarFormFinca(false);
-    setMostrarFormLote(false);
-    setLoteDetalle(null);
-    alert('Finca guardada correctamente.');
   };
 
-  const guardarLote = (e) => {
+  const guardarLote = async (e) => {
     e.preventDefault();
     const nombre = nombreLote.trim();
     const hectareas = hectareasLote ? Number(hectareasLote) : null;
 
     if (!nombre) {
-      alert('Ingresa el nombre del lote.');
+      setAviso('Ingresa el nombre del lote.');
+      setAvisoEsError(true);
       return;
     }
 
     if (hectareas !== null && (!Number.isFinite(hectareas) || hectareas <= 0)) {
-      alert('Si ingresas hectáreas, deben ser un número mayor que cero.');
+      setAviso('Si ingresas hectáreas, deben ser un número mayor que cero.');
+      setAvisoEsError(true);
       return;
     }
 
     if (!loteEnEdicion && !fincaActual) {
-      alert('Primero debes seleccionar una finca.');
+      setAviso('Primero debes seleccionar una finca.');
+      setAvisoEsError(true);
       return;
     }
 
-    if (loteEnEdicion) {
-      setLotes((anteriores) =>
-        anteriores.map((l) =>
-          l.id === loteEnEdicion.id
-            ? { ...l, nombre, variedad: variedadLote, hectareas }
-            : l
-        )
-      );
+    setAviso('');
+    setGuardando(true);
+    const data = {
+      name: nombre,
+      coffee_variety: variedadLote,
+      area_hectares: hectareas,
+      description: descripcionLote.trim(),
+      ...(loteEnEdicion ? {} : { id_farm: fincaActual.id }),
+    };
+    try {
+      const loteGuardado = loteEnEdicion
+        ? await api.lots.update(loteEnEdicion.id, data)
+        : await api.lots.create(data);
+      const lotesActualizados = loteEnEdicion
+        ? lotes.map((lote) =>
+            String(lote.id) === String(loteGuardado.id) ? loteGuardado : lote,
+          )
+        : [...lotes, loteGuardado];
+      setLotes(lotesActualizados);
+      guardarCacheFincasYLotes(userId, fincas, lotesActualizados);
       setLoteEnEdicion(null);
-      alert('Lote actualizado correctamente.');
-    } else {
-      const nuevoLote = {
-        id: Date.now(),
-        fincaId: fincaActual.id,
-        nombre,
-        variedad: variedadLote,
-        hectareas,
-        estado: 'activo',
-        fechaCreacion: obtenerFechaLocal(),
-        fechaDesactivacion: null,
-        fechaReactivacion: null,
-      };
-
-      setLotes((anteriores) => [...anteriores, nuevoLote]);
-      alert('Lote guardado correctamente.');
+      setLoteDetalle(null);
+      setAviso(
+        loteEnEdicion
+          ? 'Lote actualizado correctamente.'
+          : 'Lote guardado correctamente.',
+      );
+      setAvisoEsError(false);
+      setNombreLote('');
+      setVariedadLote('Castillo');
+      setHectareasLote('');
+      setDescripcionLote('');
+      setMostrarFormLote(false);
+    } catch (error) {
+      console.error('Error al guardar el lote:', error);
+      setAviso(error.message || 'No se pudo guardar el lote.');
+      setAvisoEsError(true);
+    } finally {
+      setGuardando(false);
     }
-
-    setNombreLote('');
-    setVariedadLote('Castillo');
-    setHectareasLote('');
-    setMostrarFormLote(false);
   };
 
   const iniciarEdicionLote = (lote) => {
     if (lote.estado === 'inactivo') {
-      alert('Debes reactivar el lote para poder editarlo.');
+      setAviso('Debes reactivar el lote para poder editarlo.');
+      setAvisoEsError(true);
       return;
     }
 
@@ -231,6 +297,7 @@ export default function Fincas({ usuario, subSeccion }) {
     setNombreLote(lote.nombre);
     setVariedadLote(lote.variedad || 'Castillo');
     setHectareasLote(lote.hectareas ? String(lote.hectareas) : '');
+    setDescripcionLote(lote.description || '');
     setMostrarFormLote(true);
     setMostrarFormFinca(false);
     setLoteDetalle(null);
@@ -242,27 +309,29 @@ export default function Fincas({ usuario, subSeccion }) {
     setNombreLote('');
     setVariedadLote('Castillo');
     setHectareasLote('');
+    setDescripcionLote('');
   };
 
-  const cambiarEstadoLote = (loteId, nuevoEstado) => {
-    const fechaHoy = obtenerFechaLocal();
-
-    setLotes((anteriores) =>
-      anteriores.map((l) => {
-        if (l.id === loteId) {
-          return {
-            ...l,
-            estado: nuevoEstado,
-            ...(nuevoEstado === 'inactivo'
-              ? { fechaDesactivacion: fechaHoy }
-              : { fechaReactivacion: fechaHoy }),
-          };
-        }
-        return l;
-      })
-    );
-
-    setLoteDetalle(null);
+  const cambiarEstadoLote = async (loteId, nuevoEstado) => {
+    try {
+      const loteActualizado = await api.lots.update(loteId, {
+        is_active: nuevoEstado !== 'inactivo',
+      });
+      const lotesActualizados = lotes.map((lote) =>
+        String(lote.id) === String(loteActualizado.id)
+          ? loteActualizado
+          : lote,
+      );
+      setLotes(lotesActualizados);
+      guardarCacheFincasYLotes(userId, fincas, lotesActualizados);
+      setLoteDetalle(null);
+      setAviso('');
+      setAvisoEsError(false);
+    } catch (error) {
+      console.error('Error al cambiar el estado del lote:', error);
+      setAviso(error.message || 'No se pudo actualizar el estado del lote.');
+      setAvisoEsError(true);
+    }
   };
 
   return (
@@ -279,17 +348,43 @@ export default function Fincas({ usuario, subSeccion }) {
         fincaActivaId={fincaActual?.id}
         onCambiarFinca={(id) => {
           setFincaActivaId(id);
+          guardarFincaActiva(userId, id);
           setLoteDetalle(null);
           cancelarFormularioLote();
           setVerInactivos(false);
         }}
       />
 
+      {cargando && (
+        <p aria-live="polite" role="status">
+          Cargando fincas y lotes…
+        </p>
+      )}
+      {aviso && (
+        <p
+          aria-live="polite"
+          role="status"
+          style={{
+            background: avisoEsError ? '#fef2f2' : '#f0fdf4',
+            borderRadius: '10px',
+            color: avisoEsError ? '#991b1b' : '#166534',
+            padding: '12px',
+          }}
+        >
+          {aviso}
+        </p>
+      )}
+
       {/* FORMULARIO CREAR FINCA */}
       {mostrarFormFinca && (
         <FincaForm
           nombreFinca={nombreFinca}
           setNombreFinca={setNombreFinca}
+          ubicacionFinca={ubicacionFinca}
+          setUbicacionFinca={setUbicacionFinca}
+          descripcionFinca={descripcionFinca}
+          setDescripcionFinca={setDescripcionFinca}
+          guardando={guardando}
           onGuardar={guardarFinca}
         />
       )}
@@ -347,6 +442,9 @@ export default function Fincas({ usuario, subSeccion }) {
           setVariedadLote={setVariedadLote}
           hectareasLote={hectareasLote}
           setHectareasLote={setHectareasLote}
+          descripcionLote={descripcionLote}
+          setDescripcionLote={setDescripcionLote}
+          guardando={guardando}
           onGuardar={guardarLote}
         />
       )}

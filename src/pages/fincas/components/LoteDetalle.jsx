@@ -61,6 +61,12 @@ export default function LoteDetalle({
           <strong>Área:</strong> {lote.hectareas ? `${lote.hectareas} Ha` : 'No especificada'}
         </p>
 
+        {lote.description && (
+          <p style={{ margin: '6px 0', color: '#334155' }}>
+            <strong>Descripción:</strong> {lote.description}
+          </p>
+        )}
+
         <p style={{ margin: '6px 0', color: '#334155' }}>
           <strong>Estado:</strong>{' '}
           <span

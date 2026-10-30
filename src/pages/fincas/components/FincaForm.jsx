@@ -1,6 +1,11 @@
 export default function FincaForm({
   nombreFinca,
   setNombreFinca,
+  ubicacionFinca,
+  setUbicacionFinca,
+  descripcionFinca,
+  setDescripcionFinca,
+  guardando,
   onGuardar,
 }) {
   return (
@@ -25,6 +30,7 @@ export default function FincaForm({
           placeholder="Ej: Finca San José"
           value={nombreFinca}
           onChange={(e) => setNombreFinca(e.target.value)}
+          maxLength={150}
           required
           style={{
             display: 'block',
@@ -37,7 +43,45 @@ export default function FincaForm({
         />
       </label>
 
+      <label style={{ display: 'block', marginBottom: '16px' }}>
+        Ubicación (Opcional):
+        <input
+          type="text"
+          placeholder="Ej: Vereda El Tablón"
+          value={ubicacionFinca}
+          onChange={(e) => setUbicacionFinca(e.target.value)}
+          maxLength={150}
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: '10px',
+            marginTop: '6px',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+          }}
+        />
+      </label>
+
+      <label style={{ display: 'block', marginBottom: '16px' }}>
+        Descripción (Opcional):
+        <textarea
+          placeholder="Detalles adicionales de la finca"
+          value={descripcionFinca}
+          onChange={(e) => setDescripcionFinca(e.target.value)}
+          style={{
+            display: 'block',
+            width: '100%',
+            minHeight: '80px',
+            padding: '10px',
+            marginTop: '6px',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+          }}
+        />
+      </label>
+
       <button
+        disabled={guardando}
         type="submit"
         style={{
           background: '#047857',
@@ -50,7 +94,7 @@ export default function FincaForm({
           width: '100%',
         }}
       >
-        Guardar Finca
+        {guardando ? 'Guardando…' : 'Guardar Finca'}
       </button>
     </form>
   );

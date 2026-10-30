@@ -18,6 +18,11 @@ export default function FarmCard({ farm, lotCount, onView, onEdit }) {
           <p className="mt-1 text-sm text-[#748074]">
             {lotCount} {lotCount === 1 ? 'lote' : 'lotes'}
           </p>
+          {farm.ubicacion && (
+            <p className="mt-1 break-words text-sm text-[#748074]">
+              {farm.ubicacion}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap gap-2 border-t border-[#edf0eb] pt-3">

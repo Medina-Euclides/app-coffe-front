@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import EmptyState from '#components/shared/EmptyState';
 import ManagementPage from '#components/shared/ManagementPage';
@@ -14,28 +14,69 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#components/ui/dialog';
-import { obtenerFechaLocal } from '#lib/formatters';
+import { api } from '#services/api';
+import {
+  guardarCacheFincasYLotes,
+  guardarFincaActiva,
+} from '#services/farmStorage';
 import { leerLocal } from '#lib/storage';
 
-function cargarLista(clave) {
-  const guardada = leerLocal(clave, []);
-  return Array.isArray(guardada) ? guardada : [];
+function cargarListaGuardada(key) {
+  const saved = leerLocal(key, []);
+  return Array.isArray(saved) ? saved : [];
 }
 
 export default function FarmsAndLots({ usuario }) {
   const userId = usuario?.id || 'default';
-  const farmsKey = `cafesmart_fincas_${userId}`;
-  const lotsKey = `cafesmart_lotes_${userId}`;
-  const [farms, setFarms] = useState(() => cargarLista(farmsKey));
-  const [lots, setLots] = useState(() => cargarLista(lotsKey));
-  const [selectedFarmId, setSelectedFarmId] = useState(null);
+  const [farms, setFarms] = useState(() =>
+    cargarListaGuardada(`cafesmart_fincas_${userId}`),
+  );
+  const [lots, setLots] = useState(() =>
+    cargarListaGuardada(`cafesmart_lotes_${userId}`),
+  );
+  const [selectedFarmId, setSelectedFarmId] = useState(() =>
+    localStorage.getItem(`cafesmart_finca_activa_${userId}`),
+  );
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
   const [farmDialogOpen, setFarmDialogOpen] = useState(false);
   const [lotDialogOpen, setLotDialogOpen] = useState(false);
   const [farmToEdit, setFarmToEdit] = useState(null);
   const [lotToEdit, setLotToEdit] = useState(null);
   const [lotToView, setLotToView] = useState(null);
   const [notice, setNotice] = useState('');
+  const [noticeIsError, setNoticeIsError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([api.farms.list(), api.lots.list()])
+      .then(([loadedFarms, loadedLots]) => {
+        if (!active) return;
+        setFarms(loadedFarms);
+        setLots(loadedLots);
+        guardarCacheFincasYLotes(userId, loadedFarms, loadedLots);
+        setSelectedFarmId((currentId) =>
+          loadedFarms.some((farm) => String(farm.id) === String(currentId))
+            ? currentId
+            : null,
+        );
+      })
+      .catch((error) => {
+        if (active) {
+          console.error('Error al cargar fincas y lotes:', error);
+          setNotice(error.message || 'No se pudieron cargar las fincas y los lotes.');
+          setNoticeIsError(true);
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   const selectedFarm = farms.find(
     (farm) => String(farm.id) === String(selectedFarmId),
@@ -44,7 +85,9 @@ export default function FarmsAndLots({ usuario }) {
     const query = search.trim().toLocaleLowerCase();
     return query
       ? farms.filter((farm) =>
-          String(farm.nombre || '').toLocaleLowerCase().includes(query),
+          `${farm.nombre || ''} ${farm.ubicacion || ''}`
+            .toLocaleLowerCase()
+            .includes(query),
         )
       : farms;
   }, [farms, search]);
@@ -61,52 +104,41 @@ export default function FarmsAndLots({ usuario }) {
     );
   }, [lots, search, selectedFarm]);
 
-  const persistList = (key, nextItems, setter, message) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(nextItems));
-      setter(nextItems);
-      setNotice(message);
-      return true;
-    } catch (error) {
-      console.error('No se pudieron guardar los cambios de fincas y lotes:', error);
-      setNotice('No se pudieron guardar los cambios. Revisa el espacio disponible en el dispositivo.');
-      return false;
-    }
-  };
-
-  const saveFarm = (name) => {
-    if (name.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
+  const saveFarm = async (data) => {
+    if (data.name.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
     if (
       farms.some(
         (farm) =>
           String(farm.id) !== String(farmToEdit?.id) &&
           String(farm.nombre || '').trim().toLocaleLowerCase() ===
-            name.toLocaleLowerCase(),
+            data.name.toLocaleLowerCase(),
       )
     ) {
       return 'Ya existe una finca con ese nombre.';
     }
 
-    const nextFarms = farmToEdit
-      ? farms.map((farm) =>
-          farm.id === farmToEdit.id ? { ...farm, nombre: name } : farm,
-        )
-      : [...farms, { id: Date.now(), nombre: name }];
-    if (
-      !persistList(
-        farmsKey,
-        nextFarms,
-        setFarms,
-        farmToEdit ? 'Finca actualizada.' : 'Finca agregada.',
-      )
-    ) {
-      return 'No se pudo guardar la finca. Inténtalo de nuevo.';
+    try {
+      const savedFarm = farmToEdit
+        ? await api.farms.update(farmToEdit.id, data)
+        : await api.farms.create(data);
+      const nextFarms = farmToEdit
+        ? farms.map((farm) =>
+            String(farm.id) === String(savedFarm.id) ? savedFarm : farm,
+          )
+        : [...farms, savedFarm];
+      setFarms(nextFarms);
+      guardarCacheFincasYLotes(userId, nextFarms, lots);
+      setNotice(farmToEdit ? 'Finca actualizada.' : 'Finca agregada.');
+      setNoticeIsError(false);
+      setFarmToEdit(null);
+      return '';
+    } catch (error) {
+      console.error('Error al guardar la finca:', error);
+      return error.message || 'No se pudo guardar la finca. Inténtalo de nuevo.';
     }
-    setFarmToEdit(null);
-    return '';
   };
 
-  const saveLot = ({ nombre, variedad, hectareas }) => {
+  const saveLot = async ({ nombre, variedad, hectareas, description }) => {
     if (!selectedFarm) return 'Selecciona primero una finca.';
     if (nombre.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
     if (
@@ -127,66 +159,57 @@ export default function FarmsAndLots({ usuario }) {
       return 'Ya existe un lote con ese nombre en esta finca.';
     }
 
-    const nextLots = lotToEdit
-      ? lots.map((lot) =>
-          lot.id === lotToEdit.id
-            ? { ...lot, nombre, variedad, hectareas }
-            : lot,
-        )
-      : [
-          ...lots,
-          {
-            id: Date.now(),
-            fincaId: selectedFarm.id,
-            nombre,
-            variedad,
-            hectareas,
-            estado: 'activo',
-            fechaCreacion: obtenerFechaLocal(),
-            fechaDesactivacion: null,
-            fechaReactivacion: null,
-          },
-        ];
-    if (
-      !persistList(
-        lotsKey,
-        nextLots,
-        setLots,
-        lotToEdit ? 'Lote actualizado.' : 'Lote agregado a la finca.',
-      )
-    ) {
-      return 'No se pudo guardar el lote. Inténtalo de nuevo.';
+    const data = {
+      name: nombre,
+      coffee_variety: variedad,
+      area_hectares: hectareas,
+      description,
+      ...(lotToEdit ? {} : { id_farm: selectedFarm.id }),
+    };
+    try {
+      const savedLot = lotToEdit
+        ? await api.lots.update(lotToEdit.id, data)
+        : await api.lots.create(data);
+      const nextLots = lotToEdit
+        ? lots.map((lot) =>
+            String(lot.id) === String(savedLot.id) ? savedLot : lot,
+          )
+        : [...lots, savedLot];
+      setLots(nextLots);
+      guardarCacheFincasYLotes(userId, farms, nextLots);
+      setNotice(lotToEdit ? 'Lote actualizado.' : 'Lote agregado a la finca.');
+      setNoticeIsError(false);
+      setLotToEdit(null);
+      return '';
+    } catch (error) {
+      console.error('Error al guardar el lote:', error);
+      return error.message || 'No se pudo guardar el lote. Inténtalo de nuevo.';
     }
-    setLotToEdit(null);
-    return '';
   };
 
-  const toggleLotStatus = (lot) => {
+  const toggleLotStatus = async (lot) => {
     const isActive = lot.estado !== 'inactivo';
-    const nextStatus = isActive ? 'inactivo' : 'activo';
     const message = isActive
       ? `¿Desactivar el lote “${lot.nombre}”? Podrás consultarlo y reactivarlo después.`
       : `¿Reactivar el lote “${lot.nombre}”?`;
     if (!window.confirm(message)) return;
 
-    const date = obtenerFechaLocal();
-    const nextLots = lots.map((item) =>
-      item.id === lot.id
-        ? {
-            ...item,
-            estado: nextStatus,
-            ...(isActive
-              ? { fechaDesactivacion: date }
-              : { fechaReactivacion: date }),
-          }
-        : item,
-    );
-    persistList(
-      lotsKey,
-      nextLots,
-      setLots,
-      isActive ? 'Lote desactivado.' : 'Lote reactivado.',
-    );
+    try {
+      const updatedLot = await api.lots.update(lot.id, {
+        is_active: !isActive,
+      });
+      const nextLots = lots.map((item) =>
+        String(item.id) === String(updatedLot.id) ? updatedLot : item,
+      );
+      setLots(nextLots);
+      guardarCacheFincasYLotes(userId, farms, nextLots);
+      setNotice(isActive ? 'Lote desactivado.' : 'Lote reactivado.');
+      setNoticeIsError(false);
+    } catch (error) {
+      console.error('Error al cambiar el estado del lote:', error);
+      setNotice(error.message || 'No se pudo actualizar el estado del lote.');
+      setNoticeIsError(true);
+    }
   };
 
   const openNewFarmDialog = () => {
@@ -228,7 +251,7 @@ export default function FarmsAndLots({ usuario }) {
           <p
             aria-live="polite"
             className={`rounded-lg border px-3 py-2 text-sm ${
-              notice.startsWith('No se pud')
+              noticeIsError
                 ? 'border-red-200 bg-red-50 text-red-800'
                 : 'border-[#dce8d9] bg-[#f0f5ed] text-[#426548]'
             }`}
@@ -237,12 +260,17 @@ export default function FarmsAndLots({ usuario }) {
             {notice}
           </p>
         )}
-        {selectedFarm ? (
+        {loading ? (
+          <p aria-live="polite" className="py-8 text-center text-sm text-[#68766b]" role="status">
+            Cargando fincas y lotes…
+          </p>
+        ) : selectedFarm ? (
           <div className="space-y-5">
             <Button
               className="min-h-10 rounded-lg px-2 text-[#526254] hover:bg-[#edf3e9] hover:text-[#214b32]"
               onClick={() => {
                 setSelectedFarmId(null);
+                localStorage.removeItem(`cafesmart_finca_activa_${userId}`);
                 setSearch('');
               }}
               type="button"
@@ -294,14 +322,21 @@ export default function FarmsAndLots({ usuario }) {
             )}
           </div>
         ) : farmsInSearch.length === 0 ? (
-          <EmptyState
-            description={
-              farms.length
-                ? 'Prueba con otro nombre de finca.'
-                : 'Registra tus fincas para comenzar a organizar sus lotes.'
-            }
-            title={farms.length ? 'No encontramos fincas' : 'Aún no hay fincas'}
-          />
+          noticeIsError && farms.length === 0 ? (
+            <p className="py-8 text-center text-sm text-[#68766b]">
+              No se pudo consultar la lista de fincas. Intenta de nuevo cuando
+              el servidor esté disponible.
+            </p>
+          ) : (
+            <EmptyState
+              description={
+                farms.length
+                  ? 'Prueba con otro nombre de finca.'
+                  : 'Registra tus fincas para comenzar a organizar sus lotes.'
+              }
+              title={farms.length ? 'No encontramos fincas' : 'Aún no hay fincas'}
+            />
+          )
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {farmsInSearch.map((farm) => (
@@ -316,6 +351,7 @@ export default function FarmsAndLots({ usuario }) {
                 onEdit={openEditFarmDialog}
                 onView={(item) => {
                   setSelectedFarmId(item.id);
+                  guardarFincaActiva(userId, item.id);
                   setSearch('');
                 }}
               />

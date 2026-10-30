@@ -17,16 +17,32 @@ export default function FarmFormDialog({
   onSave,
 }) {
   const [name, setName] = useState(farm?.nombre || '');
+  const [location, setLocation] = useState(farm?.location || '');
+  const [description, setDescription] = useState(farm?.description || '');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    const result = onSave(name.trim());
-    if (result) {
-      setError(result);
-      return;
+    setError('');
+    setSaving(true);
+    try {
+      const result = await onSave({
+        name: name.trim(),
+        location: location.trim(),
+        description: description.trim(),
+      });
+      if (result) {
+        setError(result);
+        return;
+      }
+      onOpenChange(false);
+    } catch (saveError) {
+      console.error('Error al guardar la finca:', saveError);
+      setError(saveError.message || 'No se pudo guardar la finca.');
+    } finally {
+      setSaving(false);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -37,7 +53,7 @@ export default function FarmFormDialog({
             {farm ? 'Editar finca' : 'Agregar finca'}
           </DialogTitle>
           <DialogDescription className="leading-6">
-            Registra el nombre con el que identificas esta finca.
+            Registra el nombre, ubicación y descripción de esta finca.
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -52,13 +68,46 @@ export default function FarmFormDialog({
               autoComplete="off"
               className="h-11 rounded-xl"
               id="farm-name"
-              maxLength={100}
+              maxLength={150}
               minLength={2}
               name="finca"
               onChange={(event) => setName(event.target.value)}
               placeholder="Ej. Finca San José…"
               required
               value={name}
+            />
+          </div>
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium text-[#36483a]"
+              htmlFor="farm-location"
+            >
+              Ubicación (opcional)
+            </label>
+            <Input
+              className="h-11 rounded-xl"
+              id="farm-location"
+              maxLength={150}
+              name="location"
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder="Ej. Vereda El Tablón…"
+              value={location}
+            />
+          </div>
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium text-[#36483a]"
+              htmlFor="farm-description"
+            >
+              Descripción (opcional)
+            </label>
+            <textarea
+              className="min-h-24 w-full rounded-xl border border-input bg-white px-3 py-2 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
+              id="farm-description"
+              name="description"
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Detalles adicionales de la finca…"
+              value={description}
             />
           </div>
           {error && (
@@ -69,6 +118,7 @@ export default function FarmFormDialog({
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
             <Button
               className="min-h-11 rounded-xl"
+              disabled={saving}
               onClick={() => onOpenChange(false)}
               type="button"
               variant="outline"
@@ -77,9 +127,10 @@ export default function FarmFormDialog({
             </Button>
             <Button
               className="min-h-11 rounded-xl bg-[#214b32] text-white hover:bg-[#173d2b]"
+              disabled={saving}
               type="submit"
             >
-              Guardar finca
+              {saving ? 'Guardando…' : 'Guardar finca'}
             </Button>
           </DialogFooter>
         </form>

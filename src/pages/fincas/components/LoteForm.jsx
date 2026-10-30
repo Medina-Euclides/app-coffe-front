@@ -7,6 +7,9 @@ export default function LoteForm({
   setVariedadLote,
   hectareasLote,
   setHectareasLote,
+  descripcionLote,
+  setDescripcionLote,
+  guardando,
   onGuardar,
 }) {
   return (
@@ -33,6 +36,7 @@ export default function LoteForm({
           placeholder="Ej: Lote El Mirador"
           value={nombreLote}
           onChange={(e) => setNombreLote(e.target.value)}
+          maxLength={150}
           required
           style={{
             display: 'block',
@@ -87,7 +91,26 @@ export default function LoteForm({
         />
       </label>
 
+      <label style={{ display: 'block', marginBottom: '16px' }}>
+        Descripción (Opcional):
+        <textarea
+          placeholder="Detalles adicionales del lote"
+          value={descripcionLote}
+          onChange={(e) => setDescripcionLote(e.target.value)}
+          style={{
+            display: 'block',
+            width: '100%',
+            minHeight: '80px',
+            padding: '10px',
+            marginTop: '6px',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+          }}
+        />
+      </label>
+
       <button
+        disabled={guardando}
         type="submit"
         style={{
           background: '#047857',
@@ -100,7 +123,11 @@ export default function LoteForm({
           width: '100%',
         }}
       >
-        {loteEnEdicion ? 'Actualizar Lote' : 'Guardar Lote'}
+        {guardando
+          ? 'Guardando…'
+          : loteEnEdicion
+            ? 'Actualizar Lote'
+            : 'Guardar Lote'}
       </button>
     </form>
   );

@@ -30,7 +30,7 @@ export default function Personal({ usuario, subSeccion }) {
 
   const [fincaId, setFincaId] = useState(() => {
     const activa = localStorage.getItem(`cafesmart_finca_activa_${userId}`);
-    return activa ? Number(activa) : null;
+    return activa || null;
   });
 
   const [tarifaKg, setTarifaKg] = useState(() =>
@@ -98,11 +98,11 @@ export default function Personal({ usuario, subSeccion }) {
   }, [tarifaKg, tarifaJornal, userId]);
 
   const fincaSeleccionada = fincas.find(
-    (f) => Number(f.id) === Number(fincaId)
+    (f) => String(f.id) === String(fincaId)
   );
 
   const lotesDeFinca = useMemo(
-    () => lotes.filter((l) => Number(l.fincaId) === Number(fincaId)),
+    () => lotes.filter((l) => String(l.fincaId) === String(fincaId)),
     [lotes, fincaId]
   );
 
@@ -114,12 +114,12 @@ export default function Personal({ usuario, subSeccion }) {
   const perteneceAFinca = useCallback(
     (jornada, idFinca) => {
       if (jornada.fincaId !== undefined && jornada.fincaId !== null) {
-        return Number(jornada.fincaId) === Number(idFinca);
+        return String(jornada.fincaId) === String(idFinca);
       }
 
       if (jornada.loteId !== undefined && jornada.loteId !== null) {
         const lote = lotesPorId.get(String(jornada.loteId));
-        return Boolean(lote && Number(lote.fincaId) === Number(idFinca));
+        return Boolean(lote && String(lote.fincaId) === String(idFinca));
       }
 
       const nombreLote = String(jornada.lote || '').trim().toLowerCase();
@@ -131,7 +131,7 @@ export default function Personal({ usuario, subSeccion }) {
 
       return (
         coincidencias.length === 1 &&
-        Number(coincidencias[0].fincaId) === Number(idFinca)
+        String(coincidencias[0].fincaId) === String(idFinca)
       );
     },
     [lotes, lotesPorId]
@@ -266,7 +266,7 @@ export default function Personal({ usuario, subSeccion }) {
     const nuevaJornada = {
       id: Date.now(),
       trabajadorId: Number(trabajadorId),
-      fincaId: Number(fincaSeleccionada.id),
+      fincaId: String(fincaSeleccionada.id),
       loteId: loteSeleccionado.id,
       lote: loteSeleccionado.nombre,
       actividad: actividadSeleccionada,

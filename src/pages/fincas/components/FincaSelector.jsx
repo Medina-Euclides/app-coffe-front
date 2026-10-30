@@ -34,7 +34,7 @@ export default function FincaSelector({
       >
         <select
           value={fincaActivaId ?? ''}
-          onChange={(e) => onCambiarFinca(Number(e.target.value))}
+          onChange={(e) => onCambiarFinca(e.target.value)}
           style={{
             fontWeight: 'bold',
             color: '#064e3b',
@@ -45,6 +45,11 @@ export default function FincaSelector({
             border: '1px solid #cbd5e1',
           }}
         >
+          {fincas.length === 0 && (
+            <option disabled value="">
+              No hay fincas registradas
+            </option>
+          )}
           {fincas.map((f) => (
             <option key={f.id} value={f.id}>
               {f.nombre}

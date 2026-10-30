@@ -60,3 +60,10 @@ para obtener los tokens JWT. Conserva los tokens en el navegador y envía el
 token de acceso como `Authorization: Bearer <access>` en las peticiones
 protegidas. La API local debe permitir CORS desde el origen de Vite
 (`http://localhost:5173`).
+
+La gestión de fincas y lotes consume `GET`/`POST`/`PATCH /farms/` y
+`GET`/`POST`/`PATCH /farms/lots/`. El cliente envía los nombres del modelo DRF:
+`name`, `location`, `description`, `id_farm`, `coffee_variety`,
+`area_hectares` e `is_active`. Los formularios convierten las respuestas al
+formato que usan las pantallas actuales y guardan una copia local para los
+módulos que todavía leen fincas y lotes desde el almacenamiento del navegador.

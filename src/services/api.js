@@ -34,9 +34,17 @@ function getErrorMessage(data, status) {
     email: 'Correo electrónico',
     first_name: 'Nombre',
     last_name: 'Apellido',
+    location: 'Ubicación',
+    name: 'Nombre',
     non_field_errors: 'Datos',
     password: 'Contraseña',
     phone_number: 'Teléfono',
+    description: 'Descripción',
+    id_farm: 'Finca',
+    coffee_variety: 'Variedad de café',
+    area_hectares: 'Área',
+    area_m2: 'Área',
+    is_active: 'Estado',
   };
   const fieldErrors = Object.entries(data || {})
     .map(([field, messages]) => {
@@ -48,6 +56,36 @@ function getErrorMessage(data, status) {
   return fieldErrors || `Error ${status}`;
 }
 
+function normalizeList(data, resourceName) {
+  const items = Array.isArray(data) ? data : data?.results;
+  if (!Array.isArray(items)) {
+    throw new Error(`El servidor devolvió una lista de ${resourceName} no válida.`);
+  }
+  return items;
+}
+
+function normalizeFarm(farm) {
+  return {
+    ...farm,
+    nombre: farm.name,
+    ubicacion: farm.location || '',
+  };
+}
+
+function normalizeLot(lot) {
+  return {
+    ...lot,
+    fincaId: lot.id_farm,
+    nombre: lot.name,
+    variedad: lot.coffee_variety || '',
+    hectareas: lot.area_hectares ?? lot.area_m2 ?? null,
+    estado: lot.is_active ? 'activo' : 'inactivo',
+    fechaCreacion: lot.created_at,
+    fechaDesactivacion: null,
+    fechaReactivacion: null,
+  };
+}
+
 function normalizeApiError(error) {
   if (!error.response) {
     return new Error(
@@ -55,7 +93,6 @@ function normalizeApiError(error) {
       { cause: error },
     );
   }
-
   return new Error(
     getErrorMessage(error.response.data, error.response.status),
     { cause: error },
@@ -181,5 +218,29 @@ export const api = {
       return Boolean(tokens?.access || tokens?.refresh);
     },
     logout: () => localStorage.removeItem(AUTH_STORAGE_KEY),
+  },
+  farms: {
+    list: async () =>
+      normalizeList(await apiRequest('/farms/'), 'fincas').map(normalizeFarm),
+    create: async (data) =>
+      normalizeFarm(
+        await apiRequest('/farms/', { method: 'POST', data }),
+      ),
+    update: async (id, data) =>
+      normalizeFarm(
+        await apiRequest(`/farms/${id}/`, { method: 'PATCH', data }),
+      ),
+  },
+  lots: {
+    list: async () =>
+      normalizeList(await apiRequest('/farms/lots/'), 'lotes').map(normalizeLot),
+    create: async (data) =>
+      normalizeLot(
+        await apiRequest('/farms/lots/', { method: 'POST', data }),
+      ),
+    update: async (id, data) =>
+      normalizeLot(
+        await apiRequest(`/farms/lots/${id}/`, { method: 'PATCH', data }),
+      ),
   },
 };

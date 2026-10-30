@@ -7,7 +7,11 @@ import {
   CardHeader,
 } from '#components/ui/card';
 import { Input } from '#components/ui/input';
-import { obtenerFechaLocal } from '#lib/formatters';
+import { api } from '#services/api';
+import {
+  guardarCacheFincasYLotes,
+  guardarFincaActiva,
+} from '#services/farmStorage';
 
 const variedadesCafe = ['Castillo', 'Caturra', 'Colombia', 'Borbón', 'Geisha'];
 
@@ -30,8 +34,10 @@ export function SetupWizard({ usuario, onComplete }) {
   const [variedad, setVariedad] = useState(variedadesCafe[0]);
   const [hectareas, setHectareas] = useState('');
   const [error, setError] = useState('');
+  const [fincaCreada, setFincaCreada] = useState(null);
+  const [guardando, setGuardando] = useState(false);
 
-  const guardarConfiguracion = (event) => {
+  const guardarConfiguracion = async (event) => {
     event.preventDefault();
     setError('');
 
@@ -51,48 +57,40 @@ export function SetupWizard({ usuario, onComplete }) {
       return;
     }
 
+    setGuardando(true);
     try {
       const userId = usuario.id;
-      const timestamp = Date.now();
-      const finca = {
-        id: timestamp,
-        nombre: nombreFinca.trim(),
-        ubicacion: ubicacion.trim() || 'Principal',
-      };
-      const lote = {
-        id: timestamp + 1,
-        fincaId: finca.id,
-        nombre: nombreLote.trim(),
-        variedad,
-        hectareas: area,
-        estado: 'activo',
-        fechaCreacion: obtenerFechaLocal(),
-        fechaDesactivacion: null,
-        fechaReactivacion: null,
-      };
       const fincasGuardadas = leerListaGuardada(
         `cafesmart_fincas_${userId}`,
       );
       const lotesGuardados = leerListaGuardada(`cafesmart_lotes_${userId}`);
-
-      localStorage.setItem(
-        `cafesmart_fincas_${userId}`,
-        JSON.stringify([...fincasGuardadas, finca]),
+      const finca =
+        fincaCreada ||
+        (await api.farms.create({
+          name: nombreFinca.trim(),
+          location: ubicacion.trim(),
+          description: '',
+        }));
+      setFincaCreada(finca);
+      const lote = await api.lots.create({
+        id_farm: finca.id,
+        name: nombreLote.trim(),
+        coffee_variety: variedad,
+        area_hectares: area,
+        description: '',
+      });
+      guardarCacheFincasYLotes(
+        userId,
+        [...fincasGuardadas, finca],
+        [...lotesGuardados, lote],
       );
-      localStorage.setItem(
-        `cafesmart_lotes_${userId}`,
-        JSON.stringify([...lotesGuardados, lote]),
-      );
-      localStorage.setItem(
-        `cafesmart_finca_activa_${userId}`,
-        String(finca.id),
-      );
+      guardarFincaActiva(userId, finca.id);
       onComplete();
     } catch (saveError) {
       console.error('Error al guardar la configuración inicial:', saveError);
-      setError(
-        'No se pudo guardar la configuración. Revisa el espacio disponible e inténtalo de nuevo.',
-      );
+      setError(saveError.message || 'No se pudo guardar la configuración inicial.');
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -345,6 +343,7 @@ export function SetupWizard({ usuario, onComplete }) {
               <div className="flex gap-3 pt-2">
                 <Button
                   className="h-12 flex-1 rounded-xl"
+                  disabled={guardando || Boolean(fincaCreada)}
                   onClick={() => {
                     setError('');
                     setPaso(2);
@@ -356,9 +355,10 @@ export function SetupWizard({ usuario, onComplete }) {
                 </Button>
                 <Button
                   className="h-12 flex-1 rounded-xl bg-emerald-800 font-semibold text-white hover:bg-emerald-900"
+                  disabled={guardando}
                   type="submit"
                 >
-                  Guardar y entrar
+                  {guardando ? 'Guardando…' : 'Guardar y entrar'}
                 </Button>
               </div>
             </form>

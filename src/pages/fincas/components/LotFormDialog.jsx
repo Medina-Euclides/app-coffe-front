@@ -26,20 +26,32 @@ export default function LotFormDialog({
       ? ''
       : String(lot.hectareas),
   );
+  const [description, setDescription] = useState(lot?.description || '');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    const result = onSave({
-      nombre: name.trim(),
-      variedad: variety,
-      hectareas: hectares ? Number(hectares) : null,
-    });
-    if (result) {
-      setError(result);
-      return;
+    setError('');
+    setSaving(true);
+    try {
+      const result = await onSave({
+        nombre: name.trim(),
+        variedad: variety,
+        hectareas: hectares ? Number(hectares) : null,
+        description: description.trim(),
+      });
+      if (result) {
+        setError(result);
+        return;
+      }
+      onOpenChange(false);
+    } catch (saveError) {
+      console.error('Error al guardar el lote:', saveError);
+      setError(saveError.message || 'No se pudo guardar el lote.');
+    } finally {
+      setSaving(false);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -65,7 +77,7 @@ export default function LotFormDialog({
               autoComplete="off"
               className="h-11 rounded-xl"
               id="lot-name"
-              maxLength={100}
+              maxLength={150}
               minLength={2}
               name="lote"
               onChange={(event) => setName(event.target.value)}
@@ -114,6 +126,22 @@ export default function LotFormDialog({
               value={hectares}
             />
           </div>
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium text-[#36483a]"
+              htmlFor="lot-description"
+            >
+              Descripción (opcional)
+            </label>
+            <textarea
+              className="min-h-24 w-full rounded-xl border border-input bg-white px-3 py-2 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
+              id="lot-description"
+              name="description"
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Detalles adicionales del lote…"
+              value={description}
+            />
+          </div>
           {error && (
             <p aria-live="polite" className="text-sm text-red-700" role="alert">
               {error}
@@ -122,6 +150,7 @@ export default function LotFormDialog({
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
             <Button
               className="min-h-11 rounded-xl"
+              disabled={saving}
               onClick={() => onOpenChange(false)}
               type="button"
               variant="outline"
@@ -130,9 +159,10 @@ export default function LotFormDialog({
             </Button>
             <Button
               className="min-h-11 rounded-xl bg-[#214b32] text-white hover:bg-[#173d2b]"
+              disabled={saving}
               type="submit"
             >
-              Guardar lote
+              {saving ? 'Guardando…' : 'Guardar lote'}
             </Button>
           </DialogFooter>
         </form>
