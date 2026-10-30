@@ -1,5 +1,5 @@
-import SyncStatus from '../SyncStatus';
-import { MENUS_NAVEGACION } from '../../utils/constants';
+import SyncStatus from '../shared/SyncStatus.jsx';
+import { MENUS_NAVEGACION } from '#lib/constants';
 
 export default function Sidebar({
   menuMobileAbierto,

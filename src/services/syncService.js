@@ -1,4 +1,8 @@
-import { obtenerPendientes, limpiarPendientes, contarPendientes } from '../syncQueue';
+import {
+  obtenerPendientes,
+  limpiarPendientes,
+  contarPendientes,
+} from './syncQueue.js';
 import { api } from './api';
 
 export async function sincronizarPendientes() {

@@ -1,21 +1,27 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import AppLayout from '../components/layout/AppLayout.jsx';
+import AppLayout from '#components/layout/AppLayout';
 import { AuthenticatedRoute, SetupRoute } from './RouteGuards.jsx';
 
-const Auth = lazy(() => import('../views/Auth.jsx'));
-const Economia = lazy(() => import('../modules/finanzas/Economia.jsx'));
-const Finanzas = lazy(() => import('../modules/finanzas/Finanzas.jsx'));
-const Fincas = lazy(() => import('../modules/fincas/Fincas.jsx'));
-const Inventario = lazy(() => import('../modules/inventario/Inventario.jsx'));
-const Operations = lazy(() => import('../views/Operations.jsx'));
-const OperationsHome = lazy(() => import('../views/OperationsHome.jsx'));
-const Personal = lazy(() => import('../modules/personal/Personal.jsx'));
-const Workers = lazy(() => import('../views/Workers.jsx'));
-const LaborActivities = lazy(() => import('../views/LaborActivities.jsx'));
-const FarmsAndLots = lazy(() => import('../views/FarmsAndLots.jsx'));
+const Auth = lazy(() => import('#pages/auth/Auth.jsx'));
+const Economia = lazy(() => import('#pages/finanzas/Economia.jsx'));
+const Finanzas = lazy(() => import('#pages/finanzas/Finanzas.jsx'));
+const Fincas = lazy(() => import('#pages/fincas/Fincas.jsx'));
+const Inventario = lazy(() => import('#pages/inventario/Inventario.jsx'));
+const Operations = lazy(() => import('#pages/operaciones/Operations.jsx'));
+const OperationsHome = lazy(() =>
+  import('#pages/inicio/Inicio.jsx'),
+);
+const Personal = lazy(() => import('#pages/personal/Personal.jsx'));
+const Workers = lazy(() => import('#pages/trabajadores/Trabajadores.jsx'));
+const LaborActivities = lazy(() =>
+  import('#pages/actividades/ActividadesLaborales.jsx'),
+);
+const FarmsAndLots = lazy(() =>
+  import('#pages/fincas/FarmsAndLots.jsx'),
+);
 const SetupWizard = lazy(() =>
-  import('../views/SetupWizard.jsx').then((module) => ({
+  import('#pages/configuracion/SetupWizard.jsx').then((module) => ({
     default: module.SetupWizard,
   })),
 );

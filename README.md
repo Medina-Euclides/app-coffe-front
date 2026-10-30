@@ -1,16 +1,43 @@
-# React + Vite
+# CafeSmart Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Interfaz web construida con React y Vite.
 
-Currently, two official plugins are available:
+## Estructura de `src`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```text
+src/
+├── App.jsx
+├── main.jsx
+├── index.css
+├── components/
+│   ├── ui/          # Componentes shadcn/ui; mantenerlos independientes de las pantallas
+│   ├── layout/      # Estructura y navegación global
+│   └── shared/      # Componentes compartidos entre áreas
+├── pages/
+│   ├── inicio/
+│   ├── trabajadores/
+│   ├── actividades/
+│   ├── fincas/
+│   ├── operaciones/
+│   ├── finanzas/
+│   ├── personal/
+│   ├── inventario/
+│   ├── auth/
+│   ├── configuracion/
+│   └── asistente/
+├── routes/          # Definición de rutas y guardas de acceso
+├── lib/             # Utilidades, formato, almacenamiento y constantes
+├── hooks/           # Hooks reutilizables globales
+└── services/        # API y sincronización
+```
 
-## React Compiler
+Cada carpeta dentro de `pages/` contiene las pantallas de esa área y, cuando aplica,
+su propia carpeta `components/`. Mantén ahí los componentes de uso local; comparte
+componentes entre áreas desde `components/shared/`. Los componentes base de shadcn
+permanecen en `components/ui/`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Comandos
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- `npm run dev`: inicia el servidor local de Vite.
+- `npm run build`: genera la compilación de producción.
+- `npm run lint`: ejecuta Oxlint.

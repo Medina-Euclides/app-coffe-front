@@ -11,8 +11,10 @@
   },
   "imports": {
     "#components/*": "./src/components/*.jsx",
+    "#pages/*": "./src/pages/*",
     "#lib/*": "./src/lib/*.js",
     "#hooks/*": "./src/hooks/*.js",
+    "#services/*": "./src/services/*.js",
     "#/*": "./src/*"
   },
   "dependencies": {

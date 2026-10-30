@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import RoutesApp from './routes/RoutesApp.jsx';
-import { leerLocal } from './utils/storage.js';
+import { leerLocal } from '#lib/storage';
 
 function AppRoutes() {
   const navigate = useNavigate();
