@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Auth from './Auth';
+import Auth from './views/Auth.jsx';
 import Onboarding from './components/Onboarding';
 import Fincas from './modules/fincas/Fincas';
 import Personal from './modules/personal/Personal';
