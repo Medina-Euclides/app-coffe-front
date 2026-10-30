@@ -8,7 +8,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "#components/ui/sidebar"
+import { NavLink, useLocation } from "react-router-dom"
 import {
   ChartNoAxesCombined,
   ClipboardList,
@@ -18,11 +20,11 @@ import {
 } from "lucide-react"
 
 const opcionesNavegacion = [
-  { titulo: "Inicio", icono: LayoutDashboard },
-  { titulo: "Fincas", icono: Sprout },
-  { titulo: "Operaciones", icono: ClipboardList },
-  { titulo: "Inventario", icono: Package },
-  { titulo: "Finanzas", icono: ChartNoAxesCombined },
+  { titulo: "Inicio", icono: LayoutDashboard, ruta: "/inicio" },
+  { titulo: "Fincas", icono: Sprout, ruta: "/fincas" },
+  { titulo: "Operaciones", icono: ClipboardList, ruta: "/operaciones" },
+  { titulo: "Inventario", icono: Package, ruta: "/inventario" },
+  { titulo: "Finanzas", icono: ChartNoAxesCombined, ruta: "/finanzas" },
 ]
 
 function obtenerNombreMostrar(usuario) {
@@ -36,7 +38,9 @@ function obtenerNombreMostrar(usuario) {
   return "Usuario"
 }
 
-export const SidebarApp = ({ usuario }) => {
+export const SidebarApp = ({ usuario, onLogout }) => {
+  const { pathname } = useLocation()
+  const { isMobile, setOpenMobile } = useSidebar()
   const nombreMostrar = obtenerNombreMostrar(usuario)
   const inicialMostrar = nombreMostrar.charAt(0).toUpperCase()
 
@@ -54,9 +58,9 @@ export const SidebarApp = ({ usuario }) => {
             />
           </div>
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight text-[#183d2b]">
+            <p className="truncate text-lg font-bold tracking-tight text-[#183d2b]">
               CafeSmart
-            </h1>
+            </p>
             <p className="mt-0.5 text-xs font-medium tracking-wide text-[#718071]">
               Gestión Cafetera
             </p>
@@ -70,29 +74,40 @@ export const SidebarApp = ({ usuario }) => {
             MENÚ PRINCIPAL
           </SidebarGroupLabel>
           <SidebarMenu className="gap-1.5">
-            {opcionesNavegacion.map(({ titulo, icono: Icono }, index) => (
-              <SidebarMenuItem key={titulo}>
-                <SidebarMenuButton
-                  type="button"
-                  size="lg"
-                  isActive={index === 0}
-                  className={
-                    index === 0
-                      ? "h-11 rounded-xl bg-[#e7f0e3] px-3 font-semibold text-[#214b32] shadow-sm hover:bg-[#dcebd8] hover:text-[#173d2b] data-active:bg-[#e7f0e3] data-active:text-[#214b32]"
-                      : "h-11 rounded-xl px-3 font-medium text-[#68766b] hover:bg-[#eef2e9] hover:text-[#214b32] active:bg-[#e7f0e3] active:text-[#214b32]"
-                  }
-                >
-                  <Icono aria-hidden="true" className="size-[18px]" />
-                  <span>{titulo}</span>
-                  {index === 0 && (
-                    <span
-                      aria-hidden="true"
-                      className="ml-auto size-1.5 rounded-full bg-[#4d8057]"
-                    />
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {opcionesNavegacion.map(({ titulo, icono: Icono, ruta }) => {
+              const estaActiva = pathname === ruta
+
+              return (
+                <SidebarMenuItem key={titulo}>
+                  <SidebarMenuButton
+                    render={
+                      <NavLink
+                        onClick={() => {
+                          if (isMobile) setOpenMobile(false)
+                        }}
+                        to={ruta}
+                      />
+                    }
+                    size="lg"
+                    isActive={estaActiva}
+                    className={
+                      estaActiva
+                        ? "h-11 rounded-xl bg-[#e7f0e3] px-3 font-semibold text-[#214b32] shadow-sm hover:bg-[#dcebd8] hover:text-[#173d2b] data-active:bg-[#e7f0e3] data-active:text-[#214b32]"
+                        : "h-11 rounded-xl px-3 font-medium text-[#68766b] hover:bg-[#eef2e9] hover:text-[#214b32] active:bg-[#e7f0e3] active:text-[#214b32]"
+                    }
+                  >
+                    <Icono aria-hidden="true" className="size-[18px]" />
+                    <span>{titulo}</span>
+                    {estaActiva && (
+                      <span
+                        aria-hidden="true"
+                        className="ml-auto size-1.5 rounded-full bg-[#4d8057]"
+                      />
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
@@ -118,6 +133,15 @@ export const SidebarApp = ({ usuario }) => {
             </p>
           </div>
         </div>
+        {onLogout && (
+          <button
+            className="mt-2 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-[#68766b] transition-colors hover:bg-[#eef2e9] hover:text-[#214b32] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#214b32]"
+            onClick={onLogout}
+            type="button"
+          >
+            Cerrar sesión
+          </button>
+        )}
       </SidebarFooter>
     </Sidebar>
   )

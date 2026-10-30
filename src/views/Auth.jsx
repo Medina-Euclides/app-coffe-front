@@ -6,7 +6,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 
@@ -42,8 +41,12 @@ export function AuthField({
   );
 }
 
-export default function Auth({ onLogin }) {
-  const [esRegistro, setEsRegistro] = useState(false);
+export default function Auth({
+  initialMode = 'login',
+  onLogin,
+  onModeChange,
+}) {
+  const [esRegistro, setEsRegistro] = useState(initialMode === 'register');
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [nombreProductor, setNombreProductor] = useState('');
@@ -92,8 +95,10 @@ export default function Auth({ onLogin }) {
   };
 
   const alternarModo = () => {
-    setEsRegistro((modoActual) => !modoActual);
+    const nuevoModo = !esRegistro;
+    setEsRegistro(nuevoModo);
     setError('');
+    onModeChange?.(nuevoModo);
   };
 
   return (
@@ -111,9 +116,9 @@ export default function Auth({ onLogin }) {
             <p className="text-sm font-semibold tracking-wide text-emerald-800" translate="no">
               CafeSmart
             </p>
-            <CardTitle className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
               {esRegistro ? 'Crea tu cuenta' : 'Bienvenido de nuevo'}
-            </CardTitle>
+            </h1>
             <CardDescription className="text-pretty text-sm leading-relaxed text-slate-600">
               {esRegistro
                 ? 'Regístrate para empezar a gestionar tu producción de café.'
@@ -131,7 +136,7 @@ export default function Auth({ onLogin }) {
                 label="Nombre completo"
                 name="name"
                 onChange={(e) => setNombreProductor(e.target.value)}
-                placeholder="Ej.: Juan Pérez"
+                placeholder="Ej.: Juan Pérez…"
                 type="text"
                 value={nombreProductor}
               />
@@ -143,7 +148,7 @@ export default function Auth({ onLogin }) {
               label="Correo electrónico"
               name="email"
               onChange={(e) => setCorreo(e.target.value)}
-              placeholder="productor@cafesmart.com"
+              placeholder="Ej.: productor@cafesmart.com…"
               spellCheck={false}
               type="email"
               value={correo}
@@ -155,7 +160,7 @@ export default function Auth({ onLogin }) {
               label="Contraseña"
               name="password"
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Ingresa tu contraseña"
+              placeholder="Ingresa tu contraseña…"
               type="password"
               value={password}
             />
