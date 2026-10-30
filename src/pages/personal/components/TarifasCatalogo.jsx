@@ -8,6 +8,10 @@ export default function TarifasCatalogo({
   actividades,
   nuevaActividadNombre,
   setNuevaActividadNombre,
+  nuevaActividadDescripcion,
+  setNuevaActividadDescripcion,
+  nuevaActividadEsCosecha,
+  setNuevaActividadEsCosecha,
   onAgregarActividad,
   onEliminarActividad,
   campo,
@@ -87,11 +91,37 @@ export default function TarifasCatalogo({
               type="text"
               value={nuevaActividadNombre}
               onChange={(e) => setNuevaActividadNombre(e.target.value)}
-              maxLength={100}
+              maxLength={150}
               required
               style={campo}
               placeholder="Ej. Preparación de almácigo"
             />
+          </label>
+          <label style={etiqueta}>
+            Descripción (Opcional)
+            <input
+              type="text"
+              value={nuevaActividadDescripcion}
+              onChange={(e) => setNuevaActividadDescripcion(e.target.value)}
+              maxLength={150}
+              style={campo}
+              placeholder="Detalles de la actividad"
+            />
+          </label>
+          <label
+            style={{
+              ...etiqueta,
+              alignItems: 'center',
+              display: 'flex',
+              gap: 8,
+            }}
+          >
+            <input
+              checked={nuevaActividadEsCosecha}
+              onChange={(e) => setNuevaActividadEsCosecha(e.target.checked)}
+              type="checkbox"
+            />
+            Es una actividad de recolección (permite pago por kilogramo)
           </label>
           <button type="submit" style={boton}>
             Agregar actividad
@@ -102,9 +132,9 @@ export default function TarifasCatalogo({
           Actividades actuales
         </h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {actividades.map((a) => (
+          {actividades.map((activity) => (
             <div
-              key={a}
+              key={activity.id || activity.name}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -117,10 +147,16 @@ export default function TarifasCatalogo({
                 boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
               }}
             >
-              <span style={{ fontWeight: 600, color: '#334155', fontSize: '0.95rem' }}>{a}</span>
+              <span style={{ color: '#334155', fontSize: '0.95rem' }}>
+                <strong>{activity.name}</strong>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.85rem' }}>
+                  {activity.description ||
+                    (activity.is_harvest ? 'Recolección' : 'Pago por jornal')}
+                </span>
+              </span>
               <button
                 type="button"
-                onClick={() => onEliminarActividad(a)}
+                onClick={() => onEliminarActividad(activity)}
                 style={{
                   background: '#fef2f2',
                   color: '#dc2626',

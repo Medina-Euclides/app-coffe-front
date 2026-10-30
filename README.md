@@ -74,3 +74,10 @@ La gestión de trabajadores consume `GET`/`POST /labor/workers/` y
 opcionales según el modelo. El cliente conserva una copia local para su
 consulta y usa la desactivación/reactivación para preservar el historial de
 jornadas; no ofrece borrado físico desde la interfaz.
+
+La gestión de tipos de actividad consume el CRUD de
+`/labor/activity-types/` con los campos `name`, `description` e `is_harvest`.
+Este último indica si la actividad admite pago por kilogramo y también se usa
+al asignar labores desde Personal. El cliente conserva una copia local para
+consulta, pero los cambios requieren conexión; el servidor impide borrar
+actividades asociadas a jornadas existentes.

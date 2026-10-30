@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { hoy, dinero } from '#lib/formatters';
 import { leerLocal, guardarLocal } from '#lib/storage';
-import { ACTIVIDADES_INICIALES } from '#lib/constants';
 import { api } from '#services/api';
+import {
+  cargarCacheActividades,
+  guardarCacheActividades,
+} from '#services/activityStorage';
 import { guardarCacheTrabajadores } from '#services/workerStorage';
 import FincaPersonalFilter from './components/FincaPersonalFilter.jsx';
 import LiquidacionesList from './components/LiquidacionesList.jsx';
@@ -24,7 +27,7 @@ export default function Personal({ usuario, subSeccion }) {
     leerLocal(`cafesmart_lotes_${userId}`, [])
   );
   const [actividades, setActividades] = useState(() =>
-    leerLocal(`cafesmart_actividades_${userId}`, ACTIVIDADES_INICIALES)
+    cargarCacheActividades(userId)
   );
   const [jornadas, setJornadas] = useState(() =>
     leerLocal(`cafesmart_jornadas_${userId}`, [])
@@ -48,11 +51,14 @@ export default function Personal({ usuario, subSeccion }) {
   const [identificacionTrabajador, setIdentificacionTrabajador] = useState('');
   const [telefonoTrabajador, setTelefonoTrabajador] = useState('');
   const [errorTrabajadores, setErrorTrabajadores] = useState('');
+  const [errorActividades, setErrorActividades] = useState('');
   const [nuevaActividadNombre, setNuevaActividadNombre] = useState('');
+  const [nuevaActividadDescripcion, setNuevaActividadDescripcion] = useState('');
+  const [nuevaActividadEsCosecha, setNuevaActividadEsCosecha] = useState(false);
   const [trabajadorId, setTrabajadorId] = useState('');
   const [loteId, setLoteId] = useState('');
-  const [actividadSeleccionada, setActividadSeleccionada] = useState('Recolección de café');
-  const [modalidad, setModalidad] = useState('recoleccion');
+  const [actividadSeleccionada, setActividadSeleccionada] = useState('');
+  const [modalidad, setModalidad] = useState('jornal');
   const [fecha, setFecha] = useState(hoy());
 
   const [cantidadesLiquidacion, setCantidadesLiquidacion] = useState({});
@@ -95,6 +101,34 @@ export default function Personal({ usuario, subSeccion }) {
     };
   }, [userId]);
 
+  useEffect(() => {
+    let active = true;
+    api.activities
+      .list()
+      .then((loadedActivities) => {
+        if (!active) return;
+        setActividades(loadedActivities);
+        guardarCacheActividades(userId, loadedActivities);
+        const selectedActivity = loadedActivities[0];
+        setActividadSeleccionada(selectedActivity?.name || '');
+        setModalidad(
+          selectedActivity?.is_harvest ? 'recoleccion' : 'jornal',
+        );
+        setErrorActividades('');
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error('Error al cargar actividades para Personal:', error);
+        setErrorActividades(
+          `${error.message} Se muestran las actividades guardadas en este dispositivo.`,
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
   // Recargar datos al enfocar
   useEffect(() => {
     const actualizar = () => {
@@ -113,7 +147,7 @@ export default function Personal({ usuario, subSeccion }) {
   }, [trabajadores, userId]);
 
   useEffect(() => {
-    guardarLocal(`cafesmart_actividades_${userId}`, actividades);
+    guardarCacheActividades(userId, actividades);
   }, [actividades, userId]);
 
   useEffect(() => {
@@ -179,7 +213,7 @@ export default function Personal({ usuario, subSeccion }) {
       0
     );
 
-  const agregarActividad = (e) => {
+  const agregarActividad = async (e) => {
     e.preventDefault();
     const nombre = nuevaActividadNombre.trim();
 
@@ -188,38 +222,68 @@ export default function Personal({ usuario, subSeccion }) {
       return;
     }
 
-    if (actividades.some((a) => a.toLowerCase() === nombre.toLowerCase())) {
+    if (
+      actividades.some(
+        (activity) =>
+          activity.name.toLowerCase() === nombre.toLowerCase(),
+      )
+    ) {
       alert('Esta actividad ya existe.');
       return;
     }
 
-    setActividades((anteriores) => [...anteriores, nombre]);
-    setActividadSeleccionada(nombre);
-    setModalidad(nombre === 'Recolección de café' ? 'recoleccion' : 'jornal');
-    setNuevaActividadNombre('');
-    alert('Actividad agregada correctamente.');
+    try {
+      const newActivity = await api.activities.create({
+        name: nombre,
+        description: nuevaActividadDescripcion.trim(),
+        is_harvest: nuevaActividadEsCosecha,
+      });
+      setActividades((previous) => [...previous, newActivity]);
+      setActividadSeleccionada(newActivity.name);
+      setModalidad(newActivity.is_harvest ? 'recoleccion' : 'jornal');
+      setNuevaActividadNombre('');
+      setNuevaActividadDescripcion('');
+      setNuevaActividadEsCosecha(false);
+      setErrorActividades('');
+      alert('Actividad agregada correctamente.');
+    } catch (error) {
+      console.error('Error al crear tipo de actividad:', error);
+      alert(error.message || 'No se pudo agregar la actividad.');
+    }
   };
 
-  const eliminarActividad = (actividadAEliminar) => {
-    if (actividades.length <= 1) {
-      alert('Debes mantener al menos una actividad registrada en el catálogo.');
+  const eliminarActividad = async (activityToDelete) => {
+    if (!activityToDelete.id) {
+      alert('Esta actividad solo existe en la caché local. Conéctate y vuelve a cargarla antes de eliminar.');
       return;
     }
 
     const confirmado = window.confirm(
-      `¿Estás seguro de que deseas eliminar la actividad "${actividadAEliminar}"?`
+      `¿Eliminar la actividad "${activityToDelete.name}"? Si ya está asociada a jornadas, el servidor impedirá eliminarla.`,
     );
     if (!confirmado) return;
 
-    setActividades((anteriores) => {
-      const filtradas = anteriores.filter((a) => a !== actividadAEliminar);
-      if (actividadSeleccionada === actividadAEliminar) {
-        setActividadSeleccionada(filtradas[0]);
+    try {
+      await api.activities.delete(activityToDelete.id);
+      const remaining = actividades.filter(
+        (activity) => String(activity.id) !== String(activityToDelete.id),
+      );
+      setActividades(remaining);
+      if (actividadSeleccionada === activityToDelete.name) {
+        setActividadSeleccionada(remaining[0]?.name || '');
+        setModalidad(remaining[0]?.is_harvest ? 'recoleccion' : 'jornal');
       }
-      return filtradas;
-    });
+      alert(`La actividad "${activityToDelete.name}" fue eliminada.`);
+    } catch (error) {
+      console.error('Error al eliminar tipo de actividad:', error);
+      alert(error.message || 'No se pudo eliminar la actividad.');
+    }
+  };
 
-    alert(`La actividad "${actividadAEliminar}" fue eliminada.`);
+  const cambiarActividadSeleccionada = (name) => {
+    setActividadSeleccionada(name);
+    const activity = actividades.find((item) => item.name === name);
+    setModalidad(activity?.is_harvest ? 'recoleccion' : 'jornal');
   };
 
   const guardarTrabajador = async (e) => {
@@ -273,6 +337,14 @@ export default function Personal({ usuario, subSeccion }) {
 
   const guardarJornada = (e) => {
     e.preventDefault();
+
+    const activity = actividades.find(
+      (item) => item.name === actividadSeleccionada,
+    );
+    if (!activity) {
+      alert('Selecciona un tipo de actividad registrado.');
+      return;
+    }
 
     if (!fincaSeleccionada) {
       alert('Primero debes seleccionar una finca en la parte superior.');
@@ -620,6 +692,22 @@ export default function Personal({ usuario, subSeccion }) {
           {errorTrabajadores}
         </p>
       )}
+      {errorActividades && (
+        <p
+          aria-live="polite"
+          role="status"
+          style={{
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 10,
+            color: '#92400e',
+            marginBottom: 20,
+            padding: 12,
+          }}
+        >
+          {errorActividades}
+        </p>
+      )}
 
       <FincaPersonalFilter
         fincas={fincas}
@@ -668,7 +756,7 @@ export default function Personal({ usuario, subSeccion }) {
           setTrabajadorId={setTrabajadorId}
           actividades={actividades}
           actividadSeleccionada={actividadSeleccionada}
-          setActividadSeleccionada={setActividadSeleccionada}
+          setActividadSeleccionada={cambiarActividadSeleccionada}
           lotesDeFinca={lotesDeFinca}
           loteId={loteId}
           setLoteId={setLoteId}
@@ -712,6 +800,10 @@ export default function Personal({ usuario, subSeccion }) {
           actividades={actividades}
           nuevaActividadNombre={nuevaActividadNombre}
           setNuevaActividadNombre={setNuevaActividadNombre}
+          nuevaActividadDescripcion={nuevaActividadDescripcion}
+          setNuevaActividadDescripcion={setNuevaActividadDescripcion}
+          nuevaActividadEsCosecha={nuevaActividadEsCosecha}
+          setNuevaActividadEsCosecha={setNuevaActividadEsCosecha}
           onAgregarActividad={agregarActividad}
           onEliminarActividad={eliminarActividad}
           campo={campo}

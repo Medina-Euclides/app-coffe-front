@@ -62,17 +62,18 @@ export default function LaborForm({
         Actividad
         <select
           value={actividadSeleccionada}
-          onChange={(e) => {
-            const act = e.target.value;
-            setActividadSeleccionada(act);
-            setModalidad(act === 'Recolección de café' ? 'recoleccion' : 'jornal');
-          }}
+          onChange={(e) => setActividadSeleccionada(e.target.value)}
           required
           style={campo}
         >
-          {actividades.map((a) => (
-            <option key={a} value={a}>
-              {a}
+          <option value="">Selecciona un tipo de actividad...</option>
+          {actividades.map((activity) => (
+            <option
+              key={activity.id || activity.name}
+              value={activity.name}
+            >
+              {activity.name}
+              {activity.is_harvest ? ' (recolección)' : ''}
             </option>
           ))}
         </select>
@@ -110,7 +111,12 @@ export default function LaborForm({
           onChange={(e) => setModalidad(e.target.value)}
           style={campo}
         >
-          <option value="recoleccion">Por kilogramo — {dinero(Number(tarifaKg))}</option>
+          {actividades.find((activity) => activity.name === actividadSeleccionada)
+            ?.is_harvest && (
+            <option value="recoleccion">
+              Por kilogramo — {dinero(Number(tarifaKg))}
+            </option>
+          )}
           <option value="jornal">Por jornal/día — {dinero(Number(tarifaJornal))}</option>
         </select>
       </label>

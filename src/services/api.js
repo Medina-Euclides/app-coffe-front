@@ -47,6 +47,7 @@ function getErrorMessage(data, status) {
     is_active: 'Estado',
     identification: 'Identificación',
     phone: 'Teléfono',
+    is_harvest: 'Actividad de recolección',
   };
   const fieldErrors = Object.entries(data || {})
     .map(([field, messages]) => {
@@ -96,6 +97,14 @@ function normalizeWorker(worker) {
     nombre: [firstName, lastName].filter(Boolean).join(' '),
     cedula: worker.identification || '',
     estado: worker.is_active ? 'activo' : 'inactivo',
+  };
+}
+
+function normalizeActivity(activity) {
+  return {
+    ...activity,
+    description: activity.description || '',
+    is_harvest: Boolean(activity.is_harvest),
   };
 }
 
@@ -269,5 +278,25 @@ export const api = {
       normalizeWorker(
         await apiRequest(`/labor/workers/${id}/`, { method: 'PATCH', data }),
       ),
+  },
+  activities: {
+    list: async () =>
+      normalizeList(
+        await apiRequest('/labor/activity-types/'),
+        'tipos de actividad',
+      ).map(normalizeActivity),
+    create: async (data) =>
+      normalizeActivity(
+        await apiRequest('/labor/activity-types/', { method: 'POST', data }),
+      ),
+    update: async (id, data) =>
+      normalizeActivity(
+        await apiRequest(`/labor/activity-types/${id}/`, {
+          method: 'PATCH',
+          data,
+        }),
+      ),
+    delete: (id) =>
+      apiRequest(`/labor/activity-types/${id}/`, { method: 'DELETE' }),
   },
 };
