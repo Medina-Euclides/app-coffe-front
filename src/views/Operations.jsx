@@ -1,327 +1,698 @@
+import { useMemo, useState } from 'react';
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
+  CalendarDays,
   ClipboardList,
-  Coffee,
+  Eye,
+  MapPin,
+  Pencil,
+  Plus,
   Sprout,
+  UserRound,
+  UsersRound,
+  X,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import EmptyState from '../components/gestion-finca/EmptyState.jsx';
+import ManagementPage from '../components/gestion-finca/ManagementPage.jsx';
+import { Button } from '../components/ui/button.jsx';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../components/ui/card.jsx';
-import { leerLocal } from '../utils/storage.js';
-import { formatoDinero, hoy } from '../utils/formatters.js';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog.jsx';
+import { hoy } from '../utils/formatters.js';
 
-const accionesRapidas = [
+const TRABAJADORES = [
+  'María Fernanda López',
+  'Carlos Andrés Rojas',
+  'Jorge Eliécer Gómez',
+  'Lucía Ramírez',
+  'Pedro Antonio Ruiz',
+];
+
+const LOTES = ['Lote El Roble', 'Lote La Esperanza', 'Lote Alto del Café'];
+
+const ACTIVIDADES = [
+  'Deshierbe / Plateo',
+  'Abonado / Fertilización',
+  'Poda y Zoca',
+  'Ahoyado y Siembra',
+  'Fumigación / Control de plagas',
+];
+
+const RECOLECCIONES = [
   {
-    titulo: 'Recolección de café',
-    descripcion: 'Asigna la labor y registra los kilos al liquidar.',
-    ruta: '/operaciones/registrar-recoleccion',
-    icono: Sprout,
-    color: 'bg-emerald-100 text-emerald-800',
+    id: 'recoleccion-1',
+    fecha: '2026-10-29',
+    trabajador: 'María Fernanda López',
+    lote: 'Lote El Roble',
+    kilogramos: '36.5',
   },
   {
-    titulo: 'Jornada laboral',
-    descripcion: 'Registra una labor por jornal para un trabajador.',
-    ruta: '/operaciones/registrar-jornada',
-    icono: ClipboardList,
-    color: 'bg-sky-100 text-sky-800',
+    id: 'recoleccion-2',
+    fecha: '2026-10-29',
+    trabajador: 'Carlos Andrés Rojas',
+    lote: 'Lote El Roble',
+    kilogramos: '42',
   },
   {
-    titulo: 'Registrar egreso',
-    descripcion: 'Anota gastos de la finca y pagos de operación.',
-    ruta: '/finanzas/registrar-egreso',
-    icono: ArrowDownLeft,
-    color: 'bg-rose-100 text-rose-800',
-  },
-  {
-    titulo: 'Registrar venta',
-    descripcion: 'Registra los kilos vendidos y el valor recibido.',
-    ruta: '/finanzas/registrar-venta',
-    icono: ArrowUpRight,
-    color: 'bg-amber-100 text-amber-800',
+    id: 'recoleccion-3',
+    fecha: '2026-10-28',
+    trabajador: 'Jorge Eliécer Gómez',
+    lote: 'Lote La Esperanza',
+    kilogramos: '31.5',
   },
 ];
 
-const formatoCantidad = (valor) =>
-  Number(valor || 0).toLocaleString('es-CO', {
-    maximumFractionDigits: 2,
-  });
+const JORNADAS = [
+  {
+    id: 'jornada-1',
+    fecha: '2026-10-29',
+    trabajador: 'Lucía Ramírez',
+    actividad: 'Deshierbe / Plateo',
+    lote: 'Lote Alto del Café',
+  },
+  {
+    id: 'jornada-2',
+    fecha: '2026-10-28',
+    trabajador: 'Pedro Antonio Ruiz',
+    actividad: 'Abonado / Fertilización',
+    lote: 'Lote El Roble',
+  },
+  {
+    id: 'jornada-3',
+    fecha: '2026-10-27',
+    trabajador: 'María Fernanda López',
+    actividad: 'Poda y Zoca',
+    lote: 'Lote La Esperanza',
+  },
+];
 
-const formatoConteoMovimientos = (cantidad) =>
-  `${cantidad} ${cantidad === 1 ? 'movimiento' : 'movimientos'}`;
+const inputClassName =
+  'h-11 w-full rounded-xl border border-[#dfe5dc] bg-white px-3 text-sm text-[#294533] outline-none transition focus-visible:border-[#5b805e] focus-visible:ring-3 focus-visible:ring-[#5b805e]/20';
 
-function obtenerResumenDelDia(usuarioId, fechaHoy) {
-  const jornadas = leerLocal(`cafesmart_jornadas_${usuarioId}`, []);
-  const movimientos = leerLocal(`cafesmart_movimientos_${usuarioId}`, []);
-
-  const jornadasHoy = jornadas.filter((jornada) => jornada.fecha === fechaHoy);
-  const movimientosHoy = movimientos.filter(
-    (movimiento) => movimiento.fecha === fechaHoy,
+function Field({ children, label, htmlFor }) {
+  return (
+    <div className="space-y-1.5">
+      <label
+        className="text-sm font-medium text-[#354b3a]"
+        htmlFor={htmlFor}
+      >
+        {label}
+      </label>
+      {children}
+    </div>
   );
-  const recolecciones = jornadasHoy.filter(
-    (jornada) => jornada.modalidad === 'recoleccion',
-  );
-  const labores = jornadasHoy.filter((jornada) => jornada.modalidad !== 'recoleccion');
-  const ingresos = movimientosHoy.filter(
-    (movimiento) =>
-      movimiento.tipo === 'ingreso' || movimiento.tipo === 'venta',
-  );
-  const egresos = movimientosHoy.filter(
-    (movimiento) =>
-      movimiento.tipo === 'gasto' || movimiento.tipo === 'egreso',
-  );
-
-  const actividades = [
-    ...jornadasHoy.map((jornada) => ({
-      id: `jornada-${jornada.id}`,
-      momento: Number(jornada.id) || 0,
-      titulo:
-        jornada.modalidad === 'recoleccion'
-          ? 'Recolección de café'
-          : jornada.actividad || 'Jornada laboral',
-      detalle:
-        jornada.modalidad === 'recoleccion'
-          ? Number(jornada.cantidad) > 0
-            ? `${formatoCantidad(jornada.cantidad)} kg · ${jornada.lote || 'Lote'}`
-            : `${jornada.lote || 'Lote'} · Kilos pendientes de liquidar`
-          : `${jornada.lote || 'Lote'} · ${jornada.estado === 'pagado' ? 'Liquidada' : 'Pendiente'}`,
-      valor:
-        jornada.modalidad === 'recoleccion' && Number(jornada.cantidad) > 0
-          ? `${formatoCantidad(jornada.cantidad)} kg`
-          : '',
-      icono: jornada.modalidad === 'recoleccion' ? Sprout : ClipboardList,
-      estilo: 'bg-emerald-100 text-emerald-800',
-    })),
-    ...movimientosHoy.map((movimiento) => {
-      const esIngreso =
-        movimiento.tipo === 'ingreso' || movimiento.tipo === 'venta';
-      const esVenta =
-        esIngreso && movimiento.categoria === 'Venta de café';
-
-      return {
-        id: `movimiento-${movimiento.id}`,
-        momento: Number(String(movimiento.id).split('-')[0]) || 0,
-        titulo: esVenta ? 'Venta de café' : esIngreso ? 'Ingreso' : 'Egreso',
-        detalle: movimiento.descripcion || movimiento.categoria || 'Movimiento financiero',
-        valor: formatoDinero(movimiento.valor),
-        complemento:
-          esVenta && Number(movimiento.cantidadKg) > 0
-            ? `${formatoCantidad(movimiento.cantidadKg)} kg`
-            : '',
-        icono: esIngreso ? ArrowUpRight : ArrowDownLeft,
-        estilo: esIngreso
-          ? 'bg-amber-100 text-amber-800'
-          : 'bg-rose-100 text-rose-800',
-      };
-    }),
-  ].sort((a, b) => b.momento - a.momento);
-
-  return {
-    recolecciones,
-    labores,
-    ingresos,
-    egresos,
-    actividades,
-  };
 }
 
-export default function Operations({ usuario }) {
-  const fechaHoy = hoy();
-  const resumen = obtenerResumenDelDia(usuario?.id || 'default', fechaHoy);
-  const fechaLegible = new Intl.DateTimeFormat('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(`${fechaHoy}T12:00:00`));
-
-  const ingresosTotales = resumen.ingresos.reduce(
-    (total, movimiento) => total + Number(movimiento.valor || 0),
-    0,
-  );
-  const egresosTotales = resumen.egresos.reduce(
-    (total, movimiento) => total + Number(movimiento.valor || 0),
-    0,
-  );
-  const indicadores = [
-    {
-      etiqueta: 'Recolecciones',
-      valor: resumen.recolecciones.length,
-      detalle: 'registradas hoy',
-      estilo: 'text-emerald-800',
-      icono: Sprout,
-    },
-    {
-      etiqueta: 'Jornadas',
-      valor: resumen.labores.length,
-      detalle: 'registradas hoy',
-      estilo: 'text-sky-800',
-      icono: ClipboardList,
-    },
-    {
-      etiqueta: 'Ingresos',
-      valor: formatoDinero(ingresosTotales),
-      detalle: formatoConteoMovimientos(resumen.ingresos.length),
-      estilo: 'text-amber-800',
-      icono: ArrowUpRight,
-    },
-    {
-      etiqueta: 'Egresos',
-      valor: formatoDinero(egresosTotales),
-      detalle: formatoConteoMovimientos(resumen.egresos.length),
-      estilo: 'text-rose-800',
-      icono: ArrowDownLeft,
-    },
+function OperationsTabs({ section }) {
+  const tabs = [
+    { label: 'Recolección', to: '/operaciones/recoleccion', id: 'recoleccion' },
+    { label: 'Jornadas laborales', to: '/operaciones/jornadas', id: 'jornadas' },
   ];
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8">
-      <header className="rounded-3xl bg-gradient-to-br from-emerald-950 to-emerald-700 px-6 py-8 text-white shadow-lg shadow-emerald-950/10 sm:px-9 sm:py-10">
-        <p className="text-sm font-semibold tracking-wide text-emerald-100">
-          <span translate="no">CafeSmart</span> · OPERACIONES
-        </p>
-        <h1 className="mt-3 break-words text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-          Hola, {usuario?.nombreProductor || 'Productor'}
-        </h1>
-        <p className="mt-3 text-pretty leading-relaxed text-emerald-50">
-          Registra las actividades de tu finca y consulta el resumen de hoy.
-        </p>
-      </header>
+    <nav
+      aria-label="Secciones de operaciones"
+      className="flex w-full gap-1 overflow-x-auto rounded-xl border border-[#e2e8dd] bg-white p-1 sm:w-fit"
+    >
+      {tabs.map((tab) => (
+        <NavLink
+          aria-current={section === tab.id ? 'page' : undefined}
+          className={`min-h-10 shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48] ${
+            section === tab.id
+              ? 'bg-[#e7f0e3] text-[#214b32]'
+              : 'text-[#68766b] hover:bg-[#f4f6f1] hover:text-[#214b32]'
+          }`}
+          key={tab.id}
+          to={tab.to}
+        >
+          {tab.label}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
 
-      <section aria-labelledby="acciones-rapidas">
-        <div className="mb-4">
-          <h2
-            className="text-xl font-semibold tracking-tight text-slate-900"
-            id="acciones-rapidas"
-          >
-            Accesos rápidos
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Elige una operación para continuar.
+function RecordCard({ onEdit, onView, record, section }) {
+  const isHarvest = section === 'recoleccion';
+  const Icon = isHarvest ? Sprout : ClipboardList;
+
+  return (
+    <article className="rounded-2xl border border-[#e5e9e1] bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${
+            isHarvest
+              ? 'bg-[#e8f2e5] text-[#397248]'
+              : 'bg-[#e9f1f3] text-[#426976]'
+          }`}
+        >
+          <Icon className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="break-words font-semibold text-[#233b2b]">
+              {record.trabajador}
+            </h2>
+            {isHarvest && (
+              <span className="rounded-full bg-[#edf5e9] px-2.5 py-1 text-xs font-semibold text-[#426b48]">
+                Recolección
+              </span>
+            )}
+          </div>
+          <p className="mt-1 break-words text-sm text-[#68766b]">
+            {isHarvest ? 'Café recolectado' : record.actividad}
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {accionesRapidas.map(({ titulo, descripcion, ruta, icono: Icono, color }) => (
-            <Link
-              className="group min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
-              key={ruta}
-              to={ruta}
-            >
-              <Card className="h-full rounded-2xl border border-emerald-950/10 bg-white shadow-sm transition-colors hover:border-emerald-800/30 hover:bg-emerald-50/40">
-                <CardContent className="flex h-full flex-col items-start p-5">
-                  <span
-                    aria-hidden="true"
-                    className={`flex size-11 items-center justify-center rounded-xl ${color}`}
+        {isHarvest && (
+          <p className="shrink-0 text-right">
+            <span className="block text-xl font-bold tabular-nums text-[#214b32]">
+              {record.kilogramos}
+            </span>
+            <span className="text-xs text-[#748074]">kg</span>
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-[#edf0e9] pt-3 text-sm text-[#68766b]">
+        <span className="inline-flex items-center gap-1.5">
+          <CalendarDays aria-hidden="true" className="size-4 text-[#849184]" />
+          {formatearFecha(record.fecha)}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <MapPin aria-hidden="true" className="size-4 text-[#849184]" />
+          {record.lote}
+        </span>
+      </div>
+
+      <div className="mt-4 flex justify-end gap-2">
+        <Button
+          aria-label={`Ver detalle de ${record.trabajador}`}
+          className="h-9 rounded-lg border-[#dfe5dc] px-3 text-[#526254] hover:bg-[#f4f6f1]"
+          onClick={() => onView(record)}
+          type="button"
+          variant="outline"
+        >
+          <Eye aria-hidden="true" />
+          <span>Detalle</span>
+        </Button>
+        <Button
+          aria-label={`Editar registro de ${record.trabajador}`}
+          className="h-9 rounded-lg bg-[#214b32] px-3 text-white hover:bg-[#173d2b]"
+          onClick={() => onEdit(record)}
+          type="button"
+        >
+          <Pencil aria-hidden="true" />
+          <span>Editar</span>
+        </Button>
+      </div>
+    </article>
+  );
+}
+
+function RecordFormDialog({ onClose, record, section }) {
+  const isHarvest = section === 'recoleccion';
+  const [mode, setMode] = useState('individual');
+  const [date, setDate] = useState(() => record?.fecha || hoy());
+  const [lot, setLot] = useState(record?.lote || '');
+  const [workerRows, setWorkerRows] = useState([
+    {
+      worker: record?.trabajador || '',
+      amount: record?.kilogramos || '',
+    },
+  ]);
+  const [activity, setActivity] = useState(record?.actividad || '');
+  const [notice, setNotice] = useState('');
+  const isEditing = Boolean(record);
+
+  const updateWorkerRow = (index, key, value) => {
+    setWorkerRows((rows) =>
+      rows.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [key]: value } : row,
+      ),
+    );
+  };
+
+  const addWorkerRow = () => {
+    setWorkerRows((rows) => [...rows, { worker: '', amount: '' }]);
+  };
+
+  const removeWorkerRow = (index) => {
+    setWorkerRows((rows) => rows.filter((_, rowIndex) => rowIndex !== index));
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    setNotice('Prototipo visual: los datos todavía no se guardan.');
+  };
+
+  return (
+    <Dialog onOpenChange={(open) => !open && onClose()} open>
+      <DialogContent className="max-h-[min(92dvh,52rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-2xl sm:p-6">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+            {isEditing
+              ? `Editar ${isHarvest ? 'recolección' : 'jornada'}`
+              : `Registrar ${isHarvest ? 'recolección' : 'jornada laboral'}`}
+          </DialogTitle>
+          <DialogDescription>
+            {isHarvest
+              ? 'Indica la fecha, el lote y los kilogramos recolectados por cada trabajador.'
+              : 'Registra una ejecución concreta de una actividad en una fecha y lote.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          {isHarvest && !isEditing && (
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium text-[#354b3a]">
+                Modalidad de registro
+              </legend>
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-[#f3f5ef] p-1">
+                {[
+                  { label: 'Individual', value: 'individual' },
+                  { label: 'Consecutivo', value: 'consecutivo' },
+                ].map((option) => (
+                  <button
+                    aria-pressed={mode === option.value}
+                    className={`min-h-10 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48] ${
+                      mode === option.value
+                        ? 'bg-white text-[#214b32] shadow-sm'
+                        : 'text-[#68766b] hover:text-[#214b32]'
+                    }`}
+                    key={option.value}
+                    onClick={() => {
+                      setMode(option.value);
+                      if (option.value === 'individual') {
+                        setWorkerRows((rows) => [rows[0] || { worker: '', amount: '' }]);
+                      }
+                    }}
+                    type="button"
                   >
-                    <Icono className="size-5" />
-                  </span>
-                  <h3 className="mt-4 break-words font-semibold text-slate-900 group-hover:text-emerald-900">
-                    {titulo}
-                  </h3>
-                  <p className="mt-2 text-pretty text-sm leading-relaxed text-slate-600">
-                    {descripcion}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section aria-labelledby="resumen-hoy" className="space-y-4">
-        <div>
-          <h2
-            className="text-xl font-semibold tracking-tight text-slate-900"
-            id="resumen-hoy"
-          >
-            Resumen de hoy
-          </h2>
-          <p className="mt-1 capitalize text-sm text-slate-600">{fechaLegible}</p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {indicadores.map(({ etiqueta, valor, detalle, estilo, icono: Icono }) => (
-            <Card
-              className="min-w-0 rounded-2xl border border-emerald-950/10 bg-white shadow-sm"
-              key={etiqueta}
-            >
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-slate-600">{etiqueta}</p>
-                  <Icono aria-hidden="true" className={`size-5 shrink-0 ${estilo}`} />
-                </div>
-                <p className={`mt-3 break-words text-2xl font-semibold tabular-nums ${estilo}`}>
-                  {valor}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">{detalle}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <Card className="rounded-2xl border border-emerald-950/10 bg-white shadow-sm">
-          <CardHeader className="px-5 pt-5">
-            <CardTitle className="text-base font-semibold text-slate-900">
-              Actividad registrada
-            </CardTitle>
-            <CardDescription>
-              Operaciones con fecha de hoy.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {resumen.actividades.length === 0 ? (
-              <div className="flex flex-col items-center rounded-xl bg-stone-50 px-5 py-8 text-center">
-                <Coffee aria-hidden="true" className="size-8 text-emerald-800" />
-                <p className="mt-3 font-medium text-slate-800">
-                  Aún no hay operaciones registradas hoy
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  Usa los accesos rápidos para agregar la primera.
-                </p>
+                    {option.label}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {resumen.actividades.map(
-                  ({ id, titulo, detalle, valor, complemento, icono: Icono, estilo }) => (
-                    <li
-                      className="flex min-w-0 items-center gap-3 py-4 first:pt-1 last:pb-1"
-                      key={id}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${estilo}`}
-                      >
-                        <Icono className="size-5" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="break-words text-sm font-semibold text-slate-900">
-                          {titulo}
-                        </p>
-                        <p className="break-words text-sm text-slate-600">{detalle}</p>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        {valor && (
-                          <p className="text-sm font-semibold tabular-nums text-slate-900">
-                            {valor}
-                          </p>
-                        )}
-                        {complemento && (
-                          <p className="text-xs text-slate-500">{complemento}</p>
-                        )}
-                      </div>
-                    </li>
-                  ),
+              {mode === 'consecutivo' && (
+                <p className="text-xs leading-5 text-[#748074]">
+                  Agrega a todos los participantes de esta fecha y este lote sin
+                  cerrar el formulario.
+                </p>
+              )}
+            </fieldset>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field htmlFor="operation-date" label="Fecha">
+              <input
+                className={inputClassName}
+                id="operation-date"
+                onChange={(event) => setDate(event.target.value)}
+                required
+                type="date"
+                value={date}
+              />
+            </Field>
+            <Field htmlFor="operation-lot" label="Lote">
+              <select
+                className={inputClassName}
+                id="operation-lot"
+                onChange={(event) => setLot(event.target.value)}
+                required
+                value={lot}
+              >
+                <option disabled value="">
+                  Selecciona un lote
+                </option>
+                {LOTES.map((lotName) => (
+                  <option key={lotName} value={lotName}>
+                    {lotName}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          {isHarvest ? (
+            <section aria-labelledby="participantes-heading" className="space-y-3">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h3
+                    className="text-sm font-semibold text-[#354b3a]"
+                    id="participantes-heading"
+                  >
+                    {mode === 'consecutivo' ? 'Trabajadores participantes' : 'Trabajador'}
+                  </h3>
+                  <p className="mt-1 text-xs text-[#748074]">
+                    Registra la cantidad individual en kilogramos.
+                  </p>
+                </div>
+                {mode === 'consecutivo' && (
+                  <Button
+                    className="h-9 rounded-lg border-[#cddbc9] px-3 text-[#315d3b] hover:bg-[#f0f5ed]"
+                    onClick={addWorkerRow}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Plus aria-hidden="true" />
+                    Agregar trabajador
+                  </Button>
                 )}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </section>
+              </div>
+
+              <div className="space-y-3">
+                {workerRows.map((row, index) => (
+                  <div
+                    className="grid gap-3 rounded-xl border border-[#e5e9e1] bg-[#fbfcf9] p-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-end"
+                    key={`worker-row-${index}`}
+                  >
+                    <Field
+                      htmlFor={`harvest-worker-${index}`}
+                      label={`Trabajador${workerRows.length > 1 ? ` ${index + 1}` : ''}`}
+                    >
+                      <select
+                        className={inputClassName}
+                        id={`harvest-worker-${index}`}
+                        onChange={(event) =>
+                          updateWorkerRow(index, 'worker', event.target.value)
+                        }
+                        required
+                        value={row.worker}
+                      >
+                        <option disabled value="">
+                          Selecciona un trabajador
+                        </option>
+                        {TRABAJADORES.map((worker) => (
+                          <option key={worker} value={worker}>
+                            {worker}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field htmlFor={`harvest-amount-${index}`} label="Cantidad (kg)">
+                      <input
+                        className={inputClassName}
+                        id={`harvest-amount-${index}`}
+                        min="0"
+                        onChange={(event) =>
+                          updateWorkerRow(index, 'amount', event.target.value)
+                        }
+                        placeholder="Ej. 25"
+                        required
+                        step="0.1"
+                        type="number"
+                        value={row.amount}
+                      />
+                    </Field>
+                    {workerRows.length > 1 ? (
+                      <Button
+                        aria-label={`Quitar trabajador ${index + 1}`}
+                        className="size-11 rounded-xl text-[#68766b] hover:bg-[#f2e9e6] hover:text-[#8c4135]"
+                        onClick={() => removeWorkerRow(index)}
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <X aria-hidden="true" />
+                      </Button>
+                    ) : (
+                      <span className="hidden size-11 sm:block" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <>
+              <Field htmlFor="workday-worker" label="Trabajador">
+                <select
+                  className={inputClassName}
+                  id="workday-worker"
+                  required
+                  defaultValue={record?.trabajador || ''}
+                >
+                  <option disabled value="">
+                    Selecciona un trabajador
+                  </option>
+                  {TRABAJADORES.map((worker) => (
+                    <option key={worker} value={worker}>
+                      {worker}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field htmlFor="workday-activity" label="Actividad laboral">
+                <select
+                  className={inputClassName}
+                  id="workday-activity"
+                  onChange={(event) => setActivity(event.target.value)}
+                  required
+                  value={activity}
+                >
+                  <option disabled value="">
+                    Selecciona una actividad
+                  </option>
+                  {ACTIVIDADES.map((activityName) => (
+                    <option key={activityName} value={activityName}>
+                      {activityName}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <p className="rounded-xl border border-[#dce8d9] bg-[#f0f5ed] p-3 text-sm leading-5 text-[#426548]">
+                Las actividades se crean previamente en Gestión de la finca. Cada
+                ejecución se registra como una jornada independiente.
+              </p>
+            </>
+          )}
+
+          {notice && (
+            <p
+              aria-live="polite"
+              className="rounded-lg border border-[#dce8d9] bg-[#f0f5ed] px-3 py-2 text-sm text-[#426548]"
+              role="status"
+            >
+              {notice}
+            </p>
+          )}
+
+          <DialogFooter className="flex-col-reverse gap-2 border-0 bg-transparent p-0 sm:flex-row">
+            <Button
+              className="h-11 rounded-xl border-[#dfe5dc] px-4 text-[#526254] hover:bg-[#f4f6f1]"
+              onClick={onClose}
+              type="button"
+              variant="outline"
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="h-11 rounded-xl bg-[#214b32] px-5 text-white hover:bg-[#173d2b]"
+              type="submit"
+            >
+              {isEditing ? 'Guardar cambios' : 'Guardar registro'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RecordDetailsDialog({ onClose, record, section }) {
+  const isHarvest = section === 'recoleccion';
+
+  return (
+    <Dialog onOpenChange={(open) => !open && onClose()} open>
+      <DialogContent className="rounded-2xl p-5 sm:max-w-md sm:p-6">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+            Detalle de {isHarvest ? 'recolección' : 'jornada'}
+          </DialogTitle>
+          <DialogDescription>
+            Información del registro de {record.trabajador}.
+          </DialogDescription>
+        </DialogHeader>
+        <dl className="space-y-4 rounded-xl bg-[#f7f8f3] p-4">
+          <DetailItem icon={UserRound} label="Trabajador" value={record.trabajador} />
+          <DetailItem icon={CalendarDays} label="Fecha" value={formatearFecha(record.fecha)} />
+          <DetailItem icon={MapPin} label="Lote" value={record.lote} />
+          {isHarvest ? (
+            <DetailItem
+              icon={Sprout}
+              label="Cantidad recolectada"
+              value={`${record.kilogramos} kg`}
+            />
+          ) : (
+            <DetailItem
+              icon={ClipboardList}
+              label="Actividad"
+              value={record.actividad}
+            />
+          )}
+        </dl>
+        <DialogFooter>
+          <Button
+            className="h-10 rounded-xl bg-[#214b32] px-4 text-white hover:bg-[#173d2b]"
+            onClick={onClose}
+            type="button"
+          >
+            Cerrar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DetailItem({ icon: Icon, label, value }) {
+  return (
+    <div className="flex gap-3">
+      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[#65806a]" />
+      <div className="min-w-0">
+        <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
+          {label}
+        </dt>
+        <dd className="mt-1 break-words text-sm font-medium text-[#294533]">
+          {value}
+        </dd>
+      </div>
     </div>
+  );
+}
+
+function formatearFecha(date) {
+  return new Intl.DateTimeFormat('es-CO', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${date}T12:00:00`));
+}
+
+export default function Operations() {
+  const { pathname } = useLocation();
+  const section = pathname.endsWith('/jornadas') ? 'jornadas' : 'recoleccion';
+  const isHarvest = section === 'recoleccion';
+  const records = isHarvest ? RECOLECCIONES : JORNADAS;
+  const [search, setSearch] = useState('');
+  const [lotFilter, setLotFilter] = useState('');
+  const [dialog, setDialog] = useState(null);
+
+  const filteredRecords = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return records.filter((record) => {
+      const searchableText = isHarvest
+        ? `${record.trabajador} ${record.lote} ${record.kilogramos}`
+        : `${record.trabajador} ${record.lote} ${record.actividad}`;
+      const matchesSearch = searchableText.toLocaleLowerCase().includes(query);
+      return matchesSearch && (!lotFilter || record.lote === lotFilter);
+    });
+  }, [isHarvest, lotFilter, records, search]);
+
+  return (
+    <>
+      <ManagementPage
+        actionLabel={`Registrar ${isHarvest ? 'recolección' : 'jornada'}`}
+        description={
+          isHarvest
+            ? 'Registra y consulta el café recolectado por cada trabajador en los diferentes lotes de la finca.'
+            : 'Registra y consulta las labores realizadas por los trabajadores, con su actividad, fecha y lote.'
+        }
+        onAction={() => setDialog({ mode: 'create' })}
+        onSearchChange={setSearch}
+        searchLabel={isHarvest ? 'recolecciones por trabajador o lote' : 'jornadas por trabajador, actividad o lote'}
+        searchValue={search}
+        title={isHarvest ? 'Recolección' : 'Jornadas laborales'}
+      >
+        <OperationsTabs section={section} />
+
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#e5e9e1] bg-white p-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+          <div className="flex items-center gap-2 text-sm text-[#68766b]">
+            {isHarvest ? (
+              <Sprout aria-hidden="true" className="size-4 text-[#56805a]" />
+            ) : (
+              <ClipboardList aria-hidden="true" className="size-4 text-[#53717c]" />
+            )}
+            <span>
+              <strong className="font-semibold text-[#294533]">
+                {filteredRecords.length}
+              </strong>{' '}
+              {isHarvest ? 'registros de recolección' : 'jornadas'}
+            </span>
+            <span className="rounded-full bg-[#f3f5ef] px-2 py-1 text-[11px] font-medium text-[#748074]">
+              Datos de muestra
+            </span>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-[#68766b]">
+            <span className="shrink-0">Filtrar por lote</span>
+            <select
+              aria-label="Filtrar registros por lote"
+              className="h-10 min-w-0 flex-1 rounded-lg border border-[#dfe5dc] bg-white px-3 text-sm text-[#294533] outline-none focus-visible:border-[#5b805e] focus-visible:ring-3 focus-visible:ring-[#5b805e]/20 sm:w-56 sm:flex-none"
+              onChange={(event) => setLotFilter(event.target.value)}
+              value={lotFilter}
+            >
+              <option value="">Todos los lotes</option>
+              {LOTES.map((lot) => (
+                <option key={lot} value={lot}>
+                  {lot}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {filteredRecords.length === 0 ? (
+          <EmptyState
+            description={
+              records.length
+                ? 'Prueba con otro término de búsqueda o selecciona un lote diferente.'
+                : 'Cuando registres una operación, aparecerá aquí.'
+            }
+            title={records.length ? 'No encontramos registros' : 'Aún no hay registros'}
+          />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {filteredRecords.map((record) => (
+              <RecordCard
+                key={record.id}
+                onEdit={(selectedRecord) =>
+                  setDialog({ mode: 'edit', record: selectedRecord })
+                }
+                onView={(selectedRecord) =>
+                  setDialog({ mode: 'view', record: selectedRecord })
+                }
+                record={record}
+                section={section}
+              />
+            ))}
+          </div>
+        )}
+
+        <p className="flex items-center gap-2 text-xs leading-5 text-[#748074]">
+          <UsersRound aria-hidden="true" className="size-4 shrink-0" />
+          Los registros de recolección son independientes de las jornadas laborales.
+        </p>
+      </ManagementPage>
+
+      {(dialog?.mode === 'create' || dialog?.mode === 'edit') && (
+        <RecordFormDialog
+          key={`${section}-${dialog.mode}-${dialog.record?.id || 'new'}`}
+          onClose={() => setDialog(null)}
+          record={dialog.record}
+          section={section}
+        />
+      )}
+      {dialog?.mode === 'view' && (
+        <RecordDetailsDialog
+          onClose={() => setDialog(null)}
+          record={dialog.record}
+          section={section}
+        />
+      )}
+    </>
   );
 }

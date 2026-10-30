@@ -8,6 +8,7 @@ const Finanzas = lazy(() => import('../modules/finanzas/Finanzas.jsx'));
 const Fincas = lazy(() => import('../modules/fincas/Fincas.jsx'));
 const Inventario = lazy(() => import('../modules/inventario/Inventario.jsx'));
 const Operations = lazy(() => import('../views/Operations.jsx'));
+const OperationsHome = lazy(() => import('../views/OperationsHome.jsx'));
 const Personal = lazy(() => import('../modules/personal/Personal.jsx'));
 const Workers = lazy(() => import('../views/Workers.jsx'));
 const LaborActivities = lazy(() => import('../views/LaborActivities.jsx'));
@@ -87,7 +88,7 @@ export default function RoutesApp({
             </AuthenticatedRoute>
           }
         >
-          <Route element={<Operations usuario={usuario} />} path="/inicio" />
+          <Route element={<OperationsHome usuario={usuario} />} path="/inicio" />
           <Route
             element={<Workers usuario={usuario} />}
             path="/gestion/trabajadores"
@@ -105,6 +106,14 @@ export default function RoutesApp({
             path="/fincas"
           />
           <Route element={<Operations usuario={usuario} />} path="/operaciones" />
+          <Route
+            element={<Operations usuario={usuario} />}
+            path="/operaciones/recoleccion"
+          />
+          <Route
+            element={<Operations usuario={usuario} />}
+            path="/operaciones/jornadas"
+          />
           <Route element={<Inventario usuario={usuario} />} path="/inventario" />
           <Route
             element={<Finanzas subSeccion="finanzas-indicadores" usuario={usuario} />}
