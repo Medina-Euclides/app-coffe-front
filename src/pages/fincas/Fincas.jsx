@@ -186,7 +186,9 @@ export default function Fincas({ usuario, subSeccion }) {
   };
 
   const obtenerNombreTrabajador = (id) => {
-    const trabajador = trabajadores.find((trab) => Number(trab.id) === Number(id));
+    const trabajador = trabajadores.find(
+      (trab) => String(trab.id) === String(id),
+    );
     return trabajador ? trabajador.nombre : 'Trabajador';
   };
 

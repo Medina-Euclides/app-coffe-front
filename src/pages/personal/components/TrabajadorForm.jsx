@@ -1,8 +1,12 @@
 export default function TrabajadorForm({
-  nombreTrabajador,
-  setNombreTrabajador,
-  cedulaTrabajador,
-  setCedulaTrabajador,
+  firstName,
+  setFirstName,
+  lastName,
+  setLastName,
+  identification,
+  setIdentification,
+  phone,
+  setPhone,
   trabajadores,
   onGuardarTrabajador,
   campo,
@@ -24,35 +28,54 @@ export default function TrabajadorForm({
         <h3>Crear nuevo trabajador</h3>
 
         <label style={etiqueta}>
-          Nombre completo (Solo letras)
+          Nombre
           <input
             type="text"
-            value={nombreTrabajador}
-            onChange={(e) =>
-              setNombreTrabajador(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))
-            }
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
             required
             minLength={2}
-            maxLength={100}
+            maxLength={150}
             style={campo}
-            placeholder="Ej. Carlos Ramírez"
+            placeholder="Ej. Carlos"
           />
         </label>
 
         <label style={etiqueta}>
-          Número de Cédula (Exactamente 10 números)
+          Apellido
           <input
             type="text"
-            inputMode="numeric"
-            value={cedulaTrabajador}
-            onChange={(e) =>
-              setCedulaTrabajador(e.target.value.replace(/\D/g, '').slice(0, 10))
-            }
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
             required
-            minLength={10}
-            maxLength={10}
+            minLength={2}
+            maxLength={150}
+            style={campo}
+            placeholder="Ej. Ramírez"
+          />
+        </label>
+
+        <label style={etiqueta}>
+          Identificación (Opcional)
+          <input
+            type="text"
+            value={identification}
+            onChange={(e) => setIdentification(e.target.value)}
+            maxLength={150}
             style={campo}
             placeholder="Ej. 1061234567"
+          />
+        </label>
+
+        <label style={etiqueta}>
+          Teléfono (Opcional)
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            maxLength={150}
+            style={campo}
+            placeholder="Ej. 3001234567"
           />
         </label>
 

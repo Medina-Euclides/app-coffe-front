@@ -26,6 +26,11 @@ export default function WorkerCard({
             <p className="mt-1 break-all text-sm text-[#748074]">
               Identificación: {worker.cedula || 'No registrada'}
             </p>
+            {worker.phone && (
+              <p className="mt-1 break-all text-sm text-[#748074]">
+                Teléfono: {worker.phone}
+              </p>
+            )}
           </div>
         </div>
         <Badge

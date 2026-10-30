@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { hoy, dinero } from '#lib/formatters';
 import { leerLocal, guardarLocal } from '#lib/storage';
 import { ACTIVIDADES_INICIALES } from '#lib/constants';
+import { api } from '#services/api';
+import { guardarCacheTrabajadores } from '#services/workerStorage';
 import FincaPersonalFilter from './components/FincaPersonalFilter.jsx';
 import LiquidacionesList from './components/LiquidacionesList.jsx';
 import HistorialPagos from './components/HistorialPagos.jsx';
@@ -41,8 +43,11 @@ export default function Personal({ usuario, subSeccion }) {
   );
 
   const [vista, setVista] = useState('lista');
-  const [nombreTrabajador, setNombreTrabajador] = useState('');
-  const [cedulaTrabajador, setCedulaTrabajador] = useState('');
+  const [firstNameTrabajador, setFirstNameTrabajador] = useState('');
+  const [lastNameTrabajador, setLastNameTrabajador] = useState('');
+  const [identificacionTrabajador, setIdentificacionTrabajador] = useState('');
+  const [telefonoTrabajador, setTelefonoTrabajador] = useState('');
+  const [errorTrabajadores, setErrorTrabajadores] = useState('');
   const [nuevaActividadNombre, setNuevaActividadNombre] = useState('');
   const [trabajadorId, setTrabajadorId] = useState('');
   const [loteId, setLoteId] = useState('');
@@ -66,6 +71,29 @@ export default function Personal({ usuario, subSeccion }) {
       setVista('lista');
     }
   }, [subSeccion]);
+
+  useEffect(() => {
+    let active = true;
+    api.workers
+      .list()
+      .then((loadedWorkers) => {
+        if (!active) return;
+        setTrabajadores(loadedWorkers);
+        guardarCacheTrabajadores(userId, loadedWorkers);
+        setErrorTrabajadores('');
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error('Error al cargar trabajadores para Personal:', error);
+        setErrorTrabajadores(
+          `${error.message} Se muestran los trabajadores guardados en este dispositivo.`,
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   // Recargar datos al enfocar
   useEffect(() => {
@@ -140,7 +168,7 @@ export default function Personal({ usuario, subSeccion }) {
   const jornadasPendientes = (idTrabajador, idFinca) =>
     jornadas.filter(
       (j) =>
-        Number(j.trabajadorId) === Number(idTrabajador) &&
+        String(j.trabajadorId) === String(idTrabajador) &&
         j.estado !== 'pagado' &&
         perteneceAFinca(j, idFinca)
     );
@@ -194,35 +222,53 @@ export default function Personal({ usuario, subSeccion }) {
     alert(`La actividad "${actividadAEliminar}" fue eliminada.`);
   };
 
-  const guardarTrabajador = (e) => {
+  const guardarTrabajador = async (e) => {
     e.preventDefault();
-    const nombre = nombreTrabajador.trim();
-    const cedula = cedulaTrabajador.trim();
+    const firstName = firstNameTrabajador.trim();
+    const lastName = lastNameTrabajador.trim();
+    const identification = identificacionTrabajador.trim();
+    const phone = telefonoTrabajador.trim();
 
-    if (nombre.length < 2) {
-      alert('Escribe el nombre completo del trabajador.');
+    if (firstName.length < 2 || lastName.length < 2) {
+      alert('Escribe el nombre y apellido del trabajador (mínimo 2 caracteres cada uno).');
       return;
     }
 
-    if (cedula.length !== 10) {
-      alert('La cédula debe contener exactamente 10 dígitos.');
-      return;
-    }
-
-    if (trabajadores.some((t) => String(t.cedula).trim() === cedula)) {
+    if (
+      identification &&
+      trabajadores.some(
+        (worker) =>
+          String(worker.identification || worker.cedula || '').trim() ===
+          identification,
+      )
+    ) {
       alert('Ya existe un trabajador registrado con este número de cédula.');
       return;
     }
 
-    setTrabajadores((anteriores) => [
-      ...anteriores,
-      { id: Date.now(), nombre, cedula },
-    ]);
-
-    setNombreTrabajador('');
-    setCedulaTrabajador('');
-    setVista('lista');
-    alert('Trabajador registrado correctamente.');
+    try {
+      const newWorker = await api.workers.create({
+        first_name: firstName,
+        last_name: lastName,
+        identification: identification || null,
+        phone: phone || null,
+      });
+      setTrabajadores((previousWorkers) => {
+        const updatedWorkers = [...previousWorkers, newWorker];
+        guardarCacheTrabajadores(userId, updatedWorkers);
+        return updatedWorkers;
+      });
+      setFirstNameTrabajador('');
+      setLastNameTrabajador('');
+      setIdentificacionTrabajador('');
+      setTelefonoTrabajador('');
+      setErrorTrabajadores('');
+      setVista('lista');
+      alert('Trabajador registrado correctamente.');
+    } catch (error) {
+      console.error('Error al registrar trabajador desde Personal:', error);
+      alert(error.message || 'No se pudo registrar el trabajador.');
+    }
   };
 
   const guardarJornada = (e) => {
@@ -234,7 +280,7 @@ export default function Personal({ usuario, subSeccion }) {
     }
 
     const trabajador = trabajadores.find(
-      (t) => Number(t.id) === Number(trabajadorId)
+      (t) => String(t.id) === String(trabajadorId)
     );
     const loteSeleccionado = lotesDeFinca.find(
       (l) => String(l.id) === String(loteId)
@@ -265,7 +311,7 @@ export default function Personal({ usuario, subSeccion }) {
 
     const nuevaJornada = {
       id: Date.now(),
-      trabajadorId: Number(trabajadorId),
+      trabajadorId: String(trabajadorId),
       fincaId: String(fincaSeleccionada.id),
       loteId: loteSeleccionado.id,
       lote: loteSeleccionado.nombre,
@@ -436,7 +482,7 @@ export default function Personal({ usuario, subSeccion }) {
     return trabajadores.filter((t) =>
       jornadas.some(
         (j) =>
-          Number(j.trabajadorId) === Number(t.id) &&
+          String(j.trabajadorId) === String(t.id) &&
           j.estado !== 'pagado' &&
           perteneceAFinca(j, fincaSeleccionada.id)
       )
@@ -459,7 +505,7 @@ export default function Personal({ usuario, subSeccion }) {
 
     historialPagado.forEach((j) => {
       const t = trabajadores.find(
-        (trab) => Number(trab.id) === Number(j.trabajadorId)
+        (trab) => String(trab.id) === String(j.trabajadorId)
       );
       const nombreTrabajadorTexto = String(t?.nombre || 'Trabajador anterior');
       const cedulaTrabajadorTexto = String(t?.cedula || '');
@@ -558,6 +604,23 @@ export default function Personal({ usuario, subSeccion }) {
         Personal y Gestión Laboral
       </h2>
 
+      {errorTrabajadores && (
+        <p
+          aria-live="polite"
+          role="status"
+          style={{
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 10,
+            color: '#92400e',
+            marginBottom: 20,
+            padding: 12,
+          }}
+        >
+          {errorTrabajadores}
+        </p>
+      )}
+
       <FincaPersonalFilter
         fincas={fincas}
         fincaId={fincaId}
@@ -600,7 +663,7 @@ export default function Personal({ usuario, subSeccion }) {
       {vista === 'nueva_jornada' && (
         <LaborForm
           fincaSeleccionada={fincaSeleccionada}
-          trabajadores={trabajadores}
+          trabajadores={trabajadores.filter((worker) => worker.is_active !== false)}
           trabajadorId={trabajadorId}
           setTrabajadorId={setTrabajadorId}
           actividades={actividades}
@@ -624,10 +687,14 @@ export default function Personal({ usuario, subSeccion }) {
 
       {vista === 'nuevo_trabajador' && (
         <TrabajadorForm
-          nombreTrabajador={nombreTrabajador}
-          setNombreTrabajador={setNombreTrabajador}
-          cedulaTrabajador={cedulaTrabajador}
-          setCedulaTrabajador={setCedulaTrabajador}
+          firstName={firstNameTrabajador}
+          setFirstName={setFirstNameTrabajador}
+          lastName={lastNameTrabajador}
+          setLastName={setLastNameTrabajador}
+          identification={identificacionTrabajador}
+          setIdentification={setIdentificacionTrabajador}
+          phone={telefonoTrabajador}
+          setPhone={setTelefonoTrabajador}
           trabajadores={trabajadores}
           onGuardarTrabajador={guardarTrabajador}
           campo={campo}

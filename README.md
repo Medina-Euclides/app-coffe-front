@@ -67,3 +67,10 @@ La gestión de fincas y lotes consume `GET`/`POST`/`PATCH /farms/` y
 `area_hectares` e `is_active`. Los formularios convierten las respuestas al
 formato que usan las pantallas actuales y guardan una copia local para los
 módulos que todavía leen fincas y lotes desde el almacenamiento del navegador.
+
+La gestión de trabajadores consume `GET`/`POST /labor/workers/` y
+`PATCH /labor/workers/{id}/` con los campos `first_name`, `last_name`,
+`identification`, `phone` e `is_active`. La identificación y el teléfono son
+opcionales según el modelo. El cliente conserva una copia local para su
+consulta y usa la desactivación/reactivación para preservar el historial de
+jornadas; no ofrece borrado físico desde la interfaz.

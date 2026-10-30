@@ -45,6 +45,8 @@ function getErrorMessage(data, status) {
     area_hectares: 'Área',
     area_m2: 'Área',
     is_active: 'Estado',
+    identification: 'Identificación',
+    phone: 'Teléfono',
   };
   const fieldErrors = Object.entries(data || {})
     .map(([field, messages]) => {
@@ -83,6 +85,17 @@ function normalizeLot(lot) {
     fechaCreacion: lot.created_at,
     fechaDesactivacion: null,
     fechaReactivacion: null,
+  };
+}
+
+function normalizeWorker(worker) {
+  const firstName = worker.first_name || '';
+  const lastName = worker.last_name || '';
+  return {
+    ...worker,
+    nombre: [firstName, lastName].filter(Boolean).join(' '),
+    cedula: worker.identification || '',
+    estado: worker.is_active ? 'activo' : 'inactivo',
   };
 }
 
@@ -241,6 +254,20 @@ export const api = {
     update: async (id, data) =>
       normalizeLot(
         await apiRequest(`/farms/lots/${id}/`, { method: 'PATCH', data }),
+      ),
+  },
+  workers: {
+    list: async () =>
+      normalizeList(await apiRequest('/labor/workers/'), 'trabajadores').map(
+        normalizeWorker,
+      ),
+    create: async (data) =>
+      normalizeWorker(
+        await apiRequest('/labor/workers/', { method: 'POST', data }),
+      ),
+    update: async (id, data) =>
+      normalizeWorker(
+        await apiRequest(`/labor/workers/${id}/`, { method: 'PATCH', data }),
       ),
   },
 };
