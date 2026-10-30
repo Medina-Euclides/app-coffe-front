@@ -4,6 +4,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '../ui/sidebar.jsx';
+import SyncStatus from '../shared/SyncStatus.jsx';
 
 export default function AppLayout({ usuario, onLogout }) {
   return (
@@ -19,9 +20,10 @@ export default function AppLayout({ usuario, onLogout }) {
         className="min-w-0 flex-1 bg-[#f7f8f3] p-4 md:p-8"
         id="contenido-principal"
       >
-        <header className="mb-4 flex items-center gap-3 md:hidden">
+        <header className="mb-4 flex min-w-0 flex-wrap items-center gap-3 md:hidden">
           <SidebarTrigger aria-label="Abrir menú de navegación" />
           <span className="font-semibold text-emerald-950">CafeSmart</span>
+          <SyncStatus />
         </header>
         <Outlet />
       </main>
