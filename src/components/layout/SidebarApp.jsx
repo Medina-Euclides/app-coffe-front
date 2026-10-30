@@ -41,7 +41,11 @@ const gruposNavegacion = [
   {
     label: "Economía",
     icon: ChartNoAxesCombined,
-    options: ["Pagos", "Egresos", "Ventas"],
+    options: [
+      { label: "Pagos", to: "/economia/pagos" },
+      { label: "Egresos", to: "/economia/egresos" },
+      { label: "Ventas", to: "/economia/ventas" },
+    ],
   },
   {
     label: "Consultas",

@@ -4,6 +4,7 @@ import AppLayout from '../components/layout/AppLayout.jsx';
 import { AuthenticatedRoute, SetupRoute } from './RouteGuards.jsx';
 
 const Auth = lazy(() => import('../views/Auth.jsx'));
+const Economia = lazy(() => import('../modules/finanzas/Economia.jsx'));
 const Finanzas = lazy(() => import('../modules/finanzas/Finanzas.jsx'));
 const Fincas = lazy(() => import('../modules/fincas/Fincas.jsx'));
 const Inventario = lazy(() => import('../modules/inventario/Inventario.jsx'));
@@ -118,6 +119,18 @@ export default function RoutesApp({
           <Route
             element={<Finanzas subSeccion="finanzas-indicadores" usuario={usuario} />}
             path="/finanzas"
+          />
+          <Route
+            element={<Economia seccion="pagos" />}
+            path="/economia/pagos"
+          />
+          <Route
+            element={<Economia seccion="egresos" />}
+            path="/economia/egresos"
+          />
+          <Route
+            element={<Economia seccion="ventas" />}
+            path="/economia/ventas"
           />
           <Route
             element={
