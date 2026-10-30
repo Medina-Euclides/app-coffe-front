@@ -10,9 +10,9 @@
     "preview": "vite preview"
   },
   "imports": {
-    "#components/*": "./src/components/*.tsx",
-    "#lib/*": "./src/lib/*.ts",
-    "#hooks/*": "./src/hooks/*.ts",
+    "#components/*": "./src/components/*.jsx",
+    "#lib/*": "./src/lib/*.js",
+    "#hooks/*": "./src/hooks/*.js",
     "#/*": "./src/*"
   },
   "dependencies": {
