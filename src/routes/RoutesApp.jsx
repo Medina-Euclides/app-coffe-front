@@ -9,6 +9,9 @@ const Fincas = lazy(() => import('../modules/fincas/Fincas.jsx'));
 const Inventario = lazy(() => import('../modules/inventario/Inventario.jsx'));
 const Operations = lazy(() => import('../views/Operations.jsx'));
 const Personal = lazy(() => import('../modules/personal/Personal.jsx'));
+const Workers = lazy(() => import('../views/Workers.jsx'));
+const LaborActivities = lazy(() => import('../views/LaborActivities.jsx'));
+const FarmsAndLots = lazy(() => import('../views/FarmsAndLots.jsx'));
 const SetupWizard = lazy(() =>
   import('../views/SetupWizard.jsx').then((module) => ({
     default: module.SetupWizard,
@@ -85,6 +88,18 @@ export default function RoutesApp({
           }
         >
           <Route element={<Operations usuario={usuario} />} path="/inicio" />
+          <Route
+            element={<Workers usuario={usuario} />}
+            path="/gestion/trabajadores"
+          />
+          <Route
+            element={<LaborActivities usuario={usuario} />}
+            path="/gestion/actividades"
+          />
+          <Route
+            element={<FarmsAndLots usuario={usuario} />}
+            path="/gestion/fincas"
+          />
           <Route
             element={<Fincas subSeccion="fincas-lotes" usuario={usuario} />}
             path="/fincas"

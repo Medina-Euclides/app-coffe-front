@@ -1,0 +1,113 @@
+import { useState } from 'react';
+import { Button } from '../ui/button.jsx';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog.jsx';
+import { Input } from '../ui/input.jsx';
+
+export default function WorkerFormDialog({
+  open,
+  onOpenChange,
+  worker,
+  onSave,
+}) {
+  const [nombre, setNombre] = useState(worker?.nombre || '');
+  const [cedula, setCedula] = useState(worker?.cedula || '');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const result = onSave({ nombre: nombre.trim(), cedula: cedula.trim() });
+    if (result) {
+      setError(result);
+      return;
+    }
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-lg sm:p-6">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+            {worker ? 'Editar trabajador' : 'Agregar trabajador'}
+          </DialogTitle>
+          <DialogDescription className="leading-6">
+            Registra los datos básicos de la persona que trabaja en tus fincas.
+          </DialogDescription>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium text-[#36483a]"
+              htmlFor="worker-name"
+            >
+              Nombre completo
+            </label>
+            <Input
+              autoComplete="off"
+              className="h-11 rounded-xl"
+              id="worker-name"
+              maxLength={100}
+              minLength={2}
+              name="nombre"
+              onChange={(event) => setNombre(event.target.value)}
+              placeholder="Ej. María Gómez…"
+              required
+              value={nombre}
+            />
+          </div>
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium text-[#36483a]"
+              htmlFor="worker-id"
+            >
+              Número de identificación
+            </label>
+            <Input
+              autoComplete="off"
+              className="h-11 rounded-xl"
+              id="worker-id"
+              inputMode="numeric"
+              maxLength={20}
+              name="identificacion"
+              onChange={(event) =>
+                setCedula(event.target.value.replace(/\D/g, ''))
+              }
+              placeholder="Ej. 1061234567…"
+              required
+              type="text"
+              value={cedula}
+            />
+          </div>
+          {error && (
+            <p aria-live="polite" className="text-sm text-red-700" role="alert">
+              {error}
+            </p>
+          )}
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+            <Button
+              className="min-h-11 rounded-xl"
+              onClick={() => onOpenChange(false)}
+              type="button"
+              variant="outline"
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="min-h-11 rounded-xl bg-[#214b32] text-white hover:bg-[#173d2b]"
+              type="submit"
+            >
+              Guardar trabajador
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1,12 +1,22 @@
 import { useId, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '../ui/sidebar.jsx';
 
 export default function SidebarNavGroup({ icon: Icon, label, options }) {
-  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const hasActiveOption = options.some(
+    (option) =>
+      typeof option !== 'string' &&
+      (pathname === option.to || pathname.startsWith(`${option.to}/`)),
+  );
+  const [openOverride, setOpenOverride] = useState(null);
+  const open = openOverride ?? hasActiveOption;
   const panelId = useId();
 
   return (
@@ -15,7 +25,7 @@ export default function SidebarNavGroup({ icon: Icon, label, options }) {
         aria-controls={panelId}
         aria-expanded={open}
         className="h-11 rounded-xl px-3 font-medium text-[#526254] hover:bg-[#eef2e9] hover:text-[#214b32] aria-expanded:bg-[#eef2e9] aria-expanded:text-[#214b32]"
-        onClick={() => setOpen((isOpen) => !isOpen)}
+        onClick={() => setOpenOverride(!open)}
         title={label}
         type="button"
       >
@@ -37,18 +47,41 @@ export default function SidebarNavGroup({ icon: Icon, label, options }) {
         inert={!open}
         id={panelId}
       >
-        {options.map((option) => (
-          <li key={option}>
-            <button
-              className="h-9 w-full cursor-not-allowed rounded-lg px-3 text-left text-sm text-[#68766b] disabled:opacity-100"
-              disabled
-              title="Disponible próximamente"
-              type="button"
-            >
-              {option}
-            </button>
-          </li>
-        ))}
+        {options.map((option) => {
+          const optionLabel =
+            typeof option === 'string' ? option : option.label;
+
+          return (
+            <li key={optionLabel}>
+              {typeof option === 'string' ? (
+                <button
+                  className="h-9 w-full cursor-not-allowed rounded-lg px-3 text-left text-sm text-[#68766b] disabled:opacity-100"
+                  disabled
+                  title="Disponible próximamente"
+                  type="button"
+                >
+                  {optionLabel}
+                </button>
+              ) : (
+                <NavLink
+                  className={({ isActive }) =>
+                    `flex min-h-10 items-center rounded-lg px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48] ${
+                      isActive
+                        ? 'bg-[#e7f0e3] font-semibold text-[#214b32]'
+                        : 'text-[#68766b] hover:bg-[#eef2e9] hover:text-[#214b32]'
+                    }`
+                  }
+                  onClick={() => {
+                    if (isMobile) setOpenMobile(false);
+                  }}
+                  to={option.to}
+                >
+                  {optionLabel}
+                </NavLink>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </SidebarMenuItem>
   );

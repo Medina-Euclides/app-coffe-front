@@ -24,7 +24,11 @@ const gruposNavegacion = [
   {
     label: "Gestión de la finca",
     icon: Users,
-    options: ["Trabajadores", "Actividades laborales", "Fincas y lotes"],
+    options: [
+      { label: "Trabajadores", to: "/gestion/trabajadores" },
+      { label: "Actividades laborales", to: "/gestion/actividades" },
+      { label: "Fincas y lotes", to: "/gestion/fincas" },
+    ],
   },
   {
     label: "Operaciones",
