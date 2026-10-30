@@ -1,13 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import RoutesApp from './routes/RoutesApp.jsx';
 import { leerLocal } from '#lib/storage';
+import { api } from '#services/api';
 
 function AppRoutes() {
   const navigate = useNavigate();
   const [usuario, setUsuario] = useState(() =>
-    leerLocal('cafesmart_usuario', null),
+    api.auth.hasSession() ? leerLocal('cafesmart_usuario', null) : null,
   );
+
+  useEffect(() => {
+    localStorage.removeItem('cafesmart_usuarios');
+    if (!api.auth.hasSession()) {
+      localStorage.removeItem('cafesmart_usuario');
+    }
+  }, []);
 
   const handleLogin = (nuevoUsuario) => {
     localStorage.setItem('cafesmart_usuario', JSON.stringify(nuevoUsuario));
@@ -24,23 +32,6 @@ function AppRoutes() {
     }
 
     const usuarioActualizado = { ...usuario, primerIngreso: false };
-    const usuariosGuardados = JSON.parse(
-      localStorage.getItem('cafesmart_usuarios') || '[]',
-    );
-    if (!Array.isArray(usuariosGuardados)) {
-      throw new Error('La lista de cuentas guardadas no es válida.');
-    }
-    if (!usuariosGuardados.some((guardado) => guardado.id === usuario.id)) {
-      throw new Error('No se encontró la cuenta para completar el registro.');
-    }
-    const usuariosActualizados = usuariosGuardados.map((guardado) =>
-      guardado.id === usuario.id ? usuarioActualizado : guardado,
-    );
-
-    localStorage.setItem(
-      'cafesmart_usuarios',
-      JSON.stringify(usuariosActualizados),
-    );
     localStorage.setItem(
       'cafesmart_usuario',
       JSON.stringify(usuarioActualizado),
@@ -50,6 +41,7 @@ function AppRoutes() {
   };
 
   const handleLogout = () => {
+    api.auth.logout();
     localStorage.removeItem('cafesmart_usuario');
     setUsuario(null);
     navigate('/login', { replace: true });

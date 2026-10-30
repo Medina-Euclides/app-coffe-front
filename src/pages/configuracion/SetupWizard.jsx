@@ -96,7 +96,11 @@ export function SetupWizard({ usuario, onComplete }) {
     }
   };
 
-  const nombreProductor = usuario?.nombreProductor || 'Productor';
+  const nombreProductor =
+    usuario?.full_name ||
+    [usuario?.first_name, usuario?.last_name].filter(Boolean).join(' ') ||
+    usuario?.nombreProductor ||
+    'Productor';
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-gradient-to-br from-emerald-50 via-stone-50 to-amber-50 px-4 py-10">

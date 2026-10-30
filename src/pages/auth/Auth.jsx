@@ -8,6 +8,7 @@ import {
   CardHeader,
 } from '#components/ui/card';
 import { Input } from '#components/ui/input';
+import { api } from '#services/api';
 
 export function AuthField({
   autoComplete,
@@ -16,6 +17,7 @@ export function AuthField({
   name,
   onChange,
   placeholder,
+  required = true,
   spellCheck,
   type,
   value,
@@ -32,7 +34,7 @@ export function AuthField({
         name={name}
         onChange={onChange}
         placeholder={placeholder}
-        required
+        required={required}
         spellCheck={spellCheck}
         type={type}
         value={value}
@@ -49,48 +51,47 @@ export default function Auth({
   const [esRegistro, setEsRegistro] = useState(initialMode === 'register');
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
-  const [nombreProductor, setNombreProductor] = useState('');
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
+  const [telefono, setTelefono] = useState('');
   const [error, setError] = useState('');
+  const [cargando, setCargando] = useState(false);
 
-  const manejarAutenticacion = (e) => {
+  const manejarAutenticacion = async (e) => {
     e.preventDefault();
     setError('');
+    setCargando(true);
 
     try {
-      const usuariosGuardados = JSON.parse(localStorage.getItem('cafesmart_usuarios')) || [];
-
       if (esRegistro) {
-        const existe = usuariosGuardados.find((u) => u.correo === correo);
-        if (existe) {
-          setError('El correo ya se encuentra registrado. Inicia sesión o usa otro correo.');
-          return;
-        }
-
-        const nuevoUsuario = {
-          id: Date.now(),
-          correo,
+        const datosRegistro = {
+          first_name: nombre.trim(),
+          last_name: apellido.trim(),
+          email: correo.trim(),
+          phone_number: telefono.trim(),
           password,
-          nombreProductor: nombreProductor || 'Productor',
-          primerIngreso: true,
         };
+        await api.auth.registro(datosRegistro);
 
-        usuariosGuardados.push(nuevoUsuario);
-        localStorage.setItem('cafesmart_usuarios', JSON.stringify(usuariosGuardados));
-
-        onLogin(nuevoUsuario);
+        const sesion = await api.auth.login({
+          email: datosRegistro.email,
+          password,
+        });
+        onLogin({ ...sesion.user, primerIngreso: true });
       } else {
-        const usuarioEncontrado = usuariosGuardados.find(
-          (u) => u.correo === correo && u.password === password,
-        );
-        if (usuarioEncontrado) {
-          onLogin(usuarioEncontrado);
-        } else {
-          setError('Correo o contraseña incorrectos. Verifica tus datos e inténtalo de nuevo.');
-        }
+        const sesion = await api.auth.login({
+          email: correo.trim(),
+          password,
+        });
+        onLogin(sesion.user);
       }
-    } catch (e) {
-      console.error('Error en autenticación:', e);
-      setError('No se pudo completar la autenticación. Inténtalo de nuevo.');
+    } catch (authError) {
+      console.error('Error en autenticación:', authError);
+      setError(
+        authError.message || 'No se pudo completar la autenticación. Inténtalo de nuevo.',
+      );
+    } finally {
+      setCargando(false);
     }
   };
 
@@ -132,13 +133,40 @@ export default function Auth({
             {esRegistro && (
               <AuthField
                 autoComplete="name"
-                id="nombre-productor"
-                label="Nombre completo"
-                name="name"
-                onChange={(e) => setNombreProductor(e.target.value)}
-                placeholder="Ej.: Juan Pérez…"
+                id="nombre"
+                label="Nombre"
+                name="first_name"
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Ej.: Juan…"
                 type="text"
-                value={nombreProductor}
+                value={nombre}
+              />
+            )}
+
+            {esRegistro && (
+              <AuthField
+                autoComplete="family-name"
+                id="apellido"
+                label="Apellido"
+                name="last_name"
+                onChange={(e) => setApellido(e.target.value)}
+                placeholder="Ej.: Pérez…"
+                type="text"
+                value={apellido}
+              />
+            )}
+
+            {esRegistro && (
+              <AuthField
+                autoComplete="tel"
+                id="telefono"
+                label="Teléfono (opcional)"
+                name="phone_number"
+                onChange={(e) => setTelefono(e.target.value)}
+                placeholder="Ej.: 3001234567"
+                required={false}
+                type="tel"
+                value={telefono}
               />
             )}
 
@@ -177,9 +205,14 @@ export default function Auth({
 
             <Button
               className="h-12 w-full rounded-xl bg-emerald-800 text-base font-semibold text-white shadow-sm hover:bg-emerald-900"
+              disabled={cargando}
               type="submit"
             >
-              {esRegistro ? 'Crear cuenta' : 'Iniciar sesión'}
+              {cargando
+                ? 'Conectando…'
+                : esRegistro
+                  ? 'Crear cuenta'
+                  : 'Iniciar sesión'}
             </Button>
           </form>
         </CardContent>

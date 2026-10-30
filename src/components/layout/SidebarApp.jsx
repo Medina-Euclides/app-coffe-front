@@ -55,6 +55,10 @@ const gruposNavegacion = [
 ]
 
 function obtenerNombreMostrar(usuario) {
+  if (usuario?.full_name) return usuario.full_name
+  if (usuario?.first_name || usuario?.last_name) {
+    return [usuario.first_name, usuario.last_name].filter(Boolean).join(" ")
+  }
   if (usuario?.nombre) return usuario.nombre
   if (usuario?.name) return usuario.name
   if (usuario?.displayName) return usuario.displayName

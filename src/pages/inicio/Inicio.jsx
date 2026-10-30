@@ -131,6 +131,10 @@ function obtenerResumenDelDia(usuarioId, fechaHoy) {
 }
 
 export default function Inicio({ usuario }) {
+  const nombreProductor =
+    usuario?.full_name ||
+    [usuario?.first_name, usuario?.last_name].filter(Boolean).join(' ') ||
+    'Productor';
   const fechaHoy = hoy();
   const resumen = obtenerResumenDelDia(usuario?.id || 'default', fechaHoy);
   const fechaLegible = new Intl.DateTimeFormat('es-CO', {
@@ -186,7 +190,7 @@ export default function Inicio({ usuario }) {
           <span translate="no">CafeSmart</span> · OPERACIONES
         </p>
         <h1 className="mt-3 break-words text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-          Hola, {usuario?.nombreProductor || 'Productor'}
+          Hola, {nombreProductor}
         </h1>
         <p className="mt-3 text-pretty leading-relaxed text-emerald-50">
           Registra las actividades de tu finca y consulta el resumen de hoy.
