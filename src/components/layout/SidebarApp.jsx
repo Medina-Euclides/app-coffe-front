@@ -12,19 +12,35 @@ import {
 } from "#components/ui/sidebar"
 import { NavLink, useLocation } from "react-router-dom"
 import {
-  ChartNoAxesCombined,
-  ClipboardList,
   LayoutDashboard,
-  Package,
+  Users,
   Sprout,
+  ChartNoAxesCombined,
+  ChartPie,
 } from "lucide-react"
+import SidebarNavGroup from "./SidebarNavGroup.jsx"
 
-const opcionesNavegacion = [
-  { titulo: "Inicio", icono: LayoutDashboard, ruta: "/inicio" },
-  { titulo: "Fincas", icono: Sprout, ruta: "/fincas" },
-  { titulo: "Operaciones", icono: ClipboardList, ruta: "/operaciones" },
-  { titulo: "Inventario", icono: Package, ruta: "/inventario" },
-  { titulo: "Finanzas", icono: ChartNoAxesCombined, ruta: "/finanzas" },
+const gruposNavegacion = [
+  {
+    label: "Gestión de la finca",
+    icon: Users,
+    options: ["Trabajadores", "Actividades laborales", "Fincas y lotes"],
+  },
+  {
+    label: "Operaciones",
+    icon: Sprout,
+    options: ["Recolección", "Jornadas laborales"],
+  },
+  {
+    label: "Economía",
+    icon: ChartNoAxesCombined,
+    options: ["Pagos", "Egresos", "Ventas"],
+  },
+  {
+    label: "Consultas",
+    icon: ChartPie,
+    options: ["Producción", "Resumen económico"],
+  },
 ]
 
 function obtenerNombreMostrar(usuario) {
@@ -74,40 +90,38 @@ export const SidebarApp = ({ usuario, onLogout }) => {
             MENÚ PRINCIPAL
           </SidebarGroupLabel>
           <SidebarMenu className="gap-1.5">
-            {opcionesNavegacion.map(({ titulo, icono: Icono, ruta }) => {
-              const estaActiva = pathname === ruta
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                render={
+                  <NavLink
+                    onClick={() => {
+                      if (isMobile) setOpenMobile(false)
+                    }}
+                    to="/inicio"
+                  />
+                }
+                size="lg"
+                isActive={pathname === "/inicio"}
+                className={
+                  pathname === "/inicio"
+                    ? "h-11 rounded-xl bg-[#e7f0e3] px-3 font-semibold text-[#214b32] shadow-sm hover:bg-[#dcebd8] hover:text-[#173d2b] data-active:bg-[#e7f0e3] data-active:text-[#214b32]"
+                    : "h-11 rounded-xl px-3 font-medium text-[#68766b] hover:bg-[#eef2e9] hover:text-[#214b32] active:bg-[#e7f0e3] active:text-[#214b32]"
+                }
+              >
+                <LayoutDashboard aria-hidden="true" className="size-[18px]" />
+                <span>Inicio</span>
+                {pathname === "/inicio" && (
+                  <span
+                    aria-hidden="true"
+                    className="ml-auto size-1.5 rounded-full bg-[#4d8057]"
+                  />
+                )}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
 
-              return (
-                <SidebarMenuItem key={titulo}>
-                  <SidebarMenuButton
-                    render={
-                      <NavLink
-                        onClick={() => {
-                          if (isMobile) setOpenMobile(false)
-                        }}
-                        to={ruta}
-                      />
-                    }
-                    size="lg"
-                    isActive={estaActiva}
-                    className={
-                      estaActiva
-                        ? "h-11 rounded-xl bg-[#e7f0e3] px-3 font-semibold text-[#214b32] shadow-sm hover:bg-[#dcebd8] hover:text-[#173d2b] data-active:bg-[#e7f0e3] data-active:text-[#214b32]"
-                        : "h-11 rounded-xl px-3 font-medium text-[#68766b] hover:bg-[#eef2e9] hover:text-[#214b32] active:bg-[#e7f0e3] active:text-[#214b32]"
-                    }
-                  >
-                    <Icono aria-hidden="true" className="size-[18px]" />
-                    <span>{titulo}</span>
-                    {estaActiva && (
-                      <span
-                        aria-hidden="true"
-                        className="ml-auto size-1.5 rounded-full bg-[#4d8057]"
-                      />
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            })}
+            {gruposNavegacion.map((grupo) => (
+              <SidebarNavGroup key={grupo.label} {...grupo} />
+            ))}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
