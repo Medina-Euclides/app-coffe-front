@@ -41,3 +41,22 @@ permanecen en `components/ui/`.
 - `npm run dev`: inicia el servidor local de Vite.
 - `npm run build`: genera la compilación de producción.
 - `npm run lint`: ejecuta Oxlint.
+
+## Conexión con Django REST Framework
+
+El cliente consume la API local en `http://127.0.0.1:8000` de forma predeterminada.
+Para usar otra instancia, define `VITE_API_URL` en un archivo `.env.local`, por
+ejemplo:
+
+```env
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+Inicia Django con `python manage.py runserver` y React con `npm run dev`. El
+inicio de sesión usa `POST /accounts/login/`; el registro envía
+`first_name`, `last_name`, `email`, `phone_number` y `password` a
+`POST /accounts/register/`. Después de registrarse, el cliente inicia sesión
+para obtener los tokens JWT. Conserva los tokens en el navegador y envía el
+token de acceso como `Authorization: Bearer <access>` en las peticiones
+protegidas. La API local debe permitir CORS desde el origen de Vite
+(`http://localhost:5173`).
