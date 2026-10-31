@@ -4,12 +4,16 @@ import AppLayout from '#components/layout/AppLayout';
 import { AuthenticatedRoute, SetupRoute } from './RouteGuards.jsx';
 
 const Auth = lazy(() => import('#pages/auth/Auth.jsx'));
-const Fincas = lazy(() => import('#pages/fincas/Fincas.jsx'));
-
+const SetupWizard = lazy(() =>
+  import('#pages/configuracion/SetupWizard.jsx').then((module) => ({
+    default: module.SetupWizard,
+  })),
+);
 const OperationsHome = lazy(() =>
   import('#pages/inicio/Inicio.jsx'),
 );
 
+const Fincas = lazy(() => import('#pages/fincas/Fincas.jsx'));
 const Workers = lazy(() => import('#pages/trabajadores/Trabajadores.jsx'));
 const LaborActivities = lazy(() =>
   import('#pages/actividades/ActividadesLaborales.jsx'),
@@ -17,11 +21,9 @@ const LaborActivities = lazy(() =>
 const FarmsAndLots = lazy(() =>
   import('#pages/fincas/FarmsAndLots.jsx'),
 );
-const SetupWizard = lazy(() =>
-  import('#pages/configuracion/SetupWizard.jsx').then((module) => ({
-    default: module.SetupWizard,
-  })),
-);
+
+const WorkdayPage = lazy(() => import('#pages/workday/WorkdayPage.jsx'));
+
 
 export default function RoutesApp({
   usuario,
@@ -108,6 +110,11 @@ export default function RoutesApp({
           <Route
             element={<Fincas subSeccion="fincas-lotes" usuario={usuario} />}
             path="/fincas"
+          />
+
+          <Route
+            element={<WorkdayPage  usuario={usuario} />}
+            path="/jornada"
           />
           
        
