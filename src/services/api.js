@@ -48,6 +48,16 @@ function getErrorMessage(data, status) {
     identification: 'Identificación',
     phone: 'Teléfono',
     is_harvest: 'Actividad de recolección',
+    worker: 'Trabajador',
+    date: 'Fecha',
+    payment_mode: 'Modalidad de pago',
+    agreed_rate: 'Tarifa acordada',
+    activity_type: 'Actividad',
+    workday: 'Jornada',
+    lot: 'Lote',
+    workday_detail: 'Detalle de jornada',
+    quantity_kg: 'Cantidad recolectada',
+    time: 'Hora',
   };
   const fieldErrors = Object.entries(data || {})
     .map(([field, messages]) => {
@@ -298,5 +308,25 @@ export const api = {
       ),
     delete: (id) =>
       apiRequest(`/labor/activity-types/${id}/`, { method: 'DELETE' }),
+  },
+  workdays: {
+    list: async () =>
+      normalizeList(await apiRequest('/labor/workdays/'), 'jornadas'),
+    create: (data) =>
+      apiRequest('/labor/workdays/', { method: 'POST', data }),
+    delete: (id) =>
+      apiRequest(`/labor/workdays/${id}/`, { method: 'DELETE' }),
+  },
+  workdayDetails: {
+    create: (data) =>
+      apiRequest('/labor/workday-details/', { method: 'POST', data }),
+    delete: (id) =>
+      apiRequest(`/labor/workday-details/${id}/`, { method: 'DELETE' }),
+  },
+  harvestRecords: {
+    create: (data) =>
+      apiRequest('/labor/harvest-records/', { method: 'POST', data }),
+    update: (id, data) =>
+      apiRequest(`/labor/harvest-records/${id}/`, { method: 'PATCH', data }),
   },
 };
