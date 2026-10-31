@@ -5,10 +5,9 @@ import { obtenerFechaLocal } from '#lib/formatters';
 export default function Inventario({ usuario, subSeccion }) {
   const userId = usuario?.id || 'default';
 
-  const [fincas, setFincas] = useState(() => leerLocal(`cafesmart_fincas_${userId}`, []));
-  const [lotes, setLotes] = useState(() => leerLocal(`cafesmart_lotes_${userId}`, []));
-  const [jornadas, setJornadas] = useState(() => leerLocal(`cafesmart_jornadas_${userId}`, []));
-  const [movimientos, setMovimientos] = useState(() => leerLocal(`cafesmart_movimientos_${userId}`, []));
+  const [fincas] = useState(() => leerLocal(`cafesmart_fincas_${userId}`, []));
+  const [lotes] = useState(() => leerLocal(`cafesmart_lotes_${userId}`, []));
+  const [jornadas] = useState(() => leerLocal(`cafesmart_jornadas_${userId}`, []));
   const [inventario, setInventario] = useState(() => leerLocal(`cafesmart_inventario_${userId}`, []));
 
   const [fincaId, setFincaId] = useState(() => {
@@ -65,17 +64,6 @@ export default function Inventario({ usuario, subSeccion }) {
       .reduce((s, j) => s + Number(j.cantidad || 0), 0);
   }, [jornadas, fincaId]);
 
-  const vendidoKg = useMemo(() => {
-    return movimientos
-      .filter((m) => {
-        if (String(m.fincaId) !== String(fincaId)) return false;
-        if (m.tipo !== 'ingreso' && m.tipo !== 'venta') return false;
-        if (m.categoria !== 'Venta de café') return false;
-        return Number(m.cantidadKg) > 0;
-      })
-      .reduce((s, m) => s + Number(m.cantidadKg || 0), 0);
-  }, [movimientos, fincaId]);
-
   const registrarMovimiento = (e) => {
     e.preventDefault();
     const cant = Number(cantidad);
@@ -131,10 +119,6 @@ export default function Inventario({ usuario, subSeccion }) {
             <div style={{ background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: 12, padding: 16 }}>
               <div style={{ color: '#1e40af' }}>Cosecha pagada (recolección)</div>
               <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#2563eb' }}>{cosechaAcumulada.toLocaleString('es-CO')} kg</div>
-            </div>
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: 16 }}>
-              <div style={{ color: '#991b1b' }}>Vendido registrado</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#dc2626' }}>{vendidoKg.toLocaleString('es-CO')} kg</div>
             </div>
           </div>
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflowX: 'auto' }}>

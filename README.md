@@ -19,12 +19,10 @@ src/
 │   ├── actividades/
 │   ├── fincas/
 │   ├── operaciones/
-│   ├── finanzas/
 │   ├── personal/
 │   ├── inventario/
 │   ├── auth/
-│   ├── configuracion/
-│   └── asistente/
+│   └── configuracion/
 ├── routes/          # Definición de rutas y guardas de acceso
 ├── lib/             # Utilidades, formato, almacenamiento y constantes
 ├── hooks/           # Hooks reutilizables globales

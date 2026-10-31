@@ -1,5 +1,11 @@
+import { Card, CardContent } from '#components/ui/card';
 import { dinero } from '#lib/formatters';
 import { OPCIONES_JORNAL } from '#lib/constants';
+import {
+  PersonalField,
+  PersonalInput,
+  PersonalSelect,
+} from './PersonalField.jsx';
 
 export default function HistorialPagos({
   fincaSeleccionada,
@@ -8,172 +14,115 @@ export default function HistorialPagos({
   periodoHistorial,
   setPeriodoHistorial,
   historialAgrupado,
-  campo,
 }) {
   return (
-    <>
-      <h3 style={{ marginTop: 28 }}>Historial de labores pagadas</h3>
+    <section className="mt-7 space-y-4">
+      <h3 className="text-lg font-semibold text-slate-900">
+        Historial de labores pagadas
+      </h3>
 
-      {/* BARRA DE BÚSQUEDA Y FILTRO */}
       {fincaSeleccionada && (
-        <div
-          style={{
-            background: '#fff',
-            border: '1px solid #cbd5e1',
-            padding: 16,
-            borderRadius: 12,
-            marginBottom: 16,
-            display: 'flex',
-            gap: 12,
-            flexWrap: 'wrap',
-          }}
-        >
-          <div style={{ flex: '1 1 200px' }}>
-            <label
-              style={{
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: '#475569',
-                display: 'block',
-              }}
+        <Card className="rounded-2xl border-slate-200">
+          <CardContent className="grid gap-4 p-4 sm:grid-cols-2">
+            <PersonalField
+              htmlFor="payment-history-search"
+              label="Buscar trabajador por nombre o cédula"
             >
-              Buscar trabajador por nombre o cédula
-              <input
+              <PersonalInput
+                id="payment-history-search"
+                onChange={(event) =>
+                  setBusquedaHistorial(event.target.value || '')
+                }
+                placeholder="Ej. Carlos o 1061..."
                 type="text"
                 value={busquedaHistorial}
-                onChange={(e) => setBusquedaHistorial(e.target.value || '')}
-                placeholder="Ej. Carlos o 1061..."
-                style={{ ...campo, marginTop: 4, minHeight: 40 }}
               />
-            </label>
-          </div>
-
-          <div style={{ flex: '1 1 180px' }}>
-            <label
-              style={{
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: '#475569',
-                display: 'block',
-              }}
-            >
-              Filtrar por período
-              <select
+            </PersonalField>
+            <PersonalField htmlFor="payment-history-period" label="Filtrar por período">
+              <PersonalSelect
+                id="payment-history-period"
+                onChange={(event) => setPeriodoHistorial(event.target.value)}
                 value={periodoHistorial}
-                onChange={(e) => setPeriodoHistorial(e.target.value)}
-                style={{ ...campo, marginTop: 4, minHeight: 40 }}
               >
                 <option value="todos">Histórico completo</option>
                 <option value="este_mes">Este mes</option>
                 <option value="mes_anterior">Mes anterior</option>
                 <option value="este_ano">Año actual</option>
-              </select>
-            </label>
-          </div>
-        </div>
+              </PersonalSelect>
+            </PersonalField>
+          </CardContent>
+        </Card>
       )}
 
       {!fincaSeleccionada ? (
         <p>Selecciona una finca para consultar el historial.</p>
       ) : historialAgrupado.length === 0 ? (
-        <p
-          style={{
-            color: '#64748b',
-            padding: 16,
-            background: '#f8fafc',
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
-          }}
-        >
+        <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
           {busquedaHistorial || periodoHistorial !== 'todos'
             ? 'No se encontraron pagos con los filtros aplicados.'
             : `No hay labores pagadas registradas para ${fincaSeleccionada.nombre}.`}
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {historialAgrupado.map((grupo) => (
-            <article
-              key={grupo.idUnico}
-              style={{
-                background: '#fff',
-                border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: 18,
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  borderBottom: '1px solid #f1f5f9',
-                  paddingBottom: 10,
-                  marginBottom: 12,
-                }}
-              >
-                <div>
-                  <strong style={{ fontSize: '1.1rem', color: '#047857', display: 'block' }}>
-                    {grupo.trabajador} {grupo.cedula ? `(C.C. ${grupo.cedula})` : ''}
+        <div className="flex flex-col gap-3">
+          {historialAgrupado.map((group) => (
+            <Card className="rounded-2xl border-slate-200" key={group.idUnico}>
+              <CardContent className="p-5">
+                <div className="flex flex-wrap justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div>
+                    <strong className="block font-semibold text-emerald-800">
+                      {group.trabajador}{' '}
+                      {group.cedula ? `(C.C. ${group.cedula})` : ''}
+                    </strong>
+                    <span className="text-sm text-slate-600">
+                      Día laborado: {group.fecha}
+                    </span>
+                  </div>
+                  <span className="text-sm text-slate-600">
+                    Pagado el: {group.fechaPago}
+                  </span>
+                </div>
+
+                <ul className="my-4 space-y-2">
+                  {group.labores.map((labor) => {
+                    let textoCantidad = `${labor.cantidad} días`;
+                    if (labor.modalidad === 'jornal') {
+                      const option = OPCIONES_JORNAL.find(
+                        (item) => item.valor === String(labor.cantidad),
+                      );
+                      if (option) textoCantidad = option.etiqueta;
+                    } else {
+                      textoCantidad = `${labor.cantidad} kg`;
+                    }
+
+                    return (
+                      <li
+                        className="flex flex-wrap justify-between gap-2 text-sm"
+                        key={labor.id}
+                      >
+                        <span className="text-slate-700">
+                          {labor.actividad} ({textoCantidad})
+                        </span>
+                        <span className="text-slate-600">
+                          {dinero(labor.subtotal)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="border-t border-dashed border-slate-300 pt-3 text-right">
+                  <span className="mr-2 text-sm text-slate-600">
+                    Total del día:
+                  </span>
+                  <strong className="text-lg font-semibold text-emerald-800">
+                    {dinero(group.totalPagado)}
                   </strong>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                    Día laborado: {grupo.fecha}
-                  </span>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>
-                    Pagado el: {grupo.fechaPago}
-                  </span>
-                </div>
-              </div>
-
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px 0' }}>
-                {grupo.labores.map((labor) => {
-                  let textoCantidad = `${labor.cantidad} días`;
-                  if (labor.modalidad === 'jornal') {
-                    const opc = OPCIONES_JORNAL.find((o) => o.valor === String(labor.cantidad));
-                    if (opc) textoCantidad = opc.etiqueta;
-                  } else {
-                    textoCantidad = `${labor.cantidad} kg`;
-                  }
-
-                  return (
-                    <li
-                      key={labor.id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: '0.95rem',
-                        marginBottom: 8,
-                      }}
-                    >
-                      <span style={{ color: '#334155' }}>
-                        • {labor.actividad} ({textoCantidad})
-                      </span>
-                      <span style={{ color: '#64748b' }}>
-                        {dinero(labor.subtotal)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-
-              <div
-                style={{
-                  textAlign: 'right',
-                  borderTop: '1px dashed #cbd5e1',
-                  paddingTop: 10,
-                }}
-              >
-                <span style={{ fontSize: '0.9rem', color: '#475569', marginRight: 10 }}>
-                  Total del día:
-                </span>
-                <strong style={{ fontSize: '1.2rem', color: '#15803d' }}>
-                  {dinero(grupo.totalPagado)}
-                </strong>
-              </div>
-            </article>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
-    </>
+    </section>
   );
 }

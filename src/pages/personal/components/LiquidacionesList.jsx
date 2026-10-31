@@ -1,5 +1,13 @@
+import { Button } from '#components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '#components/ui/card';
 import { dinero } from '#lib/formatters';
 import { OPCIONES_JORNAL } from '#lib/constants';
+import { PersonalInput, PersonalSelect } from './PersonalField.jsx';
 
 export default function LiquidacionesList({
   fincaSeleccionada,
@@ -13,12 +21,12 @@ export default function LiquidacionesList({
   tarifaJornal,
   lotesPorId,
   onRealizarPago,
-  campo,
-  boton,
 }) {
   return (
-    <section id="liquidaciones">
-      <h3>Liquidaciones pendientes</h3>
+    <section className="space-y-4" id="liquidaciones">
+      <h3 className="text-lg font-semibold text-slate-900">
+        Liquidaciones pendientes
+      </h3>
 
       {!fincaSeleccionada ? (
         <p>Selecciona una finca para consultar sus liquidaciones.</p>
@@ -28,117 +36,130 @@ export default function LiquidacionesList({
         <p>No hay liquidaciones pendientes para {fincaSeleccionada.nombre}.</p>
       ) : (
         trabajadoresConPendientes.map((trabajador) => {
-          const registros = jornadasPendientes(trabajador.id, fincaSeleccionada.id);
+          const records = jornadasPendientes(trabajador.id, fincaSeleccionada.id);
           const pendiente = calcularPendiente(trabajador.id, fincaSeleccionada.id);
 
           return (
-            <article
-              key={trabajador.id}
-              style={{
-                border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: 18,
-                marginBottom: 14,
-                background: '#fff',
-              }}
-            >
-              <h3 style={{ margin: '0 0 8px' }}>{trabajador.nombre}</h3>
-              <p style={{ color: '#64748b' }}>
-                {registros.length} labor(es) pendiente(s) en {fincaSeleccionada.nombre}
-              </p>
-              <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#b91c1c' }}>
-                Valor calculado: {dinero(pendiente)}
-              </p>
+            <Card className="rounded-2xl border-slate-200" key={trabajador.id}>
+              <CardHeader>
+                <CardTitle>{trabajador.nombre}</CardTitle>
+                <p className="text-sm text-slate-600">
+                  {records.length} labor(es) pendiente(s) en {fincaSeleccionada.nombre}
+                </p>
+                <p className="text-lg font-semibold text-red-700">
+                  Valor calculado: {dinero(pendiente)}
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-left text-slate-600">
+                        <th className="p-2 font-medium">Fecha</th>
+                        <th className="p-2 font-medium">Actividad</th>
+                        <th className="p-2 font-medium">Lote</th>
+                        <th className="p-2 text-right font-medium">
+                          Tiempo / Cantidad
+                        </th>
+                        <th className="p-2 text-right font-medium">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {records.map((workday) => {
+                        const amount =
+                          cantidadesLiquidacion[workday.id] ??
+                          workday.cantidad ??
+                          '';
+                        const numericAmount = Number(amount);
+                        const rate = Number(
+                          workday.tarifaAplicada ||
+                            (workday.modalidad === 'recoleccion'
+                              ? tarifaKg
+                              : tarifaJornal),
+                        );
+                        const value =
+                          amount !== '' && numericAmount > 0
+                            ? numericAmount * rate
+                            : 0;
 
-              <div style={{ overflowX: 'auto', marginBottom: 12 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left', padding: 6 }}>Fecha</th>
-                      <th style={{ textAlign: 'left', padding: 6 }}>Actividad</th>
-                      <th style={{ textAlign: 'left', padding: 6 }}>Lote</th>
-                      <th style={{ textAlign: 'right', padding: 6 }}>Tiempo / Cantidad</th>
-                      <th style={{ textAlign: 'right', padding: 6 }}>Valor</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {registros.map((j) => {
-                      const cantidadActual = cantidadesLiquidacion[j.id] ?? j.cantidad ?? '';
-                      const cantidadNumerica = Number(cantidadActual);
-                      const tarifa = Number(
-                        j.tarifaAplicada ||
-                        (j.modalidad === 'recoleccion' ? tarifaKg : tarifaJornal)
-                      );
-                      const valor =
-                        cantidadActual !== '' && cantidadNumerica > 0
-                          ? cantidadNumerica * tarifa
-                          : 0;
+                        return (
+                          <tr
+                            className="border-b border-slate-100"
+                            key={workday.id}
+                          >
+                            <td className="p-2">{workday.fecha}</td>
+                            <td className="p-2">{workday.actividad}</td>
+                            <td className="p-2">
+                              {lotesPorId.get(String(workday.loteId))?.nombre ||
+                                workday.lote ||
+                                'Lote anterior'}
+                            </td>
+                            <td className="p-2 text-right">
+                              {workday.modalidad === 'recoleccion' ? (
+                                <>
+                                  <PersonalInput
+                                    className="min-w-24"
+                                    min="0.1"
+                                    onChange={(event) =>
+                                      setCantidadesLiquidacion((previous) => ({
+                                        ...previous,
+                                        [workday.id]: event.target.value,
+                                      }))
+                                    }
+                                    placeholder="Kilos"
+                                    step="0.1"
+                                    type="number"
+                                    value={amount}
+                                  />
+                                  <small className="mt-1 block text-slate-500">
+                                    Kilogramos
+                                  </small>
+                                </>
+                              ) : (
+                                <>
+                                  <PersonalSelect
+                                    className="min-w-36"
+                                    onChange={(event) =>
+                                      setCantidadesLiquidacion((previous) => ({
+                                        ...previous,
+                                        [workday.id]: event.target.value,
+                                      }))
+                                    }
+                                    value={amount}
+                                  >
+                                    <option value="">Selecciona tiempo...</option>
+                                    {OPCIONES_JORNAL.map((option) => (
+                                      <option
+                                        key={option.valor}
+                                        value={option.valor}
+                                      >
+                                        {option.etiqueta}
+                                      </option>
+                                    ))}
+                                  </PersonalSelect>
+                                  <small className="mt-1 block text-slate-500">
+                                    Tiempo trabajado
+                                  </small>
+                                </>
+                              )}
+                            </td>
+                            <td className="p-2 text-right">{dinero(value)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
-                      return (
-                        <tr key={j.id}>
-                          <td style={{ padding: 6 }}>{j.fecha}</td>
-                          <td style={{ padding: 6 }}>{j.actividad}</td>
-                          <td style={{ padding: 6 }}>
-                            {lotesPorId.get(String(j.loteId))?.nombre || j.lote || 'Lote anterior'}
-                          </td>
-                          <td style={{ padding: 6, textAlign: 'right' }}>
-                            {j.modalidad === 'recoleccion' ? (
-                              <>
-                                <input
-                                  type="number"
-                                  min="0.1"
-                                  step="0.1"
-                                  value={cantidadActual}
-                                  onChange={(e) =>
-                                    setCantidadesLiquidacion((prev) => ({
-                                      ...prev,
-                                      [j.id]: e.target.value,
-                                    }))
-                                  }
-                                  placeholder="Kilos"
-                                  style={{ ...campo, minWidth: 100, marginTop: 0 }}
-                                />
-                                <small style={{ display: 'block', color: '#64748b' }}>Kilogramos</small>
-                              </>
-                            ) : (
-                              <>
-                                <select
-                                  value={cantidadActual}
-                                  onChange={(e) =>
-                                    setCantidadesLiquidacion((prev) => ({
-                                      ...prev,
-                                      [j.id]: e.target.value,
-                                    }))
-                                  }
-                                  style={{ ...campo, minWidth: 140, marginTop: 0 }}
-                                >
-                                  <option value="">Selecciona tiempo...</option>
-                                  {OPCIONES_JORNAL.map((opc) => (
-                                    <option key={opc.valor} value={opc.valor}>
-                                      {opc.etiqueta}
-                                    </option>
-                                  ))}
-                                </select>
-                                <small style={{ display: 'block', color: '#64748b' }}>Tiempo trabajado</small>
-                              </>
-                            )}
-                          </td>
-                          <td style={{ padding: 6, textAlign: 'right' }}>{dinero(valor)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <button
-                type="button"
-                style={{ ...boton, width: '100%' }}
-                onClick={() => onRealizarPago(trabajador)}
-              >
-                Liquidar labores y registrar pago
-              </button>
-            </article>
+                <Button
+                  className="h-11 w-full rounded-xl bg-emerald-800 text-white hover:bg-emerald-900"
+                  onClick={() => onRealizarPago(trabajador)}
+                  type="button"
+                >
+                  Liquidar labores y registrar pago
+                </Button>
+              </CardContent>
+            </Card>
           );
         })
       )}

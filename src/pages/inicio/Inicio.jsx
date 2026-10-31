@@ -1,6 +1,4 @@
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
   ClipboardList,
   Coffee,
   Sprout,
@@ -14,7 +12,7 @@ import {
   CardTitle,
 } from '#components/ui/card';
 import { leerLocal } from '#lib/storage';
-import { formatoDinero, hoy } from '#lib/formatters';
+import { hoy } from '#lib/formatters';
 
 const accionesRapidas = [
   {
@@ -31,20 +29,6 @@ const accionesRapidas = [
     icono: ClipboardList,
     color: 'bg-sky-100 text-sky-800',
   },
-  {
-    titulo: 'Registrar egreso',
-    descripcion: 'Anota gastos de la finca y pagos de operación.',
-    ruta: '/finanzas/registrar-egreso',
-    icono: ArrowDownLeft,
-    color: 'bg-rose-100 text-rose-800',
-  },
-  {
-    titulo: 'Registrar venta',
-    descripcion: 'Registra los kilos vendidos y el valor recibido.',
-    ruta: '/finanzas/registrar-venta',
-    icono: ArrowUpRight,
-    color: 'bg-amber-100 text-amber-800',
-  },
 ];
 
 const formatoCantidad = (valor) =>
@@ -52,32 +36,16 @@ const formatoCantidad = (valor) =>
     maximumFractionDigits: 2,
   });
 
-const formatoConteoMovimientos = (cantidad) =>
-  `${cantidad} ${cantidad === 1 ? 'movimiento' : 'movimientos'}`;
-
 function obtenerResumenDelDia(usuarioId, fechaHoy) {
   const jornadas = leerLocal(`cafesmart_jornadas_${usuarioId}`, []);
-  const movimientos = leerLocal(`cafesmart_movimientos_${usuarioId}`, []);
 
   const jornadasHoy = jornadas.filter((jornada) => jornada.fecha === fechaHoy);
-  const movimientosHoy = movimientos.filter(
-    (movimiento) => movimiento.fecha === fechaHoy,
-  );
   const recolecciones = jornadasHoy.filter(
     (jornada) => jornada.modalidad === 'recoleccion',
   );
   const labores = jornadasHoy.filter((jornada) => jornada.modalidad !== 'recoleccion');
-  const ingresos = movimientosHoy.filter(
-    (movimiento) =>
-      movimiento.tipo === 'ingreso' || movimiento.tipo === 'venta',
-  );
-  const egresos = movimientosHoy.filter(
-    (movimiento) =>
-      movimiento.tipo === 'gasto' || movimiento.tipo === 'egreso',
-  );
 
-  const actividades = [
-    ...jornadasHoy.map((jornada) => ({
+  const actividades = jornadasHoy.map((jornada) => ({
       id: `jornada-${jornada.id}`,
       momento: Number(jornada.id) || 0,
       titulo:
@@ -96,36 +64,12 @@ function obtenerResumenDelDia(usuarioId, fechaHoy) {
           : '',
       icono: jornada.modalidad === 'recoleccion' ? Sprout : ClipboardList,
       estilo: 'bg-emerald-100 text-emerald-800',
-    })),
-    ...movimientosHoy.map((movimiento) => {
-      const esIngreso =
-        movimiento.tipo === 'ingreso' || movimiento.tipo === 'venta';
-      const esVenta =
-        esIngreso && movimiento.categoria === 'Venta de café';
-
-      return {
-        id: `movimiento-${movimiento.id}`,
-        momento: Number(String(movimiento.id).split('-')[0]) || 0,
-        titulo: esVenta ? 'Venta de café' : esIngreso ? 'Ingreso' : 'Egreso',
-        detalle: movimiento.descripcion || movimiento.categoria || 'Movimiento financiero',
-        valor: formatoDinero(movimiento.valor),
-        complemento:
-          esVenta && Number(movimiento.cantidadKg) > 0
-            ? `${formatoCantidad(movimiento.cantidadKg)} kg`
-            : '',
-        icono: esIngreso ? ArrowUpRight : ArrowDownLeft,
-        estilo: esIngreso
-          ? 'bg-amber-100 text-amber-800'
-          : 'bg-rose-100 text-rose-800',
-      };
-    }),
-  ].sort((a, b) => b.momento - a.momento);
+    }))
+    .sort((a, b) => b.momento - a.momento);
 
   return {
     recolecciones,
     labores,
-    ingresos,
-    egresos,
     actividades,
   };
 }
@@ -144,14 +88,6 @@ export default function Inicio({ usuario }) {
     year: 'numeric',
   }).format(new Date(`${fechaHoy}T12:00:00`));
 
-  const ingresosTotales = resumen.ingresos.reduce(
-    (total, movimiento) => total + Number(movimiento.valor || 0),
-    0,
-  );
-  const egresosTotales = resumen.egresos.reduce(
-    (total, movimiento) => total + Number(movimiento.valor || 0),
-    0,
-  );
   const indicadores = [
     {
       etiqueta: 'Recolecciones',
@@ -166,20 +102,6 @@ export default function Inicio({ usuario }) {
       detalle: 'registradas hoy',
       estilo: 'text-sky-800',
       icono: ClipboardList,
-    },
-    {
-      etiqueta: 'Ingresos',
-      valor: formatoDinero(ingresosTotales),
-      detalle: formatoConteoMovimientos(resumen.ingresos.length),
-      estilo: 'text-amber-800',
-      icono: ArrowUpRight,
-    },
-    {
-      etiqueta: 'Egresos',
-      valor: formatoDinero(egresosTotales),
-      detalle: formatoConteoMovimientos(resumen.egresos.length),
-      estilo: 'text-rose-800',
-      icono: ArrowDownLeft,
     },
   ];
 
@@ -209,7 +131,7 @@ export default function Inicio({ usuario }) {
             Elige una operación para continuar.
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           {accionesRapidas.map(({ titulo, descripcion, ruta, icono: Icono, color }) => (
             <Link
               className="group min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
@@ -248,7 +170,7 @@ export default function Inicio({ usuario }) {
           <p className="mt-1 capitalize text-sm text-slate-600">{fechaLegible}</p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           {indicadores.map(({ etiqueta, valor, detalle, estilo, icono: Icono }) => (
             <Card
               className="min-w-0 rounded-2xl border border-emerald-950/10 bg-white shadow-sm"

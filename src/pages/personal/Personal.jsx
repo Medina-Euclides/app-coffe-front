@@ -1,674 +1,68 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { hoy, dinero } from '#lib/formatters';
-import { leerLocal, guardarLocal } from '#lib/storage';
-import { api } from '#services/api';
-import {
-  cargarCacheActividades,
-  guardarCacheActividades,
-} from '#services/activityStorage';
-import { guardarCacheTrabajadores } from '#services/workerStorage';
 import FincaPersonalFilter from './components/FincaPersonalFilter.jsx';
-import LiquidacionesList from './components/LiquidacionesList.jsx';
 import HistorialPagos from './components/HistorialPagos.jsx';
 import LaborForm from './components/LaborForm.jsx';
-import TrabajadorForm from './components/TrabajadorForm.jsx';
+import LiquidacionesList from './components/LiquidacionesList.jsx';
 import TarifasCatalogo from './components/TarifasCatalogo.jsx';
+import TrabajadorForm from './components/TrabajadorForm.jsx';
+import usePersonalPage from './usePersonalPage.js';
 
 export default function Personal({ usuario, subSeccion }) {
-  const userId = usuario?.id || 'default';
-
-  const [trabajadores, setTrabajadores] = useState(() =>
-    leerLocal(`cafesmart_trabajadores_${userId}`, [])
-  );
-  const [fincas, setFincas] = useState(() =>
-    leerLocal(`cafesmart_fincas_${userId}`, [])
-  );
-  const [lotes, setLotes] = useState(() =>
-    leerLocal(`cafesmart_lotes_${userId}`, [])
-  );
-  const [actividades, setActividades] = useState(() =>
-    cargarCacheActividades(userId)
-  );
-  const [jornadas, setJornadas] = useState(() =>
-    leerLocal(`cafesmart_jornadas_${userId}`, [])
-  );
-
-  const [fincaId, setFincaId] = useState(() => {
-    const activa = localStorage.getItem(`cafesmart_finca_activa_${userId}`);
-    return activa || null;
-  });
-
-  const [tarifaKg, setTarifaKg] = useState(() =>
-    localStorage.getItem(`cafesmart_tarifa_kg_${userId}`) ?? '1000'
-  );
-  const [tarifaJornal, setTarifaJornal] = useState(() =>
-    localStorage.getItem(`cafesmart_tarifa_jornal_${userId}`) ?? '50000'
-  );
-
-  const [vista, setVista] = useState('lista');
-  const [firstNameTrabajador, setFirstNameTrabajador] = useState('');
-  const [lastNameTrabajador, setLastNameTrabajador] = useState('');
-  const [identificacionTrabajador, setIdentificacionTrabajador] = useState('');
-  const [telefonoTrabajador, setTelefonoTrabajador] = useState('');
-  const [errorTrabajadores, setErrorTrabajadores] = useState('');
-  const [errorActividades, setErrorActividades] = useState('');
-  const [nuevaActividadNombre, setNuevaActividadNombre] = useState('');
-  const [nuevaActividadDescripcion, setNuevaActividadDescripcion] = useState('');
-  const [nuevaActividadEsCosecha, setNuevaActividadEsCosecha] = useState(false);
-  const [trabajadorId, setTrabajadorId] = useState('');
-  const [loteId, setLoteId] = useState('');
-  const [actividadSeleccionada, setActividadSeleccionada] = useState('');
-  const [modalidad, setModalidad] = useState('jornal');
-  const [fecha, setFecha] = useState(hoy());
-
-  const [cantidadesLiquidacion, setCantidadesLiquidacion] = useState({});
-  const [busquedaHistorial, setBusquedaHistorial] = useState('');
-  const [periodoHistorial, setPeriodoHistorial] = useState('todos');
-
-  // Sincronización con subSección del menú lateral
-  useEffect(() => {
-    if (subSeccion) {
-      if (subSeccion === 'liquidaciones') setVista('lista');
-      else if (subSeccion === 'registrar-labor') setVista('nueva_jornada');
-      else if (subSeccion === 'nuevo-trabajador') setVista('nuevo_trabajador');
-      else if (subSeccion === 'tarifas-actividades') setVista('tarifas');
-      else setVista('lista');
-    } else {
-      setVista('lista');
-    }
-  }, [subSeccion]);
-
-  useEffect(() => {
-    let active = true;
-    api.workers
-      .list()
-      .then((loadedWorkers) => {
-        if (!active) return;
-        setTrabajadores(loadedWorkers);
-        guardarCacheTrabajadores(userId, loadedWorkers);
-        setErrorTrabajadores('');
-      })
-      .catch((error) => {
-        if (!active) return;
-        console.error('Error al cargar trabajadores para Personal:', error);
-        setErrorTrabajadores(
-          `${error.message} Se muestran los trabajadores guardados en este dispositivo.`,
-        );
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [userId]);
-
-  useEffect(() => {
-    let active = true;
-    api.activities
-      .list()
-      .then((loadedActivities) => {
-        if (!active) return;
-        setActividades(loadedActivities);
-        guardarCacheActividades(userId, loadedActivities);
-        const selectedActivity = loadedActivities[0];
-        setActividadSeleccionada(selectedActivity?.name || '');
-        setModalidad(
-          selectedActivity?.is_harvest ? 'recoleccion' : 'jornal',
-        );
-        setErrorActividades('');
-      })
-      .catch((error) => {
-        if (!active) return;
-        console.error('Error al cargar actividades para Personal:', error);
-        setErrorActividades(
-          `${error.message} Se muestran las actividades guardadas en este dispositivo.`,
-        );
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [userId]);
-
-  // Recargar datos al enfocar
-  useEffect(() => {
-    const actualizar = () => {
-      setFincas(leerLocal(`cafesmart_fincas_${userId}`, []));
-      setLotes(leerLocal(`cafesmart_lotes_${userId}`, []));
-    };
-
-    actualizar();
-    window.addEventListener('focus', actualizar);
-    return () => window.removeEventListener('focus', actualizar);
-  }, [userId, vista]);
-
-  // Guardar en localStorage
-  useEffect(() => {
-    guardarLocal(`cafesmart_trabajadores_${userId}`, trabajadores);
-  }, [trabajadores, userId]);
-
-  useEffect(() => {
-    guardarCacheActividades(userId, actividades);
-  }, [actividades, userId]);
-
-  useEffect(() => {
-    guardarLocal(`cafesmart_jornadas_${userId}`, jornadas);
-  }, [jornadas, userId]);
-
-  useEffect(() => {
-    localStorage.setItem(`cafesmart_tarifa_kg_${userId}`, tarifaKg);
-    localStorage.setItem(`cafesmart_tarifa_jornal_${userId}`, tarifaJornal);
-  }, [tarifaKg, tarifaJornal, userId]);
-
-  const fincaSeleccionada = fincas.find(
-    (f) => String(f.id) === String(fincaId)
-  );
-
-  const lotesDeFinca = useMemo(
-    () => lotes.filter((l) => String(l.fincaId) === String(fincaId)),
-    [lotes, fincaId]
-  );
-
-  const lotesPorId = useMemo(
-    () => new Map(lotes.map((l) => [String(l.id), l])),
-    [lotes]
-  );
-
-  const perteneceAFinca = useCallback(
-    (jornada, idFinca) => {
-      if (jornada.fincaId !== undefined && jornada.fincaId !== null) {
-        return String(jornada.fincaId) === String(idFinca);
-      }
-
-      if (jornada.loteId !== undefined && jornada.loteId !== null) {
-        const lote = lotesPorId.get(String(jornada.loteId));
-        return Boolean(lote && String(lote.fincaId) === String(idFinca));
-      }
-
-      const nombreLote = String(jornada.lote || '').trim().toLowerCase();
-      if (!nombreLote) return false;
-
-      const coincidencias = lotes.filter(
-        (l) => String(l.nombre || '').trim().toLowerCase() === nombreLote
-      );
-
-      return (
-        coincidencias.length === 1 &&
-        String(coincidencias[0].fincaId) === String(idFinca)
-      );
-    },
-    [lotes, lotesPorId]
-  );
-
-  const jornadasPendientes = (idTrabajador, idFinca) =>
-    jornadas.filter(
-      (j) =>
-        String(j.trabajadorId) === String(idTrabajador) &&
-        j.estado !== 'pagado' &&
-        perteneceAFinca(j, idFinca)
-    );
-
-  const calcularPendiente = (idTrabajador, idFinca) =>
-    jornadasPendientes(idTrabajador, idFinca).reduce(
-      (total, j) => total + Number(j.subtotal || 0),
-      0
-    );
-
-  const agregarActividad = async (e) => {
-    e.preventDefault();
-    const nombre = nuevaActividadNombre.trim();
-
-    if (!nombre) {
-      alert('Escribe el nombre de la actividad.');
-      return;
-    }
-
-    if (
-      actividades.some(
-        (activity) =>
-          activity.name.toLowerCase() === nombre.toLowerCase(),
-      )
-    ) {
-      alert('Esta actividad ya existe.');
-      return;
-    }
-
-    try {
-      const newActivity = await api.activities.create({
-        name: nombre,
-        description: nuevaActividadDescripcion.trim(),
-        is_harvest: nuevaActividadEsCosecha,
-      });
-      setActividades((previous) => [...previous, newActivity]);
-      setActividadSeleccionada(newActivity.name);
-      setModalidad(newActivity.is_harvest ? 'recoleccion' : 'jornal');
-      setNuevaActividadNombre('');
-      setNuevaActividadDescripcion('');
-      setNuevaActividadEsCosecha(false);
-      setErrorActividades('');
-      alert('Actividad agregada correctamente.');
-    } catch (error) {
-      console.error('Error al crear tipo de actividad:', error);
-      alert(error.message || 'No se pudo agregar la actividad.');
-    }
-  };
-
-  const eliminarActividad = async (activityToDelete) => {
-    if (!activityToDelete.id) {
-      alert('Esta actividad solo existe en la caché local. Conéctate y vuelve a cargarla antes de eliminar.');
-      return;
-    }
-
-    const confirmado = window.confirm(
-      `¿Eliminar la actividad "${activityToDelete.name}"? Si ya está asociada a jornadas, el servidor impedirá eliminarla.`,
-    );
-    if (!confirmado) return;
-
-    try {
-      await api.activities.delete(activityToDelete.id);
-      const remaining = actividades.filter(
-        (activity) => String(activity.id) !== String(activityToDelete.id),
-      );
-      setActividades(remaining);
-      if (actividadSeleccionada === activityToDelete.name) {
-        setActividadSeleccionada(remaining[0]?.name || '');
-        setModalidad(remaining[0]?.is_harvest ? 'recoleccion' : 'jornal');
-      }
-      alert(`La actividad "${activityToDelete.name}" fue eliminada.`);
-    } catch (error) {
-      console.error('Error al eliminar tipo de actividad:', error);
-      alert(error.message || 'No se pudo eliminar la actividad.');
-    }
-  };
-
-  const cambiarActividadSeleccionada = (name) => {
-    setActividadSeleccionada(name);
-    const activity = actividades.find((item) => item.name === name);
-    setModalidad(activity?.is_harvest ? 'recoleccion' : 'jornal');
-  };
-
-  const guardarTrabajador = async (e) => {
-    e.preventDefault();
-    const firstName = firstNameTrabajador.trim();
-    const lastName = lastNameTrabajador.trim();
-    const identification = identificacionTrabajador.trim();
-    const phone = telefonoTrabajador.trim();
-
-    if (firstName.length < 2 || lastName.length < 2) {
-      alert('Escribe el nombre y apellido del trabajador (mínimo 2 caracteres cada uno).');
-      return;
-    }
-
-    if (
-      identification &&
-      trabajadores.some(
-        (worker) =>
-          String(worker.identification || worker.cedula || '').trim() ===
-          identification,
-      )
-    ) {
-      alert('Ya existe un trabajador registrado con este número de cédula.');
-      return;
-    }
-
-    try {
-      const newWorker = await api.workers.create({
-        first_name: firstName,
-        last_name: lastName,
-        identification: identification || null,
-        phone: phone || null,
-      });
-      setTrabajadores((previousWorkers) => {
-        const updatedWorkers = [...previousWorkers, newWorker];
-        guardarCacheTrabajadores(userId, updatedWorkers);
-        return updatedWorkers;
-      });
-      setFirstNameTrabajador('');
-      setLastNameTrabajador('');
-      setIdentificacionTrabajador('');
-      setTelefonoTrabajador('');
-      setErrorTrabajadores('');
-      setVista('lista');
-      alert('Trabajador registrado correctamente.');
-    } catch (error) {
-      console.error('Error al registrar trabajador desde Personal:', error);
-      alert(error.message || 'No se pudo registrar el trabajador.');
-    }
-  };
-
-  const guardarJornada = (e) => {
-    e.preventDefault();
-
-    const activity = actividades.find(
-      (item) => item.name === actividadSeleccionada,
-    );
-    if (!activity) {
-      alert('Selecciona un tipo de actividad registrado.');
-      return;
-    }
-
-    if (!fincaSeleccionada) {
-      alert('Primero debes seleccionar una finca en la parte superior.');
-      return;
-    }
-
-    const trabajador = trabajadores.find(
-      (t) => String(t.id) === String(trabajadorId)
-    );
-    const loteSeleccionado = lotesDeFinca.find(
-      (l) => String(l.id) === String(loteId)
-    );
-
-    if (!trabajador) {
-      alert('Selecciona un trabajador válido.');
-      return;
-    }
-
-    if (!loteSeleccionado) {
-      alert('Selecciona un lote válido de la finca elegida.');
-      return;
-    }
-
-    if (!fecha) {
-      alert('Selecciona la fecha de la labor.');
-      return;
-    }
-
-    const tarifa =
-      modalidad === 'recoleccion' ? Number(tarifaKg) : Number(tarifaJornal);
-
-    if (!Number.isFinite(tarifa) || tarifa <= 0) {
-      alert('La tarifa debe ser mayor que cero.');
-      return;
-    }
-
-    const nuevaJornada = {
-      id: Date.now(),
-      trabajadorId: String(trabajadorId),
-      fincaId: String(fincaSeleccionada.id),
-      loteId: loteSeleccionado.id,
-      lote: loteSeleccionado.nombre,
-      actividad: actividadSeleccionada,
-      modalidad,
-      cantidad: null,
-      tarifaAplicada: tarifa,
-      subtotal: 0,
-      fecha,
-      estado: 'pendiente',
-    };
-
-    setJornadas((anteriores) => [...anteriores, nuevaJornada]);
-    setLoteId('');
-    setVista('lista');
-    alert(
-      'Labor asignada correctamente. Podrás ingresar la cantidad al liquidar.'
-    );
-  };
-
-  const realizarPago = (trabajador) => {
-    if (!fincaSeleccionada) {
-      alert('Selecciona una finca antes de liquidar.');
-      return;
-    }
-
-    const pendientes = jornadasPendientes(trabajador.id, fincaSeleccionada.id);
-
-    if (pendientes.length === 0) {
-      alert('Este trabajador no tiene labores pendientes en esta finca.');
-      return;
-    }
-
-    const pendientesConCantidad = pendientes.map((j) => {
-      const cantidad = Number(cantidadesLiquidacion[j.id] ?? j.cantidad);
-      const tarifa = Number(
-        j.tarifaAplicada ||
-          (j.modalidad === 'recoleccion' ? tarifaKg : tarifaJornal)
-      );
-
-      return {
-        ...j,
-        cantidad,
-        subtotal: cantidad * tarifa,
-        tarifaAplicada: tarifa,
-      };
-    });
-
-    const cantidadInvalida = pendientesConCantidad.some(
-      (j) => !Number.isFinite(j.cantidad) || j.cantidad <= 0
-    );
-
-    if (cantidadInvalida) {
-      alert('Completa las cantidades de todas las labores para poder liquidar.');
-      return;
-    }
-
-    const monto = pendientesConCantidad.reduce(
-      (total, j) => total + j.subtotal,
-      0
-    );
-
-    if (monto <= 0) {
-      alert('El valor de la liquidación debe ser mayor que cero.');
-      return;
-    }
-
-    const confirmado = window.confirm(
-      `¿Confirmas el pago de ${dinero(monto)} a ${trabajador.nombre} por las labores pendientes de ${fincaSeleccionada.nombre}?`
-    );
-
-    if (!confirmado) return;
-
-    const idsPagados = new Set(pendientes.map((j) => j.id));
-    const liquidadasPorId = new Map(
-      pendientesConCantidad.map((j) => [j.id, j])
-    );
-    const fechaPago = hoy();
-
-    setJornadas((anteriores) =>
-      anteriores.map((j) => {
-        if (!idsPagados.has(j.id)) return j;
-
-        const liquidada = liquidadasPorId.get(j.id);
-        if (!liquidada) return j;
-
-        return {
-          ...j,
-          cantidad: liquidada.cantidad,
-          estado: 'pagado',
-          fechaPago,
-          tarifaAplicada: liquidada.tarifaAplicada,
-          subtotal: liquidada.subtotal,
-        };
-      })
-    );
-
-    const claveMovimientos = `cafesmart_movimientos_${userId}`;
-    const movimientos = leerLocal(claveMovimientos, []);
-
-    const nuevoEgreso = {
-      id: Date.now(),
-      tipo: 'gasto',
-      categoria: 'Mano de Obra',
-      descripcion: `Pago laboral: ${trabajador.nombre} (${fincaSeleccionada.nombre})`,
-      valor: monto,
-      fecha: fechaPago,
-      fincaId: fincaSeleccionada.id,
-      liquidacionJornadaIds: [...idsPagados],
-    };
-
-    guardarLocal(claveMovimientos, [nuevoEgreso, ...movimientos]);
-
-    // Entrada automática al inventario al liquidar recolección
-    try {
-      const claveInventario = `cafesmart_inventario_${userId}`;
-      const inventarioActual = leerLocal(claveInventario, []);
-      const entradasInventario = [];
-
-      pendientesConCantidad.forEach((j) => {
-        if (j.modalidad === 'recoleccion' && Number(j.cantidad) > 0) {
-          entradasInventario.push({
-            id: Date.now() + Math.floor(Math.random() * 1000),
-            fincaId: fincaSeleccionada.id,
-            loteId: j.loteId || null,
-            tipo: 'entrada',
-            presentacion: 'pergamino',
-            cantidad: Number(j.cantidad),
-            fecha: fechaPago,
-            descripcion: `Entrada por recolección liquidada - ${trabajador.nombre} (${j.actividad})`,
-            registradoPor: userId,
-            jornadaId: j.id,
-          });
-        }
-      });
-
-      if (entradasInventario.length > 0) {
-        guardarLocal(claveInventario, [...entradasInventario, ...inventarioActual]);
-      }
-    } catch (error) {
-      console.error('Error al actualizar inventario por liquidación:', error);
-    }
-
-    setCantidadesLiquidacion((anteriores) => {
-      const nuevas = { ...anteriores };
-      idsPagados.forEach((id) => delete nuevas[id]);
-      return nuevas;
-    });
-
-    alert(`Pago de ${dinero(monto)} registrado para ${trabajador.nombre}.`);
-  };
-
-  const cambiarFinca = (valor) => {
-    const id = valor ? Number(valor) : null;
-    setFincaId(id);
-    setLoteId('');
-
-    if (id !== null) {
-      localStorage.setItem(`cafesmart_finca_activa_${userId}`, String(id));
-    } else {
-      localStorage.removeItem(`cafesmart_finca_activa_${userId}`);
-    }
-  };
-
-  const trabajadoresConPendientes = useMemo(() => {
-    if (!fincaSeleccionada) return [];
-
-    return trabajadores.filter((t) =>
-      jornadas.some(
-        (j) =>
-          String(j.trabajadorId) === String(t.id) &&
-          j.estado !== 'pagado' &&
-          perteneceAFinca(j, fincaSeleccionada.id)
-      )
-    );
-  }, [trabajadores, jornadas, fincaSeleccionada, perteneceAFinca]);
-
-  const historialPagado = useMemo(
-    () =>
-      fincaSeleccionada
-        ? jornadas.filter(
-            (j) =>
-              j.estado === 'pagado' && perteneceAFinca(j, fincaSeleccionada.id)
-          )
-        : [],
-    [jornadas, fincaSeleccionada, perteneceAFinca]
-  );
-
-  const historialAgrupado = useMemo(() => {
-    const grupos = {};
-
-    historialPagado.forEach((j) => {
-      const t = trabajadores.find(
-        (trab) => String(trab.id) === String(j.trabajadorId)
-      );
-      const nombreTrabajadorTexto = String(t?.nombre || 'Trabajador anterior');
-      const cedulaTrabajadorTexto = String(t?.cedula || '');
-
-      if (periodoHistorial !== 'todos' && j.fecha) {
-        const partes = String(j.fecha).split('-').map(Number);
-        if (partes.length === 3 && !partes.some(Number.isNaN)) {
-          const [anio, mes] = partes;
-          const ahora = new Date();
-
-          if (periodoHistorial === 'este_mes') {
-            if (anio !== ahora.getFullYear() || mes !== ahora.getMonth() + 1)
-              return;
-          } else if (periodoHistorial === 'mes_anterior') {
-            const anterior = new Date(
-              ahora.getFullYear(),
-              ahora.getMonth() - 1,
-              1
-            );
-            if (
-              anio !== anterior.getFullYear() ||
-              mes !== anterior.getMonth() + 1
-            )
-              return;
-          } else if (periodoHistorial === 'este_ano') {
-            if (anio !== ahora.getFullYear()) return;
-          }
-        }
-      }
-
-      const termino = String(busquedaHistorial || '').trim().toLowerCase();
-      if (termino) {
-        const coincideNombre = nombreTrabajadorTexto
-          .toLowerCase()
-          .includes(termino);
-        const coincideCedula = cedulaTrabajadorTexto
-          .toLowerCase()
-          .includes(termino);
-        if (!coincideNombre && !coincideCedula) return;
-      }
-
-      const clave = `${j.fecha}_${j.trabajadorId}`;
-
-      if (!grupos[clave]) {
-        grupos[clave] = {
-          idUnico: clave,
-          fecha: j.fecha,
-          fechaPago: j.fechaPago,
-          trabajador: nombreTrabajadorTexto,
-          cedula: cedulaTrabajadorTexto,
-          totalPagado: 0,
-          labores: [],
-        };
-      }
-
-      grupos[clave].totalPagado += Number(j.subtotal || 0);
-      grupos[clave].labores.push(j);
-    });
-
-    return Object.values(grupos).sort(
-      (a, b) => new Date(b.fecha) - new Date(a.fecha)
-    );
-  }, [historialPagado, trabajadores, busquedaHistorial, periodoHistorial]);
-
-  const campo = {
-    width: '100%',
-    boxSizing: 'border-box',
-    minHeight: 44,
-    padding: 10,
-    border: '1px solid #cbd5e1',
-    borderRadius: 8,
-    marginTop: 6,
-  };
-
-  const etiqueta = {
-    display: 'block',
-    marginBottom: 16,
-    fontWeight: 600,
-    color: '#334155',
-  };
-
-  const boton = {
-    minHeight: 44,
-    border: 0,
-    borderRadius: 8,
-    padding: '10px 16px',
-    background: '#047857',
-    color: '#fff',
-    fontWeight: 700,
-    cursor: 'pointer',
-  };
+  const {
+    actividades,
+    actividadSeleccionada,
+    agregarActividad,
+    busquedaHistorial,
+    cambiarActividadSeleccionada,
+    cambiarFinca,
+    calcularPendiente,
+    cantidadesLiquidacion,
+    eliminarActividad,
+    errorActividades,
+    errorTrabajadores,
+    fecha,
+    fincaId,
+    fincaSeleccionada,
+    fincas,
+    firstNameTrabajador,
+    historialAgrupado,
+    identificacionTrabajador,
+    jornadasPendientes,
+    lastNameTrabajador,
+    loteId,
+    lotesDeFinca,
+    lotesPorId,
+    modalidad,
+    nuevaActividadDescripcion,
+    nuevaActividadEsCosecha,
+    nuevaActividadNombre,
+    onRealizarPago,
+    periodoHistorial,
+    setBusquedaHistorial,
+    setCantidadesLiquidacion,
+    setFecha,
+    setFirstNameTrabajador,
+    setIdentificacionTrabajador,
+    setLastNameTrabajador,
+    setLoteId,
+    setModalidad,
+    setNuevaActividadDescripcion,
+    setNuevaActividadEsCosecha,
+    setNuevaActividadNombre,
+    setPeriodoHistorial,
+    setTarifaJornal,
+    setTarifaKg,
+    setTelefonoTrabajador,
+    setTrabajadorId,
+    tarifaJornal,
+    tarifaKg,
+    telefonoTrabajador,
+    trabajadorId,
+    trabajadores,
+    trabajadoresConPendientes,
+    vista,
+    guardarJornada,
+    guardarTrabajador,
+  } = usePersonalPage({ usuario, subSeccion });
 
   return (
     <div>
@@ -714,8 +108,6 @@ export default function Personal({ usuario, subSeccion }) {
         fincaId={fincaId}
         fincaSeleccionada={fincaSeleccionada}
         onCambiarFinca={cambiarFinca}
-        campo={campo}
-        etiqueta={etiqueta}
       />
 
       {vista === 'lista' && (
@@ -731,9 +123,7 @@ export default function Personal({ usuario, subSeccion }) {
             tarifaKg={tarifaKg}
             tarifaJornal={tarifaJornal}
             lotesPorId={lotesPorId}
-            onRealizarPago={realizarPago}
-            campo={campo}
-            boton={boton}
+            onRealizarPago={onRealizarPago}
           />
 
           <HistorialPagos
@@ -743,7 +133,6 @@ export default function Personal({ usuario, subSeccion }) {
             periodoHistorial={periodoHistorial}
             setPeriodoHistorial={setPeriodoHistorial}
             historialAgrupado={historialAgrupado}
-            campo={campo}
           />
         </>
       )}
@@ -767,9 +156,6 @@ export default function Personal({ usuario, subSeccion }) {
           fecha={fecha}
           setFecha={setFecha}
           onGuardarJornada={guardarJornada}
-          campo={campo}
-          etiqueta={etiqueta}
-          boton={boton}
         />
       )}
 
@@ -785,9 +171,6 @@ export default function Personal({ usuario, subSeccion }) {
           setPhone={setTelefonoTrabajador}
           trabajadores={trabajadores}
           onGuardarTrabajador={guardarTrabajador}
-          campo={campo}
-          etiqueta={etiqueta}
-          boton={boton}
         />
       )}
 
@@ -806,9 +189,6 @@ export default function Personal({ usuario, subSeccion }) {
           setNuevaActividadEsCosecha={setNuevaActividadEsCosecha}
           onAgregarActividad={agregarActividad}
           onEliminarActividad={eliminarActividad}
-          campo={campo}
-          etiqueta={etiqueta}
-          boton={boton}
         />
       )}
     </div>

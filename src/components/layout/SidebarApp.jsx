@@ -15,7 +15,6 @@ import {
   LayoutDashboard,
   Users,
   Sprout,
-  ChartNoAxesCombined,
   ChartPie,
 } from "lucide-react"
 import SidebarNavGroup from "./SidebarNavGroup.jsx"
@@ -39,18 +38,9 @@ const gruposNavegacion = [
     ],
   },
   {
-    label: "Economía",
-    icon: ChartNoAxesCombined,
-    options: [
-      { label: "Pagos", to: "/economia/pagos" },
-      { label: "Egresos", to: "/economia/egresos" },
-      { label: "Ventas", to: "/economia/ventas" },
-    ],
-  },
-  {
     label: "Consultas",
     icon: ChartPie,
-    options: ["Producción", "Resumen económico"],
+    options: ["Producción"],
   },
 ]
 

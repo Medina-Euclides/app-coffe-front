@@ -1,41 +1,36 @@
+import { Card, CardContent } from '#components/ui/card';
+import { PersonalField, PersonalSelect } from './PersonalField.jsx';
+
 export default function FincaPersonalFilter({
   fincas,
   fincaId,
   fincaSeleccionada,
   onCambiarFinca,
-  campo,
-  etiqueta,
 }) {
   return (
-    <section
-      style={{
-        background: '#f8fafc',
-        border: '1px solid #e2e8f0',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 24,
-      }}
-    >
-      <label style={etiqueta}>
-        Finca seleccionada
-        <select
-          value={fincaId ?? ''}
-          onChange={(e) => onCambiarFinca(e.target.value)}
-          style={campo}
-        >
-          <option value="">Selecciona una finca...</option>
-          {fincas.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.nombre}
-            </option>
-          ))}
-        </select>
-      </label>
-      {!fincaSeleccionada && (
-        <p style={{ color: '#b45309', marginBottom: 0 }}>
-          Crea una finca en el módulo Fincas para registrar labores y liquidaciones.
-        </p>
-      )}
-    </section>
+    <Card className="mb-6 rounded-2xl border-slate-200 bg-slate-50">
+      <CardContent className="space-y-3 p-4">
+        <PersonalField htmlFor="personal-farm" label="Finca seleccionada">
+          <PersonalSelect
+            id="personal-farm"
+            onChange={(event) => onCambiarFinca(event.target.value)}
+            value={fincaId ?? ''}
+          >
+            <option value="">Selecciona una finca...</option>
+            {fincas.map((farm) => (
+              <option key={farm.id} value={farm.id}>
+                {farm.nombre}
+              </option>
+            ))}
+          </PersonalSelect>
+        </PersonalField>
+        {!fincaSeleccionada && (
+          <p className="text-sm text-amber-800">
+            Crea una finca en el módulo Fincas para registrar labores y
+            liquidaciones.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

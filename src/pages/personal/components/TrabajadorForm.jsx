@@ -1,3 +1,15 @@
+import { Button } from '#components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '#components/ui/card';
+import {
+  PersonalField,
+  PersonalInput,
+} from './PersonalField.jsx';
+
 export default function TrabajadorForm({
   firstName,
   setFirstName,
@@ -9,128 +21,109 @@ export default function TrabajadorForm({
   setPhone,
   trabajadores,
   onGuardarTrabajador,
-  campo,
-  etiqueta,
-  boton,
 }) {
   return (
-    <section id="nuevo-trabajador">
-      <form
-        onSubmit={onGuardarTrabajador}
-        style={{
-          background: '#fff',
-          padding: 20,
-          border: '1px solid #e2e8f0',
-          borderRadius: 12,
-          marginBottom: 20,
-        }}
-      >
-        <h3>Crear nuevo trabajador</h3>
+    <section className="space-y-5" id="nuevo-trabajador">
+      <Card className="rounded-2xl border-slate-200">
+        <CardHeader>
+          <CardTitle>Crear nuevo trabajador</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-5" onSubmit={onGuardarTrabajador}>
+            <PersonalField htmlFor="worker-first-name" label="Nombre">
+              <PersonalInput
+                id="worker-first-name"
+                maxLength={150}
+                minLength={2}
+                onChange={(event) => setFirstName(event.target.value)}
+                placeholder="Ej. Carlos"
+                required
+                type="text"
+                value={firstName}
+              />
+            </PersonalField>
 
-        <label style={etiqueta}>
-          Nombre
-          <input
-            type="text"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            required
-            minLength={2}
-            maxLength={150}
-            style={campo}
-            placeholder="Ej. Carlos"
-          />
-        </label>
+            <PersonalField htmlFor="worker-last-name" label="Apellido">
+              <PersonalInput
+                id="worker-last-name"
+                maxLength={150}
+                minLength={2}
+                onChange={(event) => setLastName(event.target.value)}
+                placeholder="Ej. Ramírez"
+                required
+                type="text"
+                value={lastName}
+              />
+            </PersonalField>
 
-        <label style={etiqueta}>
-          Apellido
-          <input
-            type="text"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            required
-            minLength={2}
-            maxLength={150}
-            style={campo}
-            placeholder="Ej. Ramírez"
-          />
-        </label>
+            <PersonalField
+              htmlFor="worker-identification"
+              label="Identificación (opcional)"
+            >
+              <PersonalInput
+                id="worker-identification"
+                maxLength={150}
+                onChange={(event) => setIdentification(event.target.value)}
+                placeholder="Ej. 1061234567"
+                type="text"
+                value={identification}
+              />
+            </PersonalField>
 
-        <label style={etiqueta}>
-          Identificación (Opcional)
-          <input
-            type="text"
-            value={identification}
-            onChange={(e) => setIdentification(e.target.value)}
-            maxLength={150}
-            style={campo}
-            placeholder="Ej. 1061234567"
-          />
-        </label>
+            <PersonalField htmlFor="worker-phone" label="Teléfono (opcional)">
+              <PersonalInput
+                id="worker-phone"
+                maxLength={150}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="Ej. 3001234567"
+                type="tel"
+                value={phone}
+              />
+            </PersonalField>
 
-        <label style={etiqueta}>
-          Teléfono (Opcional)
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            maxLength={150}
-            style={campo}
-            placeholder="Ej. 3001234567"
-          />
-        </label>
+            <Button
+              className="h-11 rounded-xl bg-emerald-800 px-5 text-white hover:bg-emerald-900"
+              type="submit"
+            >
+              Guardar trabajador
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-        <button type="submit" style={boton}>
-          Guardar trabajador
-        </button>
-      </form>
-
-      <article
-        style={{
-          background: '#fff',
-          padding: 20,
-          border: '1px solid #e2e8f0',
-          borderRadius: 12,
-        }}
-      >
-        <h3>Lista de Trabajadores Registrados</h3>
-        {trabajadores.length === 0 ? (
-          <p style={{ color: '#64748b' }}>No hay trabajadores registrados en la base de datos.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e2e8f0' }}>
-                    Cédula
-                  </th>
-                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e2e8f0' }}>
-                    Nombre
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {trabajadores.map((t) => (
-                  <tr key={t.id}>
-                    <td
-                      style={{
-                        padding: 8,
-                        borderBottom: '1px solid #f1f5f9',
-                        color: '#047857',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {t.cedula || 'Sin cédula'}
-                    </td>
-                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 600 }}>
-                      {t.nombre}
-                    </td>
+      <Card className="rounded-2xl border-slate-200">
+        <CardHeader>
+          <CardTitle>Lista de trabajadores registrados</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {trabajadores.length === 0 ? (
+            <p className="text-sm text-slate-600">
+              No hay trabajadores registrados en la base de datos.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-600">
+                    <th className="p-2 font-medium">Cédula</th>
+                    <th className="p-2 font-medium">Nombre</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </article>
+                </thead>
+                <tbody>
+                  {trabajadores.map((worker) => (
+                    <tr className="border-b border-slate-100" key={worker.id}>
+                      <td className="p-2 font-semibold text-emerald-800">
+                        {worker.cedula || 'Sin cédula'}
+                      </td>
+                      <td className="p-2 font-semibold">{worker.nombre}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </section>
   );
 }
