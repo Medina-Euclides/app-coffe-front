@@ -26,48 +26,6 @@ import {
 import { hoy } from '#lib/formatters';
 import { api } from '#services/api';
 
-const TRABAJADORES = [
-  'María Fernanda López',
-  'Carlos Andrés Rojas',
-  'Jorge Eliécer Gómez',
-  'Lucía Ramírez',
-  'Pedro Antonio Ruiz',
-];
-
-const LOTES = ['Lote El Roble', 'Lote La Esperanza', 'Lote Alto del Café'];
-
-const ACTIVIDADES = [
-  'Deshierbe / Plateo',
-  'Abonado / Fertilización',
-  'Poda y Zoca',
-  'Ahoyado y Siembra',
-  'Fumigación / Control de plagas',
-];
-
-const JORNADAS = [
-  {
-    id: 'jornada-1',
-    fecha: '2026-10-29',
-    trabajador: 'Lucía Ramírez',
-    actividad: 'Deshierbe / Plateo',
-    lote: 'Lote Alto del Café',
-  },
-  {
-    id: 'jornada-2',
-    fecha: '2026-10-28',
-    trabajador: 'Pedro Antonio Ruiz',
-    actividad: 'Abonado / Fertilización',
-    lote: 'Lote El Roble',
-  },
-  {
-    id: 'jornada-3',
-    fecha: '2026-10-27',
-    trabajador: 'María Fernanda López',
-    actividad: 'Poda y Zoca',
-    lote: 'Lote La Esperanza',
-  },
-];
-
 const inputClassName =
   'h-11 w-full rounded-xl border border-[#dfe5dc] bg-white px-3 text-sm text-[#294533] outline-none transition focus-visible:border-[#5b805e] focus-visible:ring-3 focus-visible:ring-[#5b805e]/20';
 
@@ -97,6 +55,29 @@ function mapHarvestRecords(workdays) {
       })),
     ),
   );
+}
+
+function mapWorkdayDetails(workdays) {
+  return workdays
+    .filter((workday) => workday.payment_mode === 'jornal')
+    .flatMap((workday) =>
+      (workday.details || []).map((detail) => ({
+        id: detail.id,
+        workdayId: workday.id,
+        workdayDetailId: detail.id,
+        trabajadorId: workday.worker,
+        trabajador: workday.worker_name,
+        fecha: workday.date,
+        modalidadPago: workday.payment_mode,
+        tarifaAcordada: workday.agreed_rate,
+        estadoLiquidacion: workday.settlement_status,
+        activityTypeId: detail.activity_type,
+        actividad: detail.activity_name,
+        loteId: detail.lot,
+        lote: detail.lot_name,
+        finca: detail.farm_name,
+      })),
+    );
 }
 
 function Field({ children, label, htmlFor }) {
@@ -173,6 +154,11 @@ function RecordCard({ onEdit, onView, record, section }) {
           <p className="mt-1 break-words text-sm text-[#68766b]">
             {isHarvest ? 'Café recolectado' : record.actividad}
           </p>
+          {!isHarvest && (
+            <p className="mt-1 text-xs font-medium text-[#748074]">
+              Jornal: ${Number(record.tarifaAcordada).toLocaleString('es-CO')}
+            </p>
+          )}
         </div>
         {isHarvest && (
           <p className="shrink-0 text-right">
@@ -277,12 +263,17 @@ function RecordFormDialog({
   const handleSubmit = async (event) => {
     event.preventDefault();
     setNotice('');
-    if (!isHarvest) {
-      setNotice('El registro de jornadas laborales aún no está conectado al servidor.');
+    if (!workers.length || !lots.length || !activities.length) {
+      setNotice(
+        'Para registrar una operación necesitas trabajadores y lotes activos, además de actividades laborales configuradas.',
+      );
       return;
     }
 
-    if (new Set(workerRows.map((row) => row.worker)).size !== workerRows.length) {
+    if (
+      workerRows.length > 1 &&
+      new Set(workerRows.map((row) => row.worker)).size !== workerRows.length
+    ) {
       setNotice('No puedes registrar al mismo trabajador dos veces en una fecha.');
       return;
     }
@@ -304,7 +295,10 @@ function RecordFormDialog({
           `Se guardaron ${savedCount} registro(s). Los demás no se guardaron: ${saveError.message}`,
         );
       } else {
-        setNotice(saveError.message || 'No se pudo guardar la recolección.');
+        setNotice(
+          saveError.message ||
+            `No se pudo guardar ${isHarvest ? 'la recolección' : 'la jornada laboral'}.`,
+        );
       }
     } finally {
       setSaving(false);
@@ -323,17 +317,17 @@ function RecordFormDialog({
           <DialogDescription>
             {isHarvest
               ? 'Indica fecha, lote, actividad, pesaje, hora y tarifa acordada por trabajador.'
-              : 'Registra una ejecución concreta de una actividad en una fecha y lote.'}
+              : 'Registra trabajador, fecha, actividad, lote y tarifa diaria acordada.'}
           </DialogDescription>
         </DialogHeader>
 
-        {isHarvest &&
-          (!workers.length || !lots.length || !activities.length) && (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              Para registrar recolección necesitas trabajadores y lotes activos,
-              además de al menos una actividad marcada como recolección.
-            </p>
-          )}
+        {(!workers.length || !lots.length || !activities.length) && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {isHarvest
+              ? 'Para registrar recolección necesitas trabajadores y lotes activos, además de al menos una actividad marcada como recolección.'
+              : 'Para registrar jornadas necesitas trabajadores y lotes activos, además de actividades laborales configuradas.'}
+          </p>
+        )}
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           {isHarvest && !isEditing && (
@@ -380,7 +374,7 @@ function RecordFormDialog({
               <input
                 className={inputClassName}
                 id="operation-date"
-                disabled={isHarvest && isEditing}
+                disabled={isEditing}
                 onChange={(event) => setDate(event.target.value)}
                 required
                 type="date"
@@ -399,12 +393,12 @@ function RecordFormDialog({
                 <option disabled value="">
                   Selecciona un lote
                 </option>
-                {(isHarvest ? lots : LOTES).map((option) => (
+                {lots.map((option) => (
                   <option
-                    key={isHarvest ? option.id : option}
-                    value={isHarvest ? option.id : option}
+                    key={option.id}
+                    value={option.id}
                   >
-                    {isHarvest ? option.nombre : option}
+                    {option.nombre}
                   </option>
                 ))}
               </select>
@@ -568,19 +562,38 @@ function RecordFormDialog({
               <Field htmlFor="workday-worker" label="Trabajador">
                 <select
                   className={inputClassName}
+                  disabled={isEditing}
                   id="workday-worker"
+                  onChange={(event) =>
+                    updateWorkerRow(0, 'worker', event.target.value)
+                  }
                   required
-                  defaultValue={record?.trabajador || ''}
+                  value={workerRows[0].worker}
                 >
                   <option disabled value="">
                     Selecciona un trabajador
                   </option>
-                  {TRABAJADORES.map((worker) => (
-                    <option key={worker} value={worker}>
-                      {worker}
+                  {workers.map((worker) => (
+                    <option key={worker.id} value={worker.id}>
+                      {worker.nombre}
                     </option>
                   ))}
                 </select>
+              </Field>
+              <Field htmlFor="workday-rate" label="Jornal acordado ($/día)">
+                <input
+                  className={inputClassName}
+                  disabled={isEditing}
+                  id="workday-rate"
+                  min="0.01"
+                  onChange={(event) =>
+                    updateWorkerRow(0, 'agreedRate', event.target.value)
+                  }
+                  required
+                  step="0.01"
+                  type="number"
+                  value={workerRows[0].agreedRate}
+                />
               </Field>
               <Field htmlFor="workday-activity" label="Actividad laboral">
                 <select
@@ -593,16 +606,17 @@ function RecordFormDialog({
                   <option disabled value="">
                     Selecciona una actividad
                   </option>
-                  {ACTIVIDADES.map((activityName) => (
-                    <option key={activityName} value={activityName}>
-                      {activityName}
+                  {activities.map((workActivity) => (
+                    <option key={workActivity.id} value={workActivity.id}>
+                      {workActivity.name}
                     </option>
                   ))}
                 </select>
               </Field>
               <p className="rounded-xl border border-[#dce8d9] bg-[#f0f5ed] p-3 text-sm leading-5 text-[#426548]">
-                Las actividades se crean previamente en Gestión de la finca. Cada
-                ejecución se registra como una jornada independiente.
+                La jornada se registra con modalidad por jornal. El trabajador
+                y la tarifa acordada quedan asociados a la fecha; la actividad y
+                el lote se guardan en el detalle.
               </p>
             </>
           )}
@@ -687,11 +701,23 @@ function RecordDetailsDialog({ onClose, record, section }) {
               />
             </>
           ) : (
-            <DetailItem
-              icon={ClipboardList}
-              label="Actividad"
-              value={record.actividad}
-            />
+            <>
+              <DetailItem
+                icon={ClipboardList}
+                label="Actividad"
+                value={record.actividad}
+              />
+              <DetailItem
+                icon={ClipboardList}
+                label="Pago acordado"
+                value={`$${Number(record.tarifaAcordada).toLocaleString('es-CO')} por jornal`}
+              />
+              <DetailItem
+                icon={CalendarDays}
+                label="Estado de liquidación"
+                value={record.estadoLiquidacion === 'liquidada' ? 'Liquidada' : 'Pendiente'}
+              />
+            </>
           )}
         </dl>
         <DialogFooter>
@@ -747,12 +773,10 @@ export default function Operations({ usuario }) {
   const [search, setSearch] = useState('');
   const [lotFilter, setLotFilter] = useState('');
   const [dialog, setDialog] = useState(null);
-  const loading =
-    isHarvest && (loadState.userId !== userId || loadState.loading);
-  const hasLoadError = isHarvest && Boolean(loadError);
+  const loading = loadState.userId !== userId || loadState.loading;
+  const hasLoadError = Boolean(loadError);
 
   useEffect(() => {
-    if (!isHarvest) return undefined;
     let active = true;
 
     Promise.all([
@@ -768,11 +792,15 @@ export default function Operations({ usuario }) {
         setHarvestRecords(mapHarvestRecords(loadedWorkdays));
         setWorkers(loadedWorkers.filter((worker) => worker.is_active));
         setLots(loadedLots.filter((lot) => lot.is_active));
-        setActivities(loadedActivities.filter((activity) => activity.is_harvest));
+        setActivities(
+          isHarvest
+            ? loadedActivities.filter((activity) => activity.is_harvest)
+            : loadedActivities,
+        );
       })
       .catch((error) => {
         if (!active) return;
-        console.error('Error al cargar los datos de recolección:', error);
+        console.error('Error al cargar datos de operaciones:', error);
         setLoadError(error.message);
       })
       .finally(() => {
@@ -791,12 +819,19 @@ export default function Operations({ usuario }) {
       setHarvestRecords(mapHarvestRecords(loadedWorkdays));
       setLoadError('');
     } catch (error) {
-      console.error('Error al actualizar los registros de recolección:', error);
+      console.error('Error al actualizar las jornadas laborales:', error);
       setLoadError(error.message);
     }
   };
 
-  const saveHarvestRecord = async (record, { activity, date, lot, row }) => {
+  const saveOperation = async (record, { activity, date, lot, row }) => {
+    if (record && record.modalidadPago === 'jornal') {
+      await api.workdayDetails.update(record.workdayDetailId, {
+        activity_type: activity,
+        lot,
+      });
+      return;
+    }
     if (record) {
       await api.harvestRecords.update(record.id, {
         quantity_kg: row.amount,
@@ -814,9 +849,12 @@ export default function Operations({ usuario }) {
     let detail;
 
     if (existingWorkday) {
-      if (existingWorkday.payment_mode !== 'kg') {
+      const expectedPaymentMode = isHarvest ? 'kg' : 'jornal';
+      if (existingWorkday.payment_mode !== expectedPaymentMode) {
         throw new Error(
-          'Ya existe una jornada para este trabajador y fecha con modalidad por jornal.',
+          `Ya existe una jornada para este trabajador y fecha con modalidad ${
+            expectedPaymentMode === 'kg' ? 'por jornal' : 'por kilogramo'
+          }.`,
         );
       }
       if (Number(existingWorkday.agreed_rate) !== Number(row.agreedRate)) {
@@ -828,7 +866,7 @@ export default function Operations({ usuario }) {
       workday = await api.workdays.create({
         worker: row.worker,
         date,
-        payment_mode: 'kg',
+        payment_mode: isHarvest ? 'kg' : 'jornal',
         agreed_rate: row.agreedRate,
       });
       createdWorkday = true;
@@ -840,11 +878,13 @@ export default function Operations({ usuario }) {
         activity_type: activity,
         lot,
       });
-      await api.harvestRecords.create({
-        workday_detail: detail.id,
-        quantity_kg: row.amount,
-        time: row.time,
-      });
+      if (isHarvest) {
+        await api.harvestRecords.create({
+          workday_detail: detail.id,
+          quantity_kg: row.amount,
+          time: row.time,
+        });
+      }
     } catch (error) {
       const cleanupErrors = [];
       if (detail?.id) {
@@ -871,18 +911,18 @@ export default function Operations({ usuario }) {
     }
   };
 
-  const records = isHarvest ? harvestRecords : JORNADAS;
-  const lotOptions = isHarvest ? lots : LOTES;
+  const records = isHarvest ? harvestRecords : mapWorkdayDetails(workdays);
+  const lotOptions = lots;
   const filteredRecords = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return records.filter((record) => {
       const searchableText = isHarvest
         ? `${record.trabajador} ${record.lote} ${record.finca} ${record.kilogramos}`
-        : `${record.trabajador} ${record.lote} ${record.actividad}`;
+        : `${record.trabajador} ${record.lote} ${record.finca} ${record.actividad}`;
       const matchesSearch = searchableText.toLocaleLowerCase().includes(query);
       const matchesLot =
         !lotFilter ||
-        (isHarvest ? record.loteId === lotFilter : record.lote === lotFilter);
+        record.loteId === lotFilter;
       return matchesSearch && matchesLot;
     });
   }, [isHarvest, lotFilter, records, search]);
@@ -897,7 +937,7 @@ export default function Operations({ usuario }) {
             : 'Registra y consulta las labores realizadas por los trabajadores, con su actividad, fecha y lote.'
         }
         onAction={() => {
-          if (!isHarvest || !loading) setDialog({ mode: 'create' });
+          if (!loading && !hasLoadError) setDialog({ mode: 'create' });
         }}
         onSearchChange={setSearch}
         searchLabel={isHarvest ? 'recolecciones por trabajador o lote' : 'jornadas por trabajador, actividad o lote'}
@@ -920,7 +960,7 @@ export default function Operations({ usuario }) {
               {isHarvest ? 'registros de recolección' : 'jornadas'}
             </span>
             <span className="rounded-full bg-[#f3f5ef] px-2 py-1 text-[11px] font-medium text-[#748074]">
-              {isHarvest ? 'Backend Django' : 'Datos de muestra'}
+              Backend Django
             </span>
           </div>
           <label className="flex items-center gap-2 text-sm text-[#68766b]">
@@ -933,11 +973,8 @@ export default function Operations({ usuario }) {
             >
               <option value="">Todos los lotes</option>
               {lotOptions.map((lot) => (
-                <option
-                  key={isHarvest ? lot.id : lot}
-                  value={isHarvest ? lot.id : lot}
-                >
-                  {isHarvest ? lot.nombre : lot}
+                <option key={lot.id} value={lot.id}>
+                  {lot.nombre}
                 </option>
               ))}
             </select>
@@ -955,7 +992,7 @@ export default function Operations({ usuario }) {
             className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
             role="alert"
           >
-            No se pudieron cargar los datos de recolección: {loadError}
+            No se pudieron cargar los datos de operaciones: {loadError}
           </p>
         )}
 
@@ -1002,16 +1039,18 @@ export default function Operations({ usuario }) {
         <RecordFormDialog
           key={`${section}-${dialog.mode}-${dialog.record?.id || 'new'}`}
           activities={activities}
-          defaultAgreedRate={
-            localStorage.getItem(`cafesmart_tarifa_kg_${userId}`) || '1000'
-          }
           lots={lots}
           onClose={() => setDialog(null)}
-          onSave={saveHarvestRecord}
+          onSave={saveOperation}
           onSaved={refreshWorkdays}
           record={dialog.record}
           section={section}
           workers={workers}
+          defaultAgreedRate={
+            localStorage.getItem(
+              `cafesmart_tarifa_${isHarvest ? 'kg' : 'jornal'}_${userId}`,
+            ) || (isHarvest ? '1000' : '50000')
+          }
         />
       )}
       {dialog?.mode === 'view' && (

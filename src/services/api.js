@@ -320,6 +320,8 @@ export const api = {
   workdayDetails: {
     create: (data) =>
       apiRequest('/labor/workday-details/', { method: 'POST', data }),
+    update: (id, data) =>
+      apiRequest(`/labor/workday-details/${id}/`, { method: 'PATCH', data }),
     delete: (id) =>
       apiRequest(`/labor/workday-details/${id}/`, { method: 'DELETE' }),
   },
