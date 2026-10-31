@@ -33,8 +33,8 @@ const gruposNavegacion = [
     label: "Operaciones",
     icon: Sprout,
     options: [
-      { label: "Recolección", to: "/operaciones/recoleccion" },
-      { label: "Jornadas laborales", to: "/operaciones/jornadas" },
+      { label: "Jornadas laborales", to: "/jornada-laboral" },
+      { label: "Recolección", to: "/recoleccion" },
     ],
   },
   {

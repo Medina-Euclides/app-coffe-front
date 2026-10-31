@@ -114,7 +114,7 @@ export default function RoutesApp({
 
           <Route
             element={<WorkdayPage  usuario={usuario} />}
-            path="/jornada"
+            path="/jornada-laboral"
           />
           
        
