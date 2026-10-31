@@ -5,11 +5,11 @@ import { AuthenticatedRoute, SetupRoute } from './RouteGuards.jsx';
 
 const Auth = lazy(() => import('#pages/auth/Auth.jsx'));
 const Fincas = lazy(() => import('#pages/fincas/Fincas.jsx'));
-const Inventario = lazy(() => import('#pages/inventario/Inventario.jsx'));
+
 const OperationsHome = lazy(() =>
   import('#pages/inicio/Inicio.jsx'),
 );
-const Personal = lazy(() => import('#pages/personal/Personal.jsx'));
+
 const Workers = lazy(() => import('#pages/trabajadores/Trabajadores.jsx'));
 const LaborActivities = lazy(() =>
   import('#pages/actividades/ActividadesLaborales.jsx'),
@@ -111,29 +111,8 @@ export default function RoutesApp({
           />
           
        
-          <Route element={<Inventario usuario={usuario} />} path="/inventario" />
-          <Route
-            element={
-              <Personal
-                actividadInicial="Recolección de café"
-                modalidadInicial="recoleccion"
-                subSeccion="registrar-labor"
-                usuario={usuario}
-              />
-            }
-            path="/operaciones/registrar-recoleccion"
-          />
-          <Route
-            element={
-              <Personal
-                actividadInicial="Deshierbe / Plateo"
-                modalidadInicial="jornal"
-                subSeccion="registrar-labor"
-                usuario={usuario}
-              />
-            }
-            path="/operaciones/registrar-jornada"
-          />
+          
+          
           <Route element={<Navigate replace to="/inicio" />} path="*" />
         </Route>
       </Routes>
