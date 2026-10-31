@@ -33,12 +33,15 @@ export function SetupWizard({ usuario, onComplete }) {
   const [nombreLote, setNombreLote] = useState('');
   const [variedad, setVariedad] = useState(variedadesCafe[0]);
   const [hectareas, setHectareas] = useState('');
+  const [nombreActividad, setNombreActividad] = useState('');
   const [error, setError] = useState('');
   const [fincaCreada, setFincaCreada] = useState(null);
+  const [loteCreado, setLoteCreado] = useState(null);
+  const [actividadCreada, setActividadCreada] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  const guardarConfiguracion = async (event) => {
-    event.preventDefault();
+  const guardarConfiguracion = async (event, actividadOpcional = nombreActividad) => {
+    event?.preventDefault();
     setError('');
 
     if (!usuario?.id) {
@@ -48,6 +51,10 @@ export function SetupWizard({ usuario, onComplete }) {
 
     if (!nombreFinca.trim() || !nombreLote.trim()) {
       setError('Completa el nombre de la finca y del lote para continuar.');
+      return;
+    }
+    if (actividadOpcional.trim() && actividadOpcional.trim().length < 2) {
+      setError('El nombre de la actividad debe tener al menos 2 caracteres.');
       return;
     }
 
@@ -72,13 +79,24 @@ export function SetupWizard({ usuario, onComplete }) {
           description: '',
         }));
       setFincaCreada(finca);
-      const lote = await api.lots.create({
-        id_farm: finca.id,
-        name: nombreLote.trim(),
-        coffee_variety: variedad,
-        area_hectares: area,
-        description: '',
-      });
+      const lote =
+        loteCreado ||
+        (await api.lots.create({
+          id_farm: finca.id,
+          name: nombreLote.trim(),
+          coffee_variety: variedad,
+          area_hectares: area,
+          description: '',
+        }));
+      setLoteCreado(lote);
+      const actividad =
+        actividadCreada ||
+        (await api.activities.create({
+          name: actividadOpcional.trim() || 'Recolección de café',
+          description: '',
+          is_harvest: true,
+        }));
+      setActividadCreada(actividad);
       guardarCacheFincasYLotes(
         userId,
         [...fincasGuardadas, finca],
@@ -126,15 +144,15 @@ export function SetupWizard({ usuario, onComplete }) {
           {paso > 1 && (
             <div
               aria-label="Progreso de configuración inicial"
-              aria-valuemax={2}
+              aria-valuemax={3}
               aria-valuemin={1}
               aria-valuenow={paso - 1}
               className="space-y-2"
               role="progressbar"
             >
               <div className="flex items-center justify-between text-xs font-medium text-slate-600">
-                <span>Tu finca y tu primer lote</span>
-                <span>{paso - 1} de 2</span>
+                <span>Finca, lote y actividad</span>
+                <span>{paso - 1} de 3</span>
               </div>
               <div
                 aria-hidden="true"
@@ -142,7 +160,7 @@ export function SetupWizard({ usuario, onComplete }) {
               >
                 <div
                   className={`h-full rounded-full bg-emerald-700 transition-[width] motion-reduce:transition-none ${
-                    paso === 2 ? 'w-1/2' : 'w-full'
+                    paso === 2 ? 'w-1/3' : paso === 3 ? 'w-2/3' : 'w-full'
                   }`}
                 />
               </div>
@@ -154,6 +172,7 @@ export function SetupWizard({ usuario, onComplete }) {
               {paso === 1 && '¡Bienvenido a CafeSmart!'}
               {paso === 2 && 'Agrega tu finca'}
               {paso === 3 && 'Crea tu primer lote'}
+              {paso === 4 && 'Agrega una actividad'}
             </h1>
             <CardDescription className="break-words text-pretty leading-relaxed text-slate-600">
               {paso === 1 &&
@@ -162,6 +181,8 @@ export function SetupWizard({ usuario, onComplete }) {
                 'Registra la finca principal donde administras tu producción.'}
               {paso === 3 &&
                 'Los lotes te ayudan a organizar variedades y áreas de cultivo.'}
+              {paso === 4 &&
+                'Crea una actividad de recolección para registrar los pesajes. Si omites este paso, agregaremos “Recolección de café” por ti.'}
             </CardDescription>
           </div>
         </CardHeader>
@@ -175,6 +196,7 @@ export function SetupWizard({ usuario, onComplete }) {
               <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-relaxed text-slate-700">
                 <li>El nombre y la ubicación de tu finca.</li>
                 <li>El nombre, la variedad y el área de tu primer lote.</li>
+                <li>Una actividad para registrar la recolección de café.</li>
               </ul>
             </div>
             <Button
@@ -258,7 +280,80 @@ export function SetupWizard({ usuario, onComplete }) {
                   className="h-12 flex-1 rounded-xl bg-emerald-800 font-semibold text-white hover:bg-emerald-900"
                   type="submit"
                 >
-                  Continuar al lote
+                  Continuar a la actividad
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        )}
+        {paso === 4 && (
+          <CardContent className="px-6 pb-8 pt-7 sm:px-9 sm:pb-10">
+            <form
+              className="space-y-5"
+              onSubmit={(event) => guardarConfiguracion(event)}
+            >
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-medium text-foreground"
+                  htmlFor="nombre-actividad"
+                >
+                  Nombre de la actividad
+                </label>
+                <Input
+                  autoComplete="off"
+                  className="h-12 rounded-xl px-4"
+                  id="nombre-actividad"
+                  maxLength={150}
+                  minLength={2}
+                  name="activityName"
+                  onChange={(event) => setNombreActividad(event.target.value)}
+                  placeholder="Ej.: Recolección de café…"
+                  value={nombreActividad}
+                />
+                <p className="text-sm leading-5 text-muted-foreground">
+                  La actividad quedará marcada como recolección y se usará de
+                  forma predeterminada al registrar pesajes.
+                </p>
+              </div>
+
+              {error && (
+                <p
+                  aria-live="polite"
+                  className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
+
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                <Button
+                  className="h-12 flex-1 rounded-xl"
+                  disabled={guardando || Boolean(loteCreado)}
+                  onClick={() => {
+                    setError('');
+                    setPaso(3);
+                  }}
+                  type="button"
+                  variant="outline"
+                >
+                  Atrás
+                </Button>
+                <Button
+                  className="h-12 flex-1 rounded-xl"
+                  disabled={guardando}
+                  onClick={() => guardarConfiguracion(undefined, '')}
+                  type="button"
+                  variant="outline"
+                >
+                  Omitir y usar la predeterminada
+                </Button>
+                <Button
+                  className="h-12 flex-1 rounded-xl bg-emerald-800 font-semibold text-white hover:bg-emerald-900"
+                  disabled={guardando}
+                  type="submit"
+                >
+                  {guardando ? 'Guardando…' : 'Crear actividad y entrar'}
                 </Button>
               </div>
             </form>
@@ -267,7 +362,18 @@ export function SetupWizard({ usuario, onComplete }) {
 
         {paso === 3 && (
           <CardContent className="px-6 pb-8 pt-7 sm:px-9 sm:pb-10">
-            <form className="space-y-5" onSubmit={guardarConfiguracion}>
+            <form
+              className="space-y-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!nombreLote.trim()) {
+                  setError('Ingresa el nombre de tu lote para continuar.');
+                  return;
+                }
+                setError('');
+                setPaso(4);
+              }}
+            >
               <div className="space-y-2">
                 <label
                   className="text-sm font-medium text-foreground"
