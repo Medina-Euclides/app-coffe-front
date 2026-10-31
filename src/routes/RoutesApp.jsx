@@ -6,7 +6,6 @@ import { AuthenticatedRoute, SetupRoute } from './RouteGuards.jsx';
 const Auth = lazy(() => import('#pages/auth/Auth.jsx'));
 const Fincas = lazy(() => import('#pages/fincas/Fincas.jsx'));
 const Inventario = lazy(() => import('#pages/inventario/Inventario.jsx'));
-const Operations = lazy(() => import('#pages/operaciones/Operations.jsx'));
 const OperationsHome = lazy(() =>
   import('#pages/inicio/Inicio.jsx'),
 );
@@ -110,15 +109,8 @@ export default function RoutesApp({
             element={<Fincas subSeccion="fincas-lotes" usuario={usuario} />}
             path="/fincas"
           />
-          <Route element={<Operations usuario={usuario} />} path="/operaciones" />
-          <Route
-            element={<Operations usuario={usuario} />}
-            path="/operaciones/recoleccion"
-          />
-          <Route
-            element={<Operations usuario={usuario} />}
-            path="/operaciones/jornadas"
-          />
+          
+       
           <Route element={<Inventario usuario={usuario} />} path="/inventario" />
           <Route
             element={
