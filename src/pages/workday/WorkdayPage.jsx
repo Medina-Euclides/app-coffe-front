@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
 import { api } from '#services/api';
 import WorkdayCard from './components/WorkdayCard.jsx';
 import WorkdayFilters from './components/WorkdayFilters.jsx';
+import WorkdayFormDialog from './components/WorkdayFormDialog.jsx';
 import WorkdayHeader from './components/WorkdayHeader.jsx';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
@@ -51,6 +52,7 @@ function getDateKey(value) {
 }
 
 function mapWorkday(workday) {
+  const detail = Array.isArray(workday.details) ? workday.details[0] : null;
   const activity =
     workday.activity_type && typeof workday.activity_type === 'object'
       ? workday.activity_type
@@ -61,6 +63,7 @@ function mapWorkday(workday) {
     workday.harvest_records ||
     workday.harvestRecords ||
     workday.pesajes ||
+    detail?.harvest_records ||
     [];
   const harvestRecords = Array.isArray(records) ? records : [];
   const rate = asAmount(
@@ -74,10 +77,16 @@ function mapWorkday(workday) {
     activity?.name ||
     workday.activity_type_name ||
     workday.activity_name ||
+    detail?.activity_name ||
     (typeof workday.activity_type === 'string' ? workday.activity_type : '') ||
     'Actividad laboral';
   const isHarvest =
-    Boolean(activity?.is_harvest ?? workday.is_harvest) ||
+    Boolean(
+      activity?.is_harvest ??
+        workday.is_harvest ??
+        detail?.activity_type?.is_harvest ??
+        detail?.is_harvest,
+    ) ||
     activityName.toLocaleLowerCase().includes('recole');
   const kgFromRecords = harvestRecords.reduce(
     (total, record) =>
@@ -96,8 +105,18 @@ function mapWorkday(workday) {
   );
   const lot =
     workday.lot && typeof workday.lot === 'object'
-      ? workday.lot.name || workday.lot.nombre
+      ? [
+          workday.lot.name || workday.lot.nombre,
+          workday.lot.farmName ||
+            workday.lot.farm?.name ||
+            workday.lot.farm_name,
+        ]
+          .filter(Boolean)
+          .join(' · ')
       : workday.lot_name ||
+        (detail?.farm_name
+          ? `${detail.lot_name} · ${detail.farm_name}`
+          : detail?.lot_name) ||
         workday.lot ||
         workday.lote ||
         '';
@@ -110,7 +129,10 @@ function mapWorkday(workday) {
   );
 
   return {
-    id: workday.id ?? `${getDateKey(date)}-${workday.worker || activityName}`,
+    id:
+      workday.id ??
+      `${getDateKey(date)}-${worker?.id ?? workday.worker ?? activityName}`,
+    workerId: worker?.id ?? workday.worker,
     activityName,
     date,
     dateKey: getDateKey(date),
@@ -180,6 +202,7 @@ export default function WorkdayPage() {
   const [modality, setModality] = useState('all');
   const [section, setSection] = useState('workdays');
   const [action, setAction] = useState('');
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -238,6 +261,51 @@ export default function WorkdayPage() {
     all: 'en total',
   }[period];
 
+  const saveWorkday = async (payload, context) => {
+    const createdWorkday = await api.workdays.create(payload);
+    let createdDetail;
+    try {
+      createdDetail = await api.workdayDetails.create({
+        workday: createdWorkday.id,
+        activity_type: context.activity.id,
+        lot: context.lot.id,
+      });
+    } catch (detailError) {
+      try {
+        await api.workdays.delete(createdWorkday.id);
+      } catch (cleanupError) {
+        console.error(
+          'No se pudo eliminar la jornada incompleta después de fallar su detalle:',
+          cleanupError,
+        );
+        throw new Error(
+          `${detailError.message} La jornada base quedó creada sin su actividad y lote; no la vuelvas a registrar para ese trabajador y fecha.`,
+        );
+      }
+      throw detailError;
+    }
+
+    const savedDetail = {
+      ...createdDetail,
+      activity_type: context.activity,
+      activity_name: createdDetail.activity_name || context.activity.name,
+      lot_name: createdDetail.lot_name || context.lot.nombre || context.lot.name,
+      farm_name: createdDetail.farm_name || context.lot.farmName || '',
+    };
+    setWorkdays((currentWorkdays) => [
+      mapWorkday({
+        ...createdWorkday,
+        worker: context.worker,
+        details: [savedDetail],
+      }),
+      ...currentWorkdays,
+    ]);
+    setPeriod('all');
+    setModality('all');
+    setSearch('');
+    setNotice('La jornada laboral se registró correctamente.');
+  };
+
   return (
     <section className="mx-auto w-full max-w-6xl space-y-5">
       <WorkdayHeader
@@ -247,6 +315,16 @@ export default function WorkdayPage() {
         visibleCount={filteredWorkdays.length}
         periodLabel={periodLabel}
       />
+
+      {notice && (
+        <p
+          aria-live="polite"
+          className="rounded-xl border border-[#dce8d9] bg-[#f0f5ed] px-4 py-3 text-sm text-[#315d3b]"
+          role="status"
+        >
+          {notice}
+        </p>
+      )}
 
       <Tabs
         className="w-full gap-4"
@@ -327,16 +405,25 @@ export default function WorkdayPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog onOpenChange={(open) => !open && setAction('')} open={Boolean(action)}>
+      {action === 'jornada' && (
+        <WorkdayFormDialog
+          existingWorkdays={workdays}
+          onOpenChange={(open) => !open && setAction('')}
+          onSave={saveWorkday}
+          open
+        />
+      )}
+
+      <Dialog
+        onOpenChange={(open) => !open && setAction('')}
+        open={action === 'pesaje'}
+      >
         <DialogContent className="rounded-2xl border-[#e4e9e1] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-[#183d2b]">
-              {action === 'pesaje' ? 'Agregar pesaje' : 'Agregar jornada'}
-            </DialogTitle>
+            <DialogTitle className="text-[#183d2b]">Agregar pesaje</DialogTitle>
             <DialogDescription className="leading-6">
-              El formulario para registrar{' '}
-              {action === 'pesaje' ? 'un pesaje' : 'una jornada laboral'} se
-              implementará en el siguiente paso.
+              El formulario para registrar pesajes se implementará en el
+              siguiente paso.
             </DialogDescription>
           </DialogHeader>
         </DialogContent>
