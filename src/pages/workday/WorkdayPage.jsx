@@ -2,18 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ClipboardList, Search } from 'lucide-react';
 import { Button } from '#components/ui/button';
 import { Card } from '#components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '#components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
 import { api } from '#services/api';
 import WorkdayCard from './components/WorkdayCard.jsx';
 import WorkdayFilters from './components/WorkdayFilters.jsx';
 import WorkdayFormDialog from './components/WorkdayFormDialog.jsx';
+import HarvestRecordFormDialog from './components/HarvestRecordFormDialog.jsx';
 import WorkdayHeader from './components/WorkdayHeader.jsx';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
@@ -52,34 +46,44 @@ function getDateKey(value) {
 }
 
 function mapWorkday(workday) {
-  const detail = Array.isArray(workday.details) ? workday.details[0] : null;
+  const details = Array.isArray(workday.details) ? workday.details : [];
+  const detail = details[0] || null;
   const activity =
     workday.activity_type && typeof workday.activity_type === 'object'
       ? workday.activity_type
       : null;
   const worker =
     workday.worker && typeof workday.worker === 'object' ? workday.worker : null;
-  const records =
+  const topLevelRecords =
     workday.harvest_records ||
     workday.harvestRecords ||
     workday.pesajes ||
-    detail?.harvest_records ||
     [];
-  const harvestRecords = Array.isArray(records) ? records : [];
+  const harvestRecords = [
+    ...(Array.isArray(topLevelRecords) ? topLevelRecords : []),
+    ...details.flatMap((item) =>
+      Array.isArray(item.harvest_records) ? item.harvest_records : [],
+    ),
+  ];
   const rate = asAmount(
     workday.agreed_rate ?? workday.rate ?? workday.tarifa,
   );
   const paymentMode = String(
-    workday.payment_mode || workday.modalidad_pago || '',
+    workday.payment_mode ||
+      workday.modalidad_pago ||
+      (workday.isPerKilogram ? 'kg' : ''),
   ).toLocaleLowerCase();
   const isPerKilogram = /kg|kilo|kilogram/.test(paymentMode);
-  const activityName =
+  const activityNames = [
     activity?.name ||
     workday.activity_type_name ||
     workday.activity_name ||
     detail?.activity_name ||
     (typeof workday.activity_type === 'string' ? workday.activity_type : '') ||
-    'Actividad laboral';
+    '',
+    ...details.map((item) => item.activity_name).filter(Boolean),
+  ].filter(Boolean);
+  const activityName = [...new Set(activityNames)].join(', ') || 'Actividad laboral';
   const isHarvest =
     Boolean(
       activity?.is_harvest ??
@@ -87,7 +91,7 @@ function mapWorkday(workday) {
         detail?.activity_type?.is_harvest ??
         detail?.is_harvest,
     ) ||
-    activityName.toLocaleLowerCase().includes('recole');
+    activityNames.some((name) => name.toLocaleLowerCase().includes('recole'));
   const kgFromRecords = harvestRecords.reduce(
     (total, record) =>
       total + asAmount(record.quantity_kg ?? record.kilograms ?? record.kg),
@@ -103,6 +107,11 @@ function mapWorkday(workday) {
       workday.total ??
       (isPerKilogram ? rate * totalKg : rate),
   );
+  const lotNames = details
+    .map((item) =>
+      [item.lot_name, item.farm_name].filter(Boolean).join(' · '),
+    )
+    .filter(Boolean);
   const lot =
     workday.lot && typeof workday.lot === 'object'
       ? [
@@ -113,7 +122,8 @@ function mapWorkday(workday) {
         ]
           .filter(Boolean)
           .join(' · ')
-      : workday.lot_name ||
+      : lotNames.join(' / ') ||
+        workday.lot_name ||
         (detail?.farm_name
           ? `${detail.lot_name} · ${detail.farm_name}`
           : detail?.lot_name) ||
@@ -133,6 +143,7 @@ function mapWorkday(workday) {
       workday.id ??
       `${getDateKey(date)}-${worker?.id ?? workday.worker ?? activityName}`,
     workerId: worker?.id ?? workday.worker,
+    details,
     activityName,
     date,
     dateKey: getDateKey(date),
@@ -153,6 +164,7 @@ function mapWorkday(workday) {
     workerName:
       getWorkerName(worker) ||
       workday.worker_name ||
+      workday.workerName ||
       workday.nombre_trabajador ||
       '',
   };
@@ -306,6 +318,36 @@ export default function WorkdayPage() {
     setNotice('La jornada laboral se registró correctamente.');
   };
 
+  const saveHarvestRecord = (record, detail) => {
+    setWorkdays((currentWorkdays) =>
+      currentWorkdays.map((workday) => {
+        if (String(workday.id) !== detail.workdayId) return workday;
+
+        const details = workday.details.map((item) =>
+          String(item.id) === detail.id
+            ? {
+                ...item,
+                harvest_records: [...(item.harvest_records || []), record],
+              }
+            : item,
+        );
+
+        return mapWorkday({
+          ...workday,
+          worker: workday.workerId,
+          worker_name: workday.workerName,
+          payment_mode: workday.isPerKilogram ? 'kg' : 'jornal',
+          agreed_rate: workday.rate,
+          details,
+        });
+      }),
+    );
+    setPeriod('all');
+    setModality('all');
+    setSearch('');
+    setNotice('El pesaje de recolección se registró correctamente.');
+  };
+
   return (
     <section className="mx-auto w-full max-w-6xl space-y-5">
       <WorkdayHeader
@@ -414,20 +456,13 @@ export default function WorkdayPage() {
         />
       )}
 
-      <Dialog
-        onOpenChange={(open) => !open && setAction('')}
-        open={action === 'pesaje'}
-      >
-        <DialogContent className="rounded-2xl border-[#e4e9e1] sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-[#183d2b]">Agregar pesaje</DialogTitle>
-            <DialogDescription className="leading-6">
-              El formulario para registrar pesajes se implementará en el
-              siguiente paso.
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
+      {action === 'pesaje' && (
+        <HarvestRecordFormDialog
+          onOpenChange={(open) => !open && setAction('')}
+          onSave={saveHarvestRecord}
+          open
+        />
+      )}
     </section>
   );
 }
