@@ -49,6 +49,8 @@ function getErrorMessage(data, status) {
     phone: 'Teléfono',
     is_harvest: 'Actividad de recolección',
     worker: 'Trabajador',
+    workday_worker: 'Participación de trabajador',
+    farm: 'Finca',
     date: 'Fecha',
     payment_mode: 'Modalidad de pago',
     agreed_rate: 'Tarifa acordada',
@@ -314,8 +316,24 @@ export const api = {
       normalizeList(await apiRequest('/labor/workdays/'), 'jornadas'),
     create: (data) =>
       apiRequest('/labor/workdays/', { method: 'POST', data }),
+    updateLabor: (id, data) =>
+      apiRequest(`/labor/workdays/${id}/labor/`, { method: 'PATCH', data }),
+    close: (id) =>
+      apiRequest(`/labor/workdays/${id}/close/`, { method: 'POST' }),
     delete: (id) =>
       apiRequest(`/labor/workdays/${id}/`, { method: 'DELETE' }),
+  },
+  workdayWorkers: {
+    create: (data) =>
+      apiRequest('/labor/workday-workers/', { method: 'POST', data }),
+    update: (id, data) =>
+      apiRequest(`/labor/workday-workers/${id}/`, { method: 'PATCH', data }),
+    cancel: (id) =>
+      apiRequest(`/labor/workday-workers/${id}/cancel/`, { method: 'POST' }),
+    reactivate: (id) =>
+      apiRequest(`/labor/workday-workers/${id}/reactivate/`, { method: 'POST' }),
+    delete: (id) =>
+      apiRequest(`/labor/workday-workers/${id}/`, { method: 'DELETE' }),
   },
   workdayDetails: {
     create: (data) =>

@@ -65,9 +65,12 @@ function formatWorkdayDate(value) {
     : dateFormatter.format(date);
 }
 
-function getWorkerName(workday) {
-  if (typeof workday.worker === 'object' && workday.worker !== null) {
-    const worker = workday.worker;
+function getWorkerName(participation) {
+  if (
+    typeof participation.worker === 'object' &&
+    participation.worker !== null
+  ) {
+    const worker = participation.worker;
     return (
       worker.nombre ||
       worker.name ||
@@ -75,18 +78,18 @@ function getWorkerName(workday) {
       [worker.first_name, worker.last_name].filter(Boolean).join(' ')
     );
   }
-  return workday.worker_name || workday.nombre_trabajador || '';
+  return participation.worker_name || participation.nombre_trabajador || '';
 }
 
-function getWorkerIdentification(workday) {
+function getWorkerIdentification(participation) {
   const worker =
-    typeof workday.worker === 'object' && workday.worker !== null
-      ? workday.worker
+    typeof participation.worker === 'object' && participation.worker !== null
+      ? participation.worker
       : null;
   return (
     worker?.identification ||
     worker?.cedula ||
-    workday.worker_identification ||
+    participation.worker_identification ||
     ''
   );
 }
@@ -101,49 +104,71 @@ function getHarvestDetails(workdays, activities, today) {
   return workdays.flatMap((workday) => {
     const date = workday.date || '';
     const dateKey = String(date).slice(0, 10);
-    if (!workday.id || !dateKey || dateKey > today) return [];
-
-    const workerId =
-      typeof workday.worker === 'object' && workday.worker !== null
-        ? workday.worker.id
-        : workday.worker;
-    const workerName = getWorkerName(workday);
-    if (!workerId || !workerName || workday.worker?.is_active === false) {
+    if (
+      !workday.id ||
+      !dateKey ||
+      dateKey > today ||
+      workday.status !== 'abierta'
+    ) {
       return [];
     }
 
-    const details = Array.isArray(workday.details) ? workday.details : [];
-    return details.flatMap((detail) => {
-      if (!detail.id || !harvestActivityIds.has(String(detail.activity_type))) {
-        return [];
-      }
+    return (Array.isArray(workday.participants) ? workday.participants : [])
+      .filter(
+        (participation) =>
+          participation.settlement_status === 'pendiente' &&
+          participation.worker?.is_active !== false,
+      )
+      .flatMap((participation) => {
+        const worker =
+          typeof participation.worker === 'object'
+            ? participation.worker
+            : null;
+        const workerId = worker?.id ?? participation.worker;
+        const workerName = getWorkerName(participation);
+        if (!workerId || !workerName) return [];
 
-      const lotName = detail.lot_name || 'Lote sin nombre';
-      const farmName = detail.farm_name || '';
-      const activity = activities.find(
-        (item) => String(item.id) === String(detail.activity_type),
-      );
+        const details = Array.isArray(participation.details)
+          ? participation.details
+          : [];
+        return details.flatMap((detail) => {
+          const activityTypeId =
+            typeof detail.activity_type === 'object'
+              ? detail.activity_type.id
+              : detail.activity_type;
+          if (
+            !detail.id ||
+            !harvestActivityIds.has(String(activityTypeId))
+          ) {
+            return [];
+          }
 
-      return [
-        {
-          id: String(detail.id),
-          workdayId: String(workday.id),
-          workerId: String(workerId),
-          workerName,
-          workerIdentification: getWorkerIdentification(workday),
-          date,
-          dateKey,
-          activityName: detail.activity_name || activity?.name || 'Recolección',
-          lotName,
-          farmName,
-          paymentMode: workday.payment_mode,
-          rate: Number(workday.agreed_rate) || 0,
-          existingRecords: Array.isArray(detail.harvest_records)
-            ? detail.harvest_records
-            : [],
-        },
-      ];
-    });
+          const activity = activities.find(
+            (item) => String(item.id) === String(activityTypeId),
+          );
+          return [
+            {
+              id: String(detail.id),
+              workdayId: String(workday.id),
+              workerId: String(workerId),
+              workerName,
+              workerIdentification: getWorkerIdentification(participation),
+              date,
+              dateKey,
+              activityName: detail.activity_name || activity?.name || 'Recolección',
+              lotName: detail.lot_name || 'Lote sin nombre',
+              farmName: workday.farm_name || '',
+              paymentMode: participation.payment_mode,
+              rate: Number(participation.agreed_rate) || 0,
+              existingRecords: Array.isArray(detail.harvest_records)
+                ? detail.harvest_records.filter(
+                    (record) => record.settlement_status !== 'anulado',
+                  )
+                : [],
+            },
+          ];
+        });
+      });
   });
 }
 

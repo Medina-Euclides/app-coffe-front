@@ -87,11 +87,13 @@ export default function WorkdayFormDialog({
   const [workers, setWorkers] = useState([]);
   const [activities, setActivities] = useState([]);
   const [lots, setLots] = useState([]);
+  const [farms, setFarms] = useState([]);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState('');
-  const [workerId, setWorkerId] = useState('');
+  const [workerIds, setWorkerIds] = useState([]);
   const [activityId, setActivityId] = useState('');
-  const [lotId, setLotId] = useState('');
+  const [farmId, setFarmId] = useState('');
+  const [lotIds, setLotIds] = useState([]);
   const [todayDate] = useState(getLocalDate);
   const [date, setDate] = useState(getLocalDate);
   const [paymentMode, setPaymentMode] = useState(PAYMENT_MODES.JOURNAL);
@@ -101,22 +103,30 @@ export default function WorkdayFormDialog({
   const [reloadOptions, setReloadOptions] = useState(0);
 
   const activeWorkers = workers.filter((worker) => worker.is_active !== false);
+  const activeFarms = farms.filter((farm) => farm.is_active !== false);
   const activeLots = lots.filter(
-    (lot) => lot.is_active !== false && lot.estado !== 'inactivo',
+    (lot) =>
+      lot.is_active !== false &&
+      lot.estado !== 'inactivo' &&
+      String(lot.fincaId ?? lot.id_farm ?? lot.farm?.id) === farmId,
+  );
+  const selectedWorkers = activeWorkers.filter((worker) =>
+    workerIds.includes(String(worker.id)),
+  );
+  const selectedLots = activeLots.filter((lot) =>
+    lotIds.includes(String(lot.id)),
+  );
+  const selectedFarm = activeFarms.find(
+    (farm) => String(farm.id) === farmId,
   );
   const selectedActivity = activities.find(
     (activity) => String(activity.id) === activityId,
-  );
-  const selectedWorker = activeWorkers.find(
-    (worker) => String(worker.id) === workerId,
-  );
-  const selectedLot = activeLots.find(
-    (lot) => String(lot.id) === lotId,
   );
   const kilogramPaymentAvailable = Boolean(selectedActivity?.is_harvest);
   const formDisabled =
     optionsLoading ||
     !activeWorkers.length ||
+    !activeFarms.length ||
     !activities.length ||
     !activeLots.length;
 
@@ -132,7 +142,10 @@ export default function WorkdayFormDialog({
       .then(([loadedWorkers, loadedActivities, loadedLots, loadedFarms]) => {
         if (!active) return;
         const farmNames = new Map(
-          loadedFarms.map((farm) => [String(farm.id), farm.nombre || farm.name]),
+          loadedFarms.map((farm) => [
+            String(farm.id),
+            farm.nombre || farm.name,
+          ]),
         );
         const lotsWithFarm = loadedLots.map((lot) => ({
           ...lot,
@@ -144,18 +157,36 @@ export default function WorkdayFormDialog({
         }));
         setWorkers(loadedWorkers);
         setActivities(loadedActivities);
+        setFarms(loadedFarms);
         setLots(lotsWithFarm);
-        setWorkerId((current) =>
-          current || String(loadedWorkers.find((worker) => worker.is_active !== false)?.id || ''),
+        setWorkerIds((current) =>
+          current.length
+            ? current
+            : loadedWorkers
+                .filter((worker) => worker.is_active !== false)
+                .slice(0, 1)
+                .map((worker) => String(worker.id)),
         );
         setActivityId((current) => current || String(loadedActivities[0]?.id || ''));
-        setLotId((current) =>
-          current ||
-          String(
-            lotsWithFarm.find(
-              (lot) => lot.is_active !== false && lot.estado !== 'inactivo',
-            )?.id || '',
-          ),
+        const firstFarm =
+          loadedFarms.find((farm) => farm.is_active !== false) || loadedFarms[0];
+        const defaultFarmId = String(firstFarm?.id || '');
+        setFarmId(defaultFarmId);
+        const lotsForInitialFarm = lotsWithFarm.filter(
+          (lot) =>
+            String(lot.fincaId ?? lot.id_farm ?? lot.farm?.id) ===
+              defaultFarmId &&
+            lot.is_active !== false &&
+            lot.estado !== 'inactivo',
+        );
+        setLotIds((current) =>
+          current.some((id) =>
+            lotsForInitialFarm.some((lot) => String(lot.id) === id),
+          )
+            ? current.filter((id) =>
+                lotsForInitialFarm.some((lot) => String(lot.id) === id),
+              )
+            : lotsForInitialFarm.slice(0, 1).map((lot) => String(lot.id)),
         );
       })
       .catch((loadError) => {
@@ -179,15 +210,24 @@ export default function WorkdayFormDialog({
     event.preventDefault();
     setError('');
 
-    if (!selectedWorker || !selectedActivity || !selectedLot) {
-      setError('Selecciona un trabajador, una actividad y un lote activos.');
+    if (
+      !selectedFarm ||
+      !selectedWorkers.length ||
+      !selectedActivity ||
+      !selectedLots.length
+    ) {
+      setError(
+        'Selecciona una finca, al menos un trabajador, una actividad y un lote activo.',
+      );
       document
         .getElementById(
-          !selectedWorker
-            ? 'workday-worker'
+          !selectedFarm
+            ? 'workday-farm'
+            : !selectedWorkers.length
+              ? 'workday-workers'
             : !selectedActivity
               ? 'workday-activity'
-              : 'workday-lot',
+              : 'workday-lots',
         )
         ?.focus();
       return;
@@ -201,14 +241,13 @@ export default function WorkdayFormDialog({
 
     const duplicateWorkday = existingWorkdays.some(
       (workday) =>
-        String(workday.workerId) === String(selectedWorker.id) &&
-        workday.dateKey === date,
+        String(workday.farmId) === farmId && workday.dateKey === date,
     );
     if (duplicateWorkday) {
       setError(
-        'Este trabajador ya tiene una jornada para esa fecha. El sistema permite una jornada por trabajador al día.',
+        'Ya existe una jornada para esta finca y fecha.',
       );
-      document.getElementById('workday-worker')?.focus();
+      document.getElementById('workday-farm')?.focus();
       return;
     }
 
@@ -221,17 +260,16 @@ export default function WorkdayFormDialog({
     setSaving(true);
     try {
       const payload = {
-        worker: selectedWorker.id,
-        activity_type: selectedActivity.id,
+        farm: selectedFarm.id,
         date,
-        lot: selectedLot.id,
-        payment_mode: paymentMode,
-        agreed_rate: agreedRate,
       };
       await onSave(payload, {
-        worker: selectedWorker,
+        workers: selectedWorkers,
         activity: selectedActivity,
-        lot: selectedLot,
+        farm: selectedFarm,
+        lots: selectedLots,
+        paymentMode,
+        agreedRate,
       });
       onOpenChange(false);
     } catch (saveError) {
@@ -252,6 +290,30 @@ export default function WorkdayFormDialog({
     }
   };
 
+  const toggleSelection = (selectedIds, setSelectedIds, id) => {
+    const value = String(id);
+    setSelectedIds((current) =>
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value],
+    );
+  };
+
+  const handleFarmChange = (nextFarmId) => {
+    setFarmId(nextFarmId);
+    setLotIds(
+      lots
+        .filter(
+          (lot) =>
+            String(lot.fincaId ?? lot.id_farm ?? lot.farm?.id) === nextFarmId &&
+            lot.is_active !== false &&
+            lot.estado !== 'inactivo',
+        )
+        .slice(0, 1)
+        .map((lot) => String(lot.id)),
+    );
+  };
+
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-[#e4e9e1] p-5 sm:max-w-2xl sm:p-7">
@@ -260,7 +322,7 @@ export default function WorkdayFormDialog({
             Registrar Jornada Laboral
           </DialogTitle>
           <DialogDescription className="leading-5">
-            Ingresa los detalles de la labor diaria en campo.
+            Registra una jornada para una finca, con varios trabajadores y lotes.
           </DialogDescription>
         </DialogHeader>
 
@@ -293,51 +355,91 @@ export default function WorkdayFormDialog({
           </div>
         ) : (
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {(!activeWorkers.length || !activities.length || !activeLots.length) && (
+            {(!activeWorkers.length ||
+              !activeFarms.length ||
+              !activities.length ||
+              !activeLots.length) && (
               <p
                 aria-live="polite"
                 className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-5 text-amber-900"
                 role="status"
               >
                 {!activeWorkers.length && 'Agrega un trabajador activo. '}
+                {!activeFarms.length && 'Agrega una finca. '}
                 {!activities.length && 'Agrega una actividad laboral. '}
-                {!activeLots.length && 'Agrega un lote activo. '}
+                {!activeLots.length && 'Agrega un lote activo en la finca seleccionada. '}
                 Luego podrás registrar la jornada.
               </p>
             )}
 
-            <FormField htmlFor="workday-worker" label="Trabajador" required>
+            <FormField htmlFor="workday-farm" label="Finca" required>
               <Select
-                onValueChange={setWorkerId}
-                value={workerId}
-                disabled={!activeWorkers.length}
+                onValueChange={handleFarmChange}
+                value={farmId}
+                disabled={!activeFarms.length}
               >
                 <SelectTrigger
-                  aria-label="Trabajador"
+                  aria-label="Finca"
                   className="h-12 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
-                  id="workday-worker"
-                  name="worker"
+                  id="workday-farm"
+                  name="farm"
                 >
                   <SelectValue
                     className="truncate font-semibold text-[#173d30]"
-                    placeholder="Selecciona un trabajador"
+                    placeholder="Selecciona una finca"
                   >
-                    {selectedWorker ? getWorkerLabel(selectedWorker) : undefined}
+                    {selectedFarm?.nombre || selectedFarm?.name || undefined}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {activeWorkers.map((worker) => (
+                  {activeFarms.map((farm) => (
                     <SelectItem
                       className="rounded-lg py-2.5 text-base font-medium text-[#254334] data-highlighted:bg-[#e8f3e8] data-highlighted:text-[#173d30] data-selected:font-semibold"
-                      key={worker.id}
-                      value={String(worker.id)}
+                      key={farm.id}
+                      value={String(farm.id)}
                     >
-                      {getWorkerLabel(worker)}
+                      {farm.nombre || farm.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </FormField>
+
+            <fieldset className="min-w-0 space-y-2">
+              <legend className="text-xs font-semibold uppercase tracking-wide text-[#244b38]">
+                Trabajadores <span aria-hidden="true">*</span>
+                <span className="ml-1 font-normal normal-case text-[#748074]">
+                  ({selectedWorkers.length} seleccionados)
+                </span>
+              </legend>
+              <div
+                aria-label="Trabajadores de la jornada"
+                className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-[#d1ddd2] bg-white p-3 sm:grid-cols-2"
+                id="workday-workers"
+                tabIndex={-1}
+              >
+                {activeWorkers.map((worker) => {
+                  const checked = workerIds.includes(String(worker.id));
+                  return (
+                    <label
+                      className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#254334] hover:bg-[#f4f8f3]"
+                      key={worker.id}
+                    >
+                      <input
+                        checked={checked}
+                        className="size-4 shrink-0 accent-[#173d30]"
+                        onChange={() =>
+                          toggleSelection(workerIds, setWorkerIds, worker.id)
+                        }
+                        type="checkbox"
+                        value={String(worker.id)}
+                      />
+                      <span className="truncate">{getWorkerLabel(worker)}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
@@ -397,38 +499,47 @@ export default function WorkdayFormDialog({
               </FormField>
             </div>
 
-            <FormField htmlFor="workday-lot" label="Lote de destino" required>
-              <Select
-                onValueChange={setLotId}
-                value={lotId}
-                disabled={!activeLots.length}
-              >
-                <SelectTrigger
-                  aria-label="Lote de destino"
-                  className="h-12 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
-                  id="workday-lot"
-                  name="lot"
+            <fieldset className="min-w-0 space-y-2">
+              <legend className="text-xs font-semibold uppercase tracking-wide text-[#244b38]">
+                Lotes de trabajo <span aria-hidden="true">*</span>
+                <span className="ml-1 font-normal normal-case text-[#748074]">
+                  ({selectedLots.length} seleccionados)
+                </span>
+              </legend>
+              {activeLots.length ? (
+                <div
+                  aria-label="Lotes de la jornada"
+                  className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-[#d1ddd2] bg-white p-3 sm:grid-cols-2"
+                  id="workday-lots"
+                  tabIndex={-1}
                 >
-                  <SelectValue
-                    className="truncate font-semibold text-[#173d30]"
-                    placeholder="Selecciona un lote"
-                  >
-                    {selectedLot ? getLotLabel(selectedLot) : undefined}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {activeLots.map((lot) => (
-                    <SelectItem
-                      className="rounded-lg py-2.5 text-base font-medium text-[#254334] data-highlighted:bg-[#e8f3e8] data-highlighted:text-[#173d30] data-selected:font-semibold"
-                      key={lot.id}
-                      value={String(lot.id)}
-                    >
-                      {getLotLabel(lot)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
+                  {activeLots.map((lot) => {
+                    const checked = lotIds.includes(String(lot.id));
+                    return (
+                      <label
+                        className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#254334] hover:bg-[#f4f8f3]"
+                        key={lot.id}
+                      >
+                        <input
+                          checked={checked}
+                          className="size-4 shrink-0 accent-[#173d30]"
+                          onChange={() =>
+                            toggleSelection(lotIds, setLotIds, lot.id)
+                          }
+                          type="checkbox"
+                          value={String(lot.id)}
+                        />
+                        <span className="truncate">{getLotLabel(lot)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded-xl border border-[#d1ddd2] bg-white px-3 py-3 text-sm text-[#748074]">
+                  Selecciona una finca con lotes activos.
+                </p>
+              )}
+            </fieldset>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <fieldset className="min-w-0 space-y-2">
@@ -505,8 +616,8 @@ export default function WorkdayFormDialog({
                 </div>
                 <p className="text-xs leading-5 text-[#748074]">
                   {paymentMode === PAYMENT_MODES.KILOGRAM
-                    ? 'Tarifa pactada por kilogramo recolectado.'
-                    : 'Tarifa pactada por la jornada.'}
+                    ? 'La misma tarifa por kilogramo se aplicará a todos los trabajadores.'
+                    : 'El mismo valor de jornal se aplicará a todos los trabajadores.'}
                 </p>
               </FormField>
             </div>
