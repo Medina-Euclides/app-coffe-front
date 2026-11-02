@@ -349,4 +349,50 @@ export const api = {
     update: (id, data) =>
       apiRequest(`/labor/harvest-records/${id}/`, { method: 'PATCH', data }),
   },
+  payroll: {
+    settlements: {
+      list: async () =>
+        normalizeList(
+          await apiRequest('/payroll/settlements/'),
+          'liquidaciones',
+        ),
+      create: (data) =>
+        apiRequest('/payroll/settlements/', { method: 'POST', data }),
+      addWorkday: (data) =>
+        apiRequest('/payroll/settlements/add-workday/', {
+          method: 'POST',
+          data,
+        }),
+      addHarvest: (data) =>
+        apiRequest('/payroll/settlements/add-harvest/', {
+          method: 'POST',
+          data,
+        }),
+      close: (settlementId) =>
+        apiRequest('/payroll/settlements/close/', {
+          method: 'POST',
+          data: { settlement_id: settlementId },
+        }),
+      pay: (data) =>
+        apiRequest('/payroll/settlements/pay/', { method: 'POST', data }),
+    },
+    settlementWorkdays: {
+      list: async () =>
+        normalizeList(
+          await apiRequest('/payroll/settlement-workdays/'),
+          'detalles de liquidación por jornal',
+        ),
+    },
+    settlementHarvests: {
+      list: async () =>
+        normalizeList(
+          await apiRequest('/payroll/settlement-harvests/'),
+          'detalles de liquidación por kilogramo',
+        ),
+    },
+    payments: {
+      list: async () =>
+        normalizeList(await apiRequest('/payroll/payments/'), 'pagos laborales'),
+    },
+  },
 };
