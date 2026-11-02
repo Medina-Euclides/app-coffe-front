@@ -135,10 +135,14 @@ function getHarvestDetails(workdays, activities, today) {
           const activityTypeId =
             typeof detail.activity_type === 'object'
               ? detail.activity_type.id
-              : detail.activity_type;
+              : detail.activity_type ?? detail.activity_type_id;
           if (
             !detail.id ||
-            !harvestActivityIds.has(String(activityTypeId))
+            !(
+              detail.activity_is_harvest === true ||
+              detail.activity_type?.is_harvest === true ||
+              harvestActivityIds.has(String(activityTypeId))
+            )
           ) {
             return [];
           }
@@ -150,11 +154,24 @@ function getHarvestDetails(workdays, activities, today) {
             {
               id: String(detail.id),
               workdayId: String(workday.id),
+              farmId: String(
+                workday.farm?.id ?? workday.farm_id ?? workday.farm ?? '',
+              ),
+              participantId: String(participation.id),
               workerId: String(workerId),
               workerName,
               workerIdentification: getWorkerIdentification(participation),
+              activityTypeId: String(activityTypeId),
+              lotId: String(
+                typeof detail.lot === 'object'
+                  ? detail.lot.id
+                  : detail.lot ?? detail.lot_id ?? '',
+              ),
               date,
               dateKey,
+              workdayLabel: `${formatWorkdayDate(date)}${
+                workday.farm_name ? ` · ${workday.farm_name}` : ''
+              }`,
               activityName: detail.activity_name || activity?.name || 'Recolección',
               lotName: detail.lot_name || 'Lote sin nombre',
               farmName: workday.farm_name || '',
@@ -193,10 +210,12 @@ export default function HarvestRecordFormDialog({
 }) {
   const [workdays, setWorkdays] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [lots, setLots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [workdayId, setWorkdayId] = useState('');
   const [workerId, setWorkerId] = useState('');
-  const [detailId, setDetailId] = useState('');
+  const [lotId, setLotId] = useState('');
   const [quantityKg, setQuantityKg] = useState('');
   const [time, setTime] = useState(getLocalTime);
   const [error, setError] = useState('');
@@ -206,11 +225,12 @@ export default function HarvestRecordFormDialog({
 
   useEffect(() => {
     let active = true;
-    Promise.all([api.workdays.list(), api.activities.list()])
-      .then(([loadedWorkdays, loadedActivities]) => {
+    Promise.all([api.workdays.list(), api.activities.list(), api.lots.list()])
+      .then(([loadedWorkdays, loadedActivities, loadedLots]) => {
         if (!active) return;
         setWorkdays(loadedWorkdays);
         setActivities(loadedActivities);
+        setLots(loadedLots);
         setLoadError('');
       })
       .catch((loadError) => {
@@ -218,7 +238,7 @@ export default function HarvestRecordFormDialog({
         console.error('Error al cargar jornadas de recolección:', loadError);
         setLoadError(
           loadError.message ||
-            'No se pudieron cargar las jornadas de actividades de recolección.',
+            'No se pudieron cargar las jornadas, actividades o lotes de recolección.',
         );
       })
       .finally(() => {
@@ -235,9 +255,22 @@ export default function HarvestRecordFormDialog({
     [activities, today, workdays],
   );
 
+  const harvestWorkdays = useMemo(() => {
+    const uniqueWorkdays = new Map();
+    for (const detail of harvestDetails) {
+      if (!uniqueWorkdays.has(detail.workdayId)) {
+        uniqueWorkdays.set(detail.workdayId, detail);
+      }
+    }
+    return [...uniqueWorkdays.values()].sort((first, second) =>
+      second.dateKey.localeCompare(first.dateKey),
+    );
+  }, [harvestDetails]);
+
   const workers = useMemo(() => {
     const uniqueWorkers = new Map();
     for (const detail of harvestDetails) {
+      if (detail.workdayId !== workdayId) continue;
       if (!uniqueWorkers.has(detail.workerId)) {
         uniqueWorkers.set(detail.workerId, detail);
       }
@@ -245,17 +278,45 @@ export default function HarvestRecordFormDialog({
     return [...uniqueWorkers.values()].sort((first, second) =>
       first.workerName.localeCompare(second.workerName, 'es'),
     );
-  }, [harvestDetails]);
+  }, [harvestDetails, workdayId]);
 
-  const selectedWorker = workers.find((worker) => worker.workerId === workerId);
-  const workerDetails = harvestDetails.filter(
-    (detail) => detail.workerId === workerId,
+  const selectedWorkday = harvestWorkdays.find(
+    (workday) => workday.workdayId === workdayId,
   );
-  const selectedDetail = workerDetails.find((detail) => detail.id === detailId);
+  const selectedWorker = workers.find((worker) => worker.workerId === workerId);
+  const availableLots = lots
+    .filter(
+      (lot) =>
+        lot.is_active !== false &&
+        String(lot.fincaId ?? lot.id_farm) === selectedWorkday?.farmId,
+    )
+    .sort((first, second) =>
+      (first.nombre || first.name || '').localeCompare(
+        second.nombre || second.name || '',
+        'es',
+      ),
+    );
+  const workerDetails = harvestDetails.filter(
+    (detail) =>
+      detail.workdayId === workdayId && detail.workerId === workerId,
+  );
+  const selectedLot = availableLots.find(
+    (lot) => String(lot.id) === lotId,
+  );
+  const selectedDetail = workerDetails.find(
+    (detail) => detail.lotId === lotId,
+  );
+
+  const handleWorkdayChange = (nextWorkdayId) => {
+    setWorkdayId(nextWorkdayId);
+    setWorkerId('');
+    setLotId('');
+    setError('');
+  };
 
   const handleWorkerChange = (nextWorkerId) => {
     setWorkerId(nextWorkerId);
-    setDetailId('');
+    setLotId('');
     setError('');
   };
 
@@ -263,10 +324,16 @@ export default function HarvestRecordFormDialog({
     event.preventDefault();
     setError('');
 
-    if (!selectedWorker || !selectedDetail) {
-      setError('Selecciona un recolector y el lote correspondiente.');
+    if (!selectedWorkday || !selectedWorker || !selectedLot) {
+      setError('Selecciona la jornada, el recolector y el lote correspondiente.');
       document
-        .getElementById(!selectedWorker ? 'harvest-worker' : 'harvest-detail')
+        .getElementById(
+          !selectedWorkday
+            ? 'harvest-workday'
+            : !selectedWorker
+              ? 'harvest-worker'
+              : 'harvest-lot',
+        )
         ?.focus();
       return;
     }
@@ -290,12 +357,63 @@ export default function HarvestRecordFormDialog({
 
     setSaving(true);
     try {
+      let detailForRecord = selectedDetail;
+      if (!detailForRecord) {
+        const createdDetail = await api.workdayDetails.create({
+          workday_worker: selectedWorker.participantId,
+          activity_type: selectedWorker.activityTypeId,
+          lot: selectedLot.id,
+        });
+        const apiDetail = {
+          ...createdDetail,
+          activity_type:
+            createdDetail.activity_type ?? selectedWorker.activityTypeId,
+          activity_name:
+            createdDetail.activity_name || selectedWorker.activityName,
+          activity_is_harvest: true,
+          lot: selectedLot.id,
+          lot_name: selectedLot.nombre || selectedLot.name || 'Lote',
+          harvest_records: [],
+        };
+        setWorkdays((currentWorkdays) =>
+          currentWorkdays.map((workday) =>
+            String(workday.id) !== selectedWorkday.workdayId
+              ? workday
+              : {
+                  ...workday,
+                  participants: workday.participants.map((participation) =>
+                    String(participation.id) !== selectedWorker.participantId
+                      ? participation
+                      : {
+                          ...participation,
+                          details: [
+                            ...(participation.details || []),
+                            apiDetail,
+                          ],
+                        },
+                  ),
+                },
+          ),
+        );
+        detailForRecord = {
+          ...selectedWorker,
+          ...apiDetail,
+          id: String(apiDetail.id),
+          lotId: String(selectedLot.id),
+          lotName: selectedLot.nombre || selectedLot.name || 'Lote',
+          activityName: apiDetail.activity_name,
+          activityTypeId: String(
+            apiDetail.activity_type,
+          ),
+          existingRecords: [],
+        };
+      }
       const record = await api.harvestRecords.create({
-        workday_detail: selectedDetail.id,
+        workday_detail: detailForRecord.id,
         quantity_kg: kilograms.toFixed(3),
         time: `${time}:00`,
       });
-      await onSave(record, selectedDetail);
+      await onSave(record, detailForRecord);
       onOpenChange(false);
     } catch (saveError) {
       console.error('Error al registrar el pesaje:', saveError);
@@ -363,13 +481,57 @@ export default function HarvestRecordFormDialog({
             </div>
           ) : (
             <form className="space-y-5" onSubmit={handleSubmit}>
-              <SelectField htmlFor="harvest-worker" label="Recolector en báscula">
+              <SelectField htmlFor="harvest-workday" label="Jornada de recolección">
+                <Select
+                  onValueChange={handleWorkdayChange}
+                  value={workdayId}
+                >
+                  <SelectTrigger
+                    aria-label="Jornada de recolección"
+                    className="h-13 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
+                    id="harvest-workday"
+                    name="workday"
+                  >
+                    <CalendarDays
+                      aria-hidden="true"
+                      className="size-5 shrink-0 text-[#74877a]"
+                    />
+                    <SelectValue
+                      className="min-w-0 flex-1 truncate text-left font-semibold text-[#173d30]"
+                      placeholder="Selecciona una jornada…"
+                    >
+                      {(value) => {
+                        const workday = harvestWorkdays.find(
+                          (option) => option.workdayId === value,
+                        );
+                        return workday
+                          ? workday.workdayLabel
+                          : undefined;
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {harvestWorkdays.map((workday) => (
+                      <SelectItem
+                        className="rounded-lg py-2.5 text-base font-medium text-[#254334] data-highlighted:bg-[#e8f3e8] data-highlighted:text-[#173d30] data-selected:font-semibold"
+                        key={workday.workdayId}
+                        value={workday.workdayId}
+                      >
+                        {workday.workdayLabel}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SelectField>
+
+              <SelectField htmlFor="harvest-worker" label="Trabajador de la jornada">
                 <Select
                   onValueChange={handleWorkerChange}
                   value={workerId}
+                  disabled={!workdayId}
                 >
                   <SelectTrigger
-                    aria-label="Recolector en báscula"
+                    aria-label="Trabajador de la jornada"
                     className="h-13 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
                     id="harvest-worker"
                     name="worker"
@@ -380,7 +542,11 @@ export default function HarvestRecordFormDialog({
                     />
                     <SelectValue
                       className="min-w-0 flex-1 truncate text-left font-semibold text-[#173d30]"
-                      placeholder="Selecciona un recolector…"
+                      placeholder={
+                        workdayId
+                          ? 'Selecciona un trabajador…'
+                          : 'Selecciona primero una jornada…'
+                      }
                     >
                       {(value) => {
                         const worker = workers.find(
@@ -411,65 +577,64 @@ export default function HarvestRecordFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                {workdayId && workers.length === 0 && (
+                  <p className="text-xs leading-5 text-[#748074]">
+                    Esta jornada no tiene trabajadores con detalles de recolección disponibles.
+                  </p>
+                )}
               </SelectField>
 
-              <SelectField htmlFor="harvest-detail" label="Lote de recolección">
+              <SelectField htmlFor="harvest-lot" label="Lote de recolección">
                 <Select
                   onValueChange={(value) => {
-                    setDetailId(value);
+                    setLotId(value);
                     setError('');
                   }}
-                  value={detailId}
-                  disabled={!workerId}
+                  value={lotId}
+                  disabled={!workerId || availableLots.length === 0}
                 >
                   <SelectTrigger
                     aria-label="Lote de recolección"
                     className="h-13 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
-                    id="harvest-detail"
-                    name="workday_detail"
+                    id="harvest-lot"
+                    name="lot"
                   >
                     <SelectValue
                       className="min-w-0 flex-1 truncate text-left font-semibold text-[#173d30]"
                       placeholder={
                         workerId
-                          ? 'Selecciona el lote y la jornada…'
-                          : 'Selecciona primero un recolector…'
+                          ? 'Selecciona el lote…'
+                          : 'Selecciona primero un trabajador…'
                       }
                     >
                       {(value) => {
-                        const detail = workerDetails.find(
-                          (option) => option.id === value,
+                        const lot = availableLots.find(
+                          (option) => String(option.id) === value,
                         );
-                        return detail
-                          ? `${detail.lotName}${
-                              detail.farmName ? ` · ${detail.farmName}` : ''
-                            } · ${formatWorkdayDate(detail.date)}`
+                        return lot
+                          ? lot.nombre || lot.name || 'Lote'
                           : undefined;
                       }}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {workerDetails.map((detail) => (
+                    {availableLots.map((lot) => (
                       <SelectItem
                         className="rounded-lg py-2.5 text-base font-medium text-[#254334] data-highlighted:bg-[#e8f3e8] data-highlighted:text-[#173d30] data-selected:font-semibold"
-                        key={detail.id}
-                        value={detail.id}
+                        key={lot.id}
+                        value={String(lot.id)}
                       >
-                        {detail.lotName}
-                        {detail.farmName ? ` · ${detail.farmName}` : ''}
-                        {' · '}
-                        {formatWorkdayDate(detail.date)}
+                        {lot.nombre || lot.name || 'Lote'}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {workerId && workerDetails.length === 0 && (
+                {workdayId && selectedWorkday && availableLots.length === 0 && (
                   <p className="text-xs leading-5 text-[#748074]">
-                    Este recolector no tiene jornadas de recolección disponibles.
+                    No hay lotes activos disponibles en la finca de esta jornada.
                   </p>
                 )}
               </SelectField>
-
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="min-w-0 space-y-2">
                   <label
@@ -533,7 +698,7 @@ export default function HarvestRecordFormDialog({
                 </div>
               </div>
 
-              {selectedDetail && (
+              {selectedWorker && selectedLot && (
                 <section
                   aria-label="Resumen de la jornada vinculada"
                   className="space-y-3 rounded-2xl border border-[#e1e9e1] bg-[#f5f8f5] p-4"
@@ -546,19 +711,20 @@ export default function HarvestRecordFormDialog({
                       />
                       <span className="truncate">
                         <span className="font-semibold">Jornada vinculada:</span>{' '}
-                        {selectedDetail.activityName}
+                        {selectedDetail?.activityName ||
+                          selectedWorker.activityName}
                       </span>
                     </p>
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-[#c2ebdc] bg-[#effbf6] px-3 py-1 text-xs font-medium text-[#19805d]">
                       <CalendarDays aria-hidden="true" className="size-3.5" />
-                      {formatWorkdayDate(selectedDetail.date)}
+                      {formatWorkdayDate(selectedWorker.date)}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <p className="flex items-center gap-2 text-[#748074]">
                       <span className="font-medium">Modalidad:</span>
                       <span className="font-semibold text-[#244b38]">
-                        {selectedDetail.paymentMode === 'kg'
+                        {selectedWorker.paymentMode === 'kg'
                           ? 'Por kilogramo'
                           : 'Por jornal'}
                       </span>
@@ -566,14 +732,16 @@ export default function HarvestRecordFormDialog({
                     <p className="rounded-lg border border-[#e1e9e1] bg-white px-3 py-1.5 text-xs text-[#748074]">
                       Tarifa:{' '}
                       <span className="font-semibold text-[#244b38]">
-                        {currencyFormatter.format(selectedDetail.rate)}
-                        {selectedDetail.paymentMode === 'kg' ? ' / kg' : ' / jornal'}
+                        {currencyFormatter.format(selectedWorker.rate)}
+                        {selectedWorker.paymentMode === 'kg'
+                          ? ' / kg'
+                          : ' / jornal'}
                       </span>
                     </p>
                   </div>
-                  {selectedDetail.existingRecords.length > 0 && (
+                  {(selectedDetail?.existingRecords.length || 0) > 0 && (
                     <p className="text-xs text-[#68766b]">
-                      Esta jornada ya tiene {selectedDetail.existingRecords.length}{' '}
+                      Este lote ya tiene {selectedDetail.existingRecords.length}{' '}
                       {selectedDetail.existingRecords.length === 1
                         ? 'pesaje registrado'
                         : 'pesajes registrados'}
@@ -605,7 +773,7 @@ export default function HarvestRecordFormDialog({
                 </Button>
                 <Button
                   className="min-h-11 rounded-xl bg-[#1d5140] px-5 text-white hover:bg-[#173d30]"
-                  disabled={saving || !selectedDetail}
+                  disabled={saving || !selectedLot}
                   type="submit"
                 >
                   {saving ? (

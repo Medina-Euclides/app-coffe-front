@@ -79,3 +79,23 @@ Este último indica si la actividad admite pago por kilogramo y también se usa
 al asignar labores desde Personal. El cliente conserva una copia local para
 consulta, pero los cambios requieren conexión; el servidor impide borrar
 actividades asociadas a jornadas existentes.
+
+Las jornadas usan el modelo relacional del backend: se crea una jornada con
+`farm` y `date` en `/labor/workdays/`, luego una participación por trabajador
+en `/labor/workday-workers/` con `workday`, `worker`, `payment_mode` y
+`agreed_rate`, y un detalle por cada lote en `/labor/workday-details/` con
+`workday_worker`, `activity_type` y `lot`. El formulario permite seleccionar
+varios trabajadores y varios lotes de una misma finca; aplica la misma
+actividad y tarifa a las participaciones de esa jornada. La consulta de
+jornadas recibe las participaciones y sus detalles anidados. En jornadas
+abiertas se pueden agregar trabajadores mediante nuevas participaciones y
+detalles, retirar una participación pendiente con
+`POST /labor/workday-workers/{id}/cancel/` y cerrar la jornada con
+`POST /labor/workdays/{id}/close/`. Una jornada cerrada no permite agregar o
+modificar registros. Desde una jornada abierta, `PATCH /labor/workdays/{id}/labor/`
+actualiza actividad, modalidad y tarifa para todas las participaciones
+no anuladas y sus detalles; el cambio se rechaza si hay participaciones
+bloqueadas o es incompatible con pesajes.
+Una participación retirada puede volver a agregarse en la misma jornada
+mediante `POST /labor/workday-workers/{id}/reactivate/`, siempre que el
+trabajador siga activo y la jornada continúe abierta.

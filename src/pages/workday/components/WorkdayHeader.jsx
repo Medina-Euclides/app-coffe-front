@@ -2,9 +2,13 @@ import { Plus, Scale } from 'lucide-react';
 import { Button } from '#components/ui/button';
 
 export default function WorkdayHeader({
+  title = 'Jornadas Laborales',
   visibleCount,
+  itemLabel = 'jornada',
+  countVerb = 'visualizadas',
   periodLabel,
   calculatedTotal,
+  totalLabel = 'calculado',
   onAddWorkday,
   onAddHarvest,
 }) {
@@ -12,7 +16,7 @@ export default function WorkdayHeader({
     <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <h1 className="text-balance text-2xl font-bold tracking-tight text-[#183d2b] sm:text-3xl">
-          Jornadas Laborales
+          {title}
         </h1>
         <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-[#738076]">
           <span
@@ -20,11 +24,11 @@ export default function WorkdayHeader({
             className="size-2 rounded-full bg-[#57a276]"
           />
           <span>
-            {visibleCount} {visibleCount === 1 ? 'jornada' : 'jornadas'}{' '}
-            visualizadas {periodLabel}
+            {visibleCount} {visibleCount === 1 ? itemLabel : `${itemLabel}s`}{' '}
+            {countVerb} {periodLabel}
           </span>
           <span aria-hidden="true">·</span>
-          <span>{calculatedTotal} calculado</span>
+          <span>{calculatedTotal} {totalLabel}</span>
         </p>
       </div>
 

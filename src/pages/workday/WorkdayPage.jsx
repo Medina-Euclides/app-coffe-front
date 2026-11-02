@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ClipboardList, Search } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
+  Clock3,
+  MapPin,
+  Search,
+} from 'lucide-react';
 import { Button } from '#components/ui/button';
 import { Card } from '#components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
@@ -16,6 +24,10 @@ const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
   currency: 'COP',
   maximumFractionDigits: 0,
+});
+
+const kilogramsFormatter = new Intl.NumberFormat('es-CO', {
+  maximumFractionDigits: 3,
 });
 
 function asAmount(value) {
@@ -214,6 +226,181 @@ function groupWorkdayParticipants(participants) {
   });
 }
 
+function getHarvestRecords(participants) {
+  return participants.flatMap((participant) =>
+    (Array.isArray(participant.details) ? participant.details : []).flatMap((detail) =>
+      (Array.isArray(detail.harvest_records) ? detail.harvest_records : [])
+        .filter((record) => record.settlement_status !== 'anulado')
+        .map((record) => ({
+          id: String(record.id),
+          date: participant.date,
+          dateKey: participant.dateKey,
+          time: String(record.time || ''),
+          quantityKg: asAmount(record.quantity_kg ?? record.kilograms ?? record.kg),
+          workerId: String(participant.workerId ?? participant.id),
+          workerName: participant.workerName || 'Trabajador sin nombre',
+          identification: participant.identification,
+          farmName: participant.farmName,
+          lotName: detail.lot_name || detail.lot?.name || detail.lot?.nombre || 'Lote sin nombre',
+          activityName:
+            detail.activity_name ||
+            detail.activity_type_name ||
+            detail.activity_type?.name ||
+            'Recolección',
+          paymentMode: participant.paymentMode,
+        })),
+    ),
+  );
+}
+
+function groupHarvestRecords(records) {
+  const grouped = new Map();
+  for (const record of records) {
+    const key = record.workerId;
+    const group = grouped.get(key) || {
+      ...record,
+      records: [],
+    };
+    group.records.push(record);
+    grouped.set(key, group);
+  }
+  return [...grouped.values()]
+    .map((group) => {
+      const sortedRecords = [...group.records].sort(
+        (first, second) =>
+          second.dateKey.localeCompare(first.dateKey) ||
+          second.time.localeCompare(first.time),
+      );
+      return {
+        ...group,
+        records: sortedRecords,
+        latestRecord: sortedRecords[0],
+        totalKilograms: sortedRecords.reduce(
+          (total, record) => total + record.quantityKg,
+          0,
+        ),
+      };
+    })
+    .sort(
+      (first, second) =>
+        second.latestRecord.dateKey.localeCompare(first.latestRecord.dateKey) ||
+        second.latestRecord.time.localeCompare(first.latestRecord.time) ||
+        first.workerName.localeCompare(second.workerName, 'es'),
+    );
+}
+
+function formatHarvestDate(dateKey) {
+  if (!dateKey) return 'Fecha sin registrar';
+  const date = new Date(`${dateKey}T00:00:00`);
+  return Number.isNaN(date.getTime())
+    ? 'Fecha sin registrar'
+    : new Intl.DateTimeFormat('es-CO', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }).format(date);
+}
+
+function getInitials(name) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] || '')
+    .join('')
+    .toLocaleUpperCase('es');
+}
+
+function HarvestRecordCard({ worker, periodLabel }) {
+  const [expanded, setExpanded] = useState(false);
+  const timeLabel = worker.latestRecord.time.slice(0, 5);
+  return (
+    <Card className="gap-0 rounded-2xl border border-[#e8ebe6] bg-white py-0 shadow-none">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf0eb] px-4 py-3 sm:px-5">
+        <span className="rounded-lg border border-[#c2ebdc] bg-[#effbf6] px-3 py-1.5 text-xs font-semibold text-[#19805d]">
+          {worker.records.length}{' '}
+          {worker.records.length === 1 ? 'pesaje' : 'pesajes'} {periodLabel}
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-sm text-[#748074]">
+          <Clock3 aria-hidden="true" className="size-3.5" />
+          Último: {timeLabel || 'Hora sin registrar'}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-5">
+        <span
+          aria-hidden="true"
+          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#173d30] text-base font-semibold text-white"
+        >
+          {getInitials(worker.workerName)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate font-semibold text-[#263b2c]">
+            {worker.workerName}
+          </h2>
+          {worker.identification && (
+            <p className="mt-1 text-sm text-[#899489]">
+              C.C. {worker.identification}
+            </p>
+          )}
+        </div>
+        <div className="ml-auto text-right">
+          <p className="text-2xl font-bold tracking-tight text-[#183d2b] sm:text-3xl">
+            {kilogramsFormatter.format(worker.totalKilograms)}
+            <span className="ml-1 text-sm font-semibold uppercase">kg</span>
+          </p>
+          <p className="mt-0.5 text-xs text-[#899489]">Total recolectado {periodLabel}</p>
+        </div>
+        <Button
+          aria-expanded={expanded}
+          aria-label={`${expanded ? 'Ocultar' : 'Ver'} pesajes de ${worker.workerName}`}
+          className="h-10 shrink-0 rounded-xl bg-[#f4f6f3] px-3 text-sm font-medium text-[#3e5848] hover:bg-[#eaf0e8]"
+          onClick={() => setExpanded((current) => !current)}
+          type="button"
+          variant="ghost"
+        >
+          {expanded ? 'Ocultar pesajes' : 'Ver pesajes'}
+          {expanded ? (
+            <ChevronUp aria-hidden="true" className="size-4" />
+          ) : (
+            <ChevronDown aria-hidden="true" className="size-4" />
+          )}
+        </Button>
+      </div>
+      {expanded && (
+        <div className="border-t border-[#edf0eb] bg-[#fbfcfa] px-4 py-3 sm:px-5">
+          <ul className="divide-y divide-[#edf0eb]">
+            {worker.records.map((record) => (
+              <li
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm"
+                key={record.id}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-[#34483a]">
+                    {record.lotName}
+                  </p>
+                  <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#748074]">
+                    <span>{formatHarvestDate(record.dateKey)}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{record.time.slice(0, 5) || 'Hora sin registrar'}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin aria-hidden="true" className="size-3" />
+                      {record.farmName || 'Finca sin nombre'}
+                    </span>
+                  </p>
+                </div>
+                <p className="shrink-0 font-semibold text-[#244b38]">
+                  {kilogramsFormatter.format(record.quantityKg)} kg
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function belongsToPeriod(dateKey, period, todayKey) {
   if (period === 'all') return true;
   if (!dateKey) return false;
@@ -324,6 +511,39 @@ export default function WorkdayPage() {
 
   const calculatedTotal = filteredWorkdays.reduce(
     (total, workday) => total + workday.totalAmount,
+    0,
+  );
+  const harvestRecords = useMemo(() => getHarvestRecords(workdays), [workdays]);
+  const query = search.trim().toLocaleLowerCase();
+  const filteredHarvestRecords = harvestRecords
+    .filter((record) =>
+      belongsToPeriod(record.dateKey, period, todayKey),
+    )
+    .filter((record) => {
+      if (modality === 'jornal') return !/kg|kilo|kilogram/.test(record.paymentMode);
+      if (modality === 'kilogram') return /kg|kilo|kilogram/.test(record.paymentMode);
+      return true;
+    })
+    .filter((record) => {
+      if (!query) return true;
+      return [
+        record.workerName,
+        record.identification,
+        record.lotName,
+        record.farmName,
+        record.activityName,
+      ]
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(query);
+    })
+    .sort(
+      (first, second) =>
+        second.dateKey.localeCompare(first.dateKey) ||
+        second.time.localeCompare(first.time),
+    );
+  const totalHarvestKilograms = filteredHarvestRecords.reduce(
+    (total, record) => total + record.quantityKg,
     0,
   );
   const periodLabel = {
@@ -653,16 +873,26 @@ export default function WorkdayPage() {
   const saveHarvestRecord = (record, detail) => {
     setWorkdays((currentWorkdays) =>
       currentWorkdays.map((workday) => {
-        if (String(workday.workdayId) !== detail.workdayId) return workday;
+        if (
+          String(workday.workdayId) !== detail.workdayId ||
+          String(workday.workerId) !== detail.workerId
+        ) {
+          return workday;
+        }
 
-        const details = workday.details.map((item) =>
-          String(item.id) === detail.id
-            ? {
-                ...item,
-                harvest_records: [...(item.harvest_records || []), record],
-              }
-            : item,
+        const hasDetail = workday.details.some(
+          (item) => String(item.id) === detail.id,
         );
+        const details = hasDetail
+          ? workday.details.map((item) =>
+              String(item.id) === detail.id
+                ? {
+                    ...item,
+                    harvest_records: [...(item.harvest_records || []), record],
+                  }
+                : item,
+            )
+          : [...workday.details, { ...detail, harvest_records: [record] }];
 
         return mapParticipant(
           {
@@ -691,10 +921,22 @@ export default function WorkdayPage() {
   return (
     <section className="mx-auto w-full max-w-6xl space-y-5">
       <WorkdayHeader
-        calculatedTotal={currencyFormatter.format(calculatedTotal)}
+        title={section === 'harvest' ? 'Recolección de café' : 'Jornadas Laborales'}
+        visibleCount={
+          section === 'harvest'
+            ? filteredHarvestRecords.length
+            : filteredWorkdays.length
+        }
+        itemLabel={section === 'harvest' ? 'pesaje' : 'jornada'}
+        countVerb={section === 'harvest' ? 'visualizados' : 'visualizadas'}
+        calculatedTotal={
+          section === 'harvest'
+            ? kilogramsFormatter.format(totalHarvestKilograms)
+            : currencyFormatter.format(calculatedTotal)
+        }
+        totalLabel={section === 'harvest' ? 'kg recolectados' : 'calculado'}
         onAddHarvest={() => setAction('pesaje')}
         onAddWorkday={() => setAction('jornada')}
-        visibleCount={filteredWorkdays.length}
         periodLabel={periodLabel}
       />
 
@@ -739,16 +981,21 @@ export default function WorkdayPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent className="space-y-4" value="workdays">
-          <WorkdayFilters
-            modality={modality}
-            onModalityChange={setModality}
-            onPeriodChange={setPeriod}
-            onSearchChange={setSearch}
-            period={period}
-            search={search}
-          />
+        <WorkdayFilters
+          modality={modality}
+          onModalityChange={setModality}
+          onPeriodChange={setPeriod}
+          onSearchChange={setSearch}
+          period={period}
+          search={search}
+          searchPlaceholder={
+            section === 'harvest'
+              ? 'Buscar por trabajador, lote o finca…'
+              : 'Buscar por trabajador o CC…'
+          }
+        />
 
+        <TabsContent className="space-y-4" value="workdays">
           {loading ? (
             <p
               aria-live="polite"
@@ -779,28 +1026,46 @@ export default function WorkdayPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="harvest">
-          <Card className="flex flex-col items-center gap-3 rounded-2xl border-[#e7ebe4] bg-white px-6 py-12 text-center shadow-none">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-[#edf4eb] text-[#315d3b]">
-              <Search aria-hidden="true" className="size-6" />
-            </span>
-            <div>
-              <h2 className="font-semibold text-[#263b2c]">
-                Recolección
-              </h2>
-              <p className="mt-1 max-w-md text-sm leading-6 text-[#748074]">
-                Esta vista se desarrollará en el siguiente paso. Por ahora,
-                puedes consultar aquí las jornadas y sus pesajes asociados.
-              </p>
-            </div>
-            <Button
-              className="mt-1 rounded-xl bg-[#173d30] px-4 text-white hover:bg-[#214b32]"
-              onClick={() => setSection('workdays')}
-              type="button"
+        <TabsContent className="space-y-3" value="harvest">
+          {loading ? (
+            <p
+              aria-live="polite"
+              className="rounded-2xl border border-[#e7ebe4] bg-white px-5 py-10 text-center text-sm text-[#748074]"
+              role="status"
             >
-              Volver a jornadas laborales
-            </Button>
-          </Card>
+              Cargando registros de recolección…
+            </p>
+          ) : filteredHarvestRecords.length ? (
+            groupHarvestRecords(filteredHarvestRecords).map((worker) => (
+              <HarvestRecordCard
+                key={worker.workerId}
+                periodLabel={periodLabel}
+                worker={worker}
+              />
+            ))
+          ) : (
+            <Card className="flex flex-col items-center gap-3 rounded-2xl border-[#e7ebe4] bg-white px-6 py-12 text-center shadow-none">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-[#edf4eb] text-[#315d3b]">
+                <Search aria-hidden="true" className="size-6" />
+              </span>
+              <div>
+                <h2 className="font-semibold text-[#263b2c]">
+                  {loadError
+                    ? 'No se pudieron cargar los pesajes'
+                    : harvestRecords.length
+                    ? 'No hay pesajes para estos filtros'
+                    : 'Aún no hay registros de recolección'}
+                </h2>
+                <p className="mt-1 max-w-md text-sm leading-6 text-[#748074]">
+                  {loadError
+                    ? loadError
+                    : harvestRecords.length
+                    ? 'Cambia la búsqueda, el periodo o la modalidad para ver otros registros.'
+                    : 'Los pesajes registrados aparecerán aquí con su trabajador, lote, fecha y hora.'}
+                </p>
+              </div>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 

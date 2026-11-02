@@ -23,6 +23,7 @@ export default function WorkdayFilters({
   onPeriodChange,
   modality,
   onModalityChange,
+  searchPlaceholder = 'Buscar por trabajador o CC…',
 }) {
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-[#e7ebe4] bg-white p-2.5 sm:flex-row sm:items-center">
@@ -39,7 +40,7 @@ export default function WorkdayFilters({
           className="h-10 rounded-xl border-[#dfe5dc] bg-white pl-9 text-sm shadow-none placeholder:text-[#899489] focus-visible:border-[#5b805e] focus-visible:ring-[#5b805e]/20"
           id="workday-search"
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Buscar por trabajador o CC…"
+          placeholder={searchPlaceholder}
           type="search"
           value={search}
         />
