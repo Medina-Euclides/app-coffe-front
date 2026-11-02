@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL = (
-  import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+  import.meta.env.VITE_API_URL || 'http://192.168.1.105:8000'
 ).replace(/\/$/, '');
 const AUTH_STORAGE_KEY = 'cafesmart_auth';
 const LOGIN_ENDPOINT = '/accounts/login/';
