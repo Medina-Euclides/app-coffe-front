@@ -109,3 +109,20 @@ cliente crea uno con una actividad de recolección de la jornada antes de enviar
 `workday_detail`, `quantity_kg` y `time` a `POST /labor/harvest-records/`; el
 servidor valida que el detalle sea de recolección y que la jornada y la
 participación sigan abiertas.
+
+La página de pagos laborales consulta `/payroll/settlements/`,
+`/payroll/settlement-workdays/`, `/payroll/settlement-harvests/` y
+`/payroll/payments/`, junto con jornadas, trabajadores y fincas para completar
+los detalles legibles. En pendientes muestra liquidaciones abiertas o
+liquidadas y también calcula registros aún no incluidos en una liquidación,
+siempre que pertenezcan a jornadas cerradas: participaciones por jornal y
+pesajes registrados por kilogramo. Las liquidaciones pagadas aparecen en la
+pestaña correspondiente. Ambas pestañas comparten filtros por período,
+modalidad y búsqueda. Al confirmar el botón **Pagar**, se selecciona el método,
+se crea o completa y cierra la liquidación si hace falta, y se registra el
+pago por `/payroll/settlements/pay/`; después se recarga la lista en la pestaña
+de pagos realizados. La finca de una liquidación nueva se toma del campo de
+finca de la jornada cerrada; no se solicita al usuario de nuevo. Si la jornada
+no incluye un identificador de finca, el pago se detiene y se informa el
+problema en lugar de enviar una liquidación inválida. Las tarjetas pagadas
+muestran el botón desactivado.
