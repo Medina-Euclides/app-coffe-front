@@ -99,3 +99,13 @@ bloqueadas o es incompatible con pesajes.
 Una participación retirada puede volver a agregarse en la misma jornada
 mediante `POST /labor/workday-workers/{id}/reactivate/`, siempre que el
 trabajador siga activo y la jornada continúe abierta.
+
+El formulario de pesajes consulta las jornadas abiertas y sus detalles
+anidados, muestra primero las jornadas que tienen una actividad marcada como
+`is_harvest`, y permite seleccionar dentro de ellas un trabajador y su lote.
+El selector de lotes muestra todos los lotes activos de la finca de la
+jornada. Si el trabajador aún no tiene un detalle para el lote elegido, el
+cliente crea uno con una actividad de recolección de la jornada antes de enviar
+`workday_detail`, `quantity_kg` y `time` a `POST /labor/harvest-records/`; el
+servidor valida que el detalle sea de recolección y que la jornada y la
+participación sigan abiertas.
