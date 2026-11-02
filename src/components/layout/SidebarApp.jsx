@@ -30,11 +30,11 @@ const gruposNavegacion = [
     ],
   },
   {
-    label: "Operaciones",
+    label: "Operaciones diarias",
     icon: Sprout,
     options: [
       { label: "Jornadas laborales", to: "/jornada-laboral" },
-      { label: "Recolección", to: "/recoleccion" },
+      { label: "Pagos laborales", to: "/pagos-laborales" },
     ],
   },
   {
