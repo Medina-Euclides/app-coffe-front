@@ -40,7 +40,9 @@ const gruposNavegacion = [
   {
     label: "Consultas",
     icon: ChartPie,
-    options: ["Producción"],
+    options: [
+      { label: "Analitica", to: "/analitica" },
+    ],
   },
 ]
 

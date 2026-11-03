@@ -24,6 +24,7 @@ const FarmsAndLots = lazy(() =>
 
 const WorkdayPage = lazy(() => import('#pages/workday/WorkdayPage.jsx'));
 const PaymentPage = lazy(() => import('#pages/payment/PaymentPage.jsx'));
+const AnalyticPage = lazy(() => import('#pages/analytics/AnalyticPage.jsx'));
 
 
 export default function RoutesApp({
@@ -122,7 +123,12 @@ export default function RoutesApp({
             element={<PaymentPage  usuario={usuario} />}
             path="/pagos-laborales"
           />
-          
+
+          <Route
+            element={<AnalyticPage  usuario={usuario} />}
+            path="/analitica"
+          />
+
           <Route element={<Navigate replace to="/inicio" />} path="*" />
         </Route>
       </Routes>
