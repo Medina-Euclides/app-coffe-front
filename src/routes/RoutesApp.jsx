@@ -24,6 +24,7 @@ const FarmsAndLots = lazy(() =>
 
 const WorkdayPage = lazy(() => import('#pages/workday/WorkdayPage.jsx'));
 const PaymentPage = lazy(() => import('#pages/payment/PaymentPage.jsx'));
+const FinanceActivityPage = lazy(() => import('#pages/finance/FinanceActivityPage.jsx'));
 const AnalyticPage = lazy(() => import('#pages/analytics/AnalyticPage.jsx'));
 
 
@@ -122,6 +123,11 @@ export default function RoutesApp({
           <Route
             element={<PaymentPage  usuario={usuario} />}
             path="/pagos-laborales"
+          />
+
+          <Route
+            element={<FinanceActivityPage  usuario={usuario} />}
+            path="/movimientos-financieros"
           />
 
           <Route

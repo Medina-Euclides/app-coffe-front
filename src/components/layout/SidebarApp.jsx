@@ -13,6 +13,7 @@ import {
 import { NavLink, useLocation } from "react-router-dom"
 import {
   LayoutDashboard,
+  Home,
   Users,
   Sprout,
   ChartPie,
@@ -35,11 +36,12 @@ const gruposNavegacion = [
     options: [
       { label: "Jornadas laborales", to: "/jornada-laboral" },
       { label: "Pagos laborales", to: "/pagos-laborales" },
+      { label: "Ventas y Egresos", to: "/movimientos-financieros" },
     ],
   },
   {
     label: "Consultas",
-    icon: ChartPie,
+    icon: LayoutDashboard,
     options: [
       { label: "Analitica", to: "/analitica" },
     ],
@@ -115,7 +117,7 @@ export const SidebarApp = ({ usuario, onLogout }) => {
                     : "h-11 rounded-xl px-3 font-medium text-[#68766b] hover:bg-[#eef2e9] hover:text-[#214b32] active:bg-[#e7f0e3] active:text-[#214b32]"
                 }
               >
-                <LayoutDashboard aria-hidden="true" className="size-[18px]" />
+                <Home aria-hidden="true" className="size-[18px]" />
                 <span>Inicio</span>
                 {pathname === "/inicio" && (
                   <span
