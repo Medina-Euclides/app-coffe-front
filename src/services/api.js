@@ -37,6 +37,12 @@ function getErrorMessage(data, status) {
     location: 'Ubicación',
     name: 'Nombre',
     non_field_errors: 'Datos',
+    category: 'Categoría',
+    amount: 'Valor',
+    buyer: 'Comprador',
+    coffee_type: 'Tipo de café',
+    sale_date: 'Fecha de venta',
+    unit_price: 'Precio por kilogramo',
     password: 'Contraseña',
     phone_number: 'Teléfono',
     description: 'Descripción',
@@ -275,6 +281,19 @@ export const api = {
         },
       }),
   },
+  finance: {
+    expenses: {
+      list: async () =>
+        normalizeList(
+          await apiRequest('/finance/expenses/'),
+          'egresos',
+        ),
+      create: (data) =>
+        apiRequest('/finance/expenses/', { method: 'POST', data }),
+      update: (id, data) =>
+        apiRequest(`/finance/expenses/${id}/`, { method: 'PATCH', data }),
+    },
+  },
   lots: {
     list: async () =>
       normalizeList(await apiRequest('/farms/lots/'), 'lotes').map(normalizeLot),
@@ -320,6 +339,19 @@ export const api = {
       ),
     delete: (id) =>
       apiRequest(`/labor/activity-types/${id}/`, { method: 'DELETE' }),
+  },
+  production: {
+    sales: {
+      list: async () =>
+        normalizeList(
+          await apiRequest('/production/sales/'),
+          'ventas',
+        ),
+      create: (data) =>
+        apiRequest('/production/sales/', { method: 'POST', data }),
+      update: (id, data) =>
+        apiRequest(`/production/sales/${id}/`, { method: 'PATCH', data }),
+    },
   },
   workdays: {
     list: async () =>
