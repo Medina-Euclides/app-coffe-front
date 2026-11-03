@@ -138,7 +138,13 @@ export default function FarmsAndLots({ usuario }) {
     }
   };
 
-  const saveLot = async ({ nombre, variedad, hectareas, description }) => {
+  const saveLot = async ({
+    nombre,
+    variedad,
+    hectareas,
+    plantCount,
+    description,
+  }) => {
     if (!selectedFarm) return 'Selecciona primero una finca.';
     if (nombre.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
     if (
@@ -146,6 +152,12 @@ export default function FarmsAndLots({ usuario }) {
       (!Number.isFinite(hectareas) || hectareas <= 0)
     ) {
       return 'El área debe ser un número mayor que cero.';
+    }
+    if (
+      plantCount !== null &&
+      (!Number.isInteger(plantCount) || plantCount < 0)
+    ) {
+      return 'El número de plantas debe ser un entero igual o mayor que cero.';
     }
     if (
       lots.some(
@@ -163,6 +175,7 @@ export default function FarmsAndLots({ usuario }) {
       name: nombre,
       coffee_variety: variedad,
       area_hectares: hectareas,
+      plant_count: plantCount,
       description,
       ...(lotToEdit ? {} : { id_farm: selectedFarm.id }),
     };
@@ -424,7 +437,20 @@ export default function FarmsAndLots({ usuario }) {
               </div>
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
-                  Estado
+                    Plantas de café
+                </dt>
+                <dd className="mt-1 font-medium text-[#294533]">
+                    {lotToView.plant_count === null ||
+                    lotToView.plant_count === undefined
+                      ? 'No especificadas'
+                      : new Intl.NumberFormat('es-CO').format(
+                          lotToView.plant_count,
+                        )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
+                    Estado
                 </dt>
                 <dd className="mt-1 font-medium text-[#294533]">
                   {lotToView.estado === 'inactivo' ? 'Inactivo' : 'Activo'}

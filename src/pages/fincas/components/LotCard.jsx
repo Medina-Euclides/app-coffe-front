@@ -41,6 +41,11 @@ export default function LotCard({
               }).format(Number(lot.hectareas))} ha`
             : 'Área no especificada'}
         </span>
+        <span>
+          {lot.plant_count === null || lot.plant_count === undefined
+            ? 'Plantas no especificadas'
+            : `${new Intl.NumberFormat('es-CO').format(lot.plant_count)} plantas`}
+        </span>
       </div>
       <div className="flex flex-wrap gap-1 border-t border-[#edf0eb] pt-3">
         <Button

@@ -61,6 +61,13 @@ export default function LoteDetalle({
           <strong>Área:</strong> {lote.hectareas ? `${lote.hectareas} Ha` : 'No especificada'}
         </p>
 
+        <p style={{ margin: '6px 0', color: '#334155' }}>
+          <strong>Plantas de café:</strong>{' '}
+          {lote.plant_count === null || lote.plant_count === undefined
+            ? 'No especificadas'
+            : new Intl.NumberFormat('es-CO').format(lote.plant_count)}
+        </p>
+
         {lote.description && (
           <p style={{ margin: '6px 0', color: '#334155' }}>
             <strong>Descripción:</strong> {lote.description}

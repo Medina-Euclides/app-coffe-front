@@ -33,6 +33,7 @@ export function SetupWizard({ usuario, onComplete }) {
   const [nombreLote, setNombreLote] = useState('');
   const [variedad, setVariedad] = useState(variedadesCafe[0]);
   const [hectareas, setHectareas] = useState('');
+  const [plantas, setPlantas] = useState('');
   const [nombreActividad, setNombreActividad] = useState('');
   const [error, setError] = useState('');
   const [fincaCreada, setFincaCreada] = useState(null);
@@ -63,6 +64,14 @@ export function SetupWizard({ usuario, onComplete }) {
       setError('Ingresa un área mayor que cero o deja el campo vacío.');
       return;
     }
+    const plantCount = plantas === '' ? null : Number(plantas);
+    if (
+      plantCount !== null &&
+      (!Number.isInteger(plantCount) || plantCount < 0)
+    ) {
+      setError('Ingresa un número entero de plantas igual o mayor que cero.');
+      return;
+    }
 
     setGuardando(true);
     try {
@@ -86,6 +95,7 @@ export function SetupWizard({ usuario, onComplete }) {
           name: nombreLote.trim(),
           coffee_variety: variedad,
           area_hectares: area,
+          plant_count: plantCount,
           description: '',
         }));
       setLoteCreado(lote);
@@ -196,6 +206,7 @@ export function SetupWizard({ usuario, onComplete }) {
               <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-relaxed text-slate-700">
                 <li>El nombre y la ubicación de tu finca.</li>
                 <li>El nombre, la variedad y el área de tu primer lote.</li>
+                <li>El número de plantas de café de tu lote (opcional).</li>
                 <li>Una actividad para registrar la recolección de café.</li>
               </ul>
             </div>
@@ -433,6 +444,27 @@ export function SetupWizard({ usuario, onComplete }) {
                   step="0.1"
                   type="number"
                   value={hectareas}
+                />
+              </div>
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-medium text-foreground"
+                  htmlFor="plantas-lote"
+                >
+                  Número de plantas de café{' '}
+                  <span className="text-muted-foreground">(opcional)</span>
+                </label>
+                <Input
+                  autoComplete="off"
+                  className="h-12 rounded-xl px-4"
+                  id="plantas-lote"
+                  min="0"
+                  name="plantCount"
+                  onChange={(event) => setPlantas(event.target.value)}
+                  placeholder="Ej.: 1200…"
+                  step="1"
+                  type="number"
+                  value={plantas}
                 />
               </div>
 

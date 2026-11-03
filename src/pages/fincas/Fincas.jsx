@@ -42,6 +42,7 @@ export default function Fincas({ usuario, subSeccion }) {
   const [nombreLote, setNombreLote] = useState('');
   const [variedadLote, setVariedadLote] = useState('Castillo');
   const [hectareasLote, setHectareasLote] = useState('');
+  const [plantasLote, setPlantasLote] = useState('');
   const [descripcionLote, setDescripcionLote] = useState('');
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -99,6 +100,7 @@ export default function Fincas({ usuario, subSeccion }) {
         setNombreLote('');
         setVariedadLote('Castillo');
         setHectareasLote('');
+        setPlantasLote('');
         setLoteDetalle(null);
       }
       if (subSeccion === 'nueva-finca') {
@@ -227,6 +229,7 @@ export default function Fincas({ usuario, subSeccion }) {
     e.preventDefault();
     const nombre = nombreLote.trim();
     const hectareas = hectareasLote ? Number(hectareasLote) : null;
+    const plantCount = plantasLote === '' ? null : Number(plantasLote);
 
     if (!nombre) {
       setAviso('Ingresa el nombre del lote.');
@@ -236,6 +239,14 @@ export default function Fincas({ usuario, subSeccion }) {
 
     if (hectareas !== null && (!Number.isFinite(hectareas) || hectareas <= 0)) {
       setAviso('Si ingresas hectáreas, deben ser un número mayor que cero.');
+      setAvisoEsError(true);
+      return;
+    }
+    if (
+      plantCount !== null &&
+      (!Number.isInteger(plantCount) || plantCount < 0)
+    ) {
+      setAviso('El número de plantas debe ser un entero igual o mayor que cero.');
       setAvisoEsError(true);
       return;
     }
@@ -252,6 +263,7 @@ export default function Fincas({ usuario, subSeccion }) {
       name: nombre,
       coffee_variety: variedadLote,
       area_hectares: hectareas,
+      plant_count: plantCount,
       description: descripcionLote.trim(),
       ...(loteEnEdicion ? {} : { id_farm: fincaActual.id }),
     };
@@ -277,6 +289,7 @@ export default function Fincas({ usuario, subSeccion }) {
       setNombreLote('');
       setVariedadLote('Castillo');
       setHectareasLote('');
+      setPlantasLote('');
       setDescripcionLote('');
       setMostrarFormLote(false);
     } catch (error) {
@@ -299,6 +312,11 @@ export default function Fincas({ usuario, subSeccion }) {
     setNombreLote(lote.nombre);
     setVariedadLote(lote.variedad || 'Castillo');
     setHectareasLote(lote.hectareas ? String(lote.hectareas) : '');
+    setPlantasLote(
+      lote.plant_count === null || lote.plant_count === undefined
+        ? ''
+        : String(lote.plant_count),
+    );
     setDescripcionLote(lote.description || '');
     setMostrarFormLote(true);
     setMostrarFormFinca(false);
@@ -311,6 +329,7 @@ export default function Fincas({ usuario, subSeccion }) {
     setNombreLote('');
     setVariedadLote('Castillo');
     setHectareasLote('');
+    setPlantasLote('');
     setDescripcionLote('');
   };
 
@@ -444,6 +463,8 @@ export default function Fincas({ usuario, subSeccion }) {
           setVariedadLote={setVariedadLote}
           hectareasLote={hectareasLote}
           setHectareasLote={setHectareasLote}
+          plantasLote={plantasLote}
+          setPlantasLote={setPlantasLote}
           descripcionLote={descripcionLote}
           setDescripcionLote={setDescripcionLote}
           guardando={guardando}

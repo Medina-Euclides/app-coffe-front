@@ -64,6 +64,13 @@ export default function LotesList({
                   {lote.variedad} — {lote.hectareas ? `${lote.hectareas} Ha` : 'Área no especificada'}
                 </span>
 
+                <span style={{ color: '#64748b', fontSize: '0.9rem', display: 'block' }}>
+                  Plantas de café:{' '}
+                  {lote.plant_count === null || lote.plant_count === undefined
+                    ? 'No especificadas'
+                    : new Intl.NumberFormat('es-CO').format(lote.plant_count)}
+                </span>
+
                 <span style={{ color: '#94a3b8', fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
                   Creado: {lote.fechaCreacion || 'Fecha no registrada'}
                 </span>

@@ -26,6 +26,11 @@ export default function LotFormDialog({
       ? ''
       : String(lot.hectareas),
   );
+  const [plantCount, setPlantCount] = useState(
+    lot?.plant_count === null || lot?.plant_count === undefined
+      ? ''
+      : String(lot.plant_count),
+  );
   const [description, setDescription] = useState(lot?.description || '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -39,6 +44,7 @@ export default function LotFormDialog({
         nombre: name.trim(),
         variedad: variety,
         hectareas: hectares ? Number(hectares) : null,
+        plantCount: plantCount === '' ? null : Number(plantCount),
         description: description.trim(),
       });
       if (result) {
@@ -84,6 +90,25 @@ export default function LotFormDialog({
               placeholder="Ej. El Mirador…"
               required
               value={name}
+            />
+          </div>
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium text-[#36483a]"
+              htmlFor="lot-plant-count"
+            >
+              Número de plantas de café (opcional)
+            </label>
+            <Input
+              className="h-11 rounded-xl"
+              id="lot-plant-count"
+              min="0"
+              name="plant_count"
+              onChange={(event) => setPlantCount(event.target.value)}
+              placeholder="Ej. 1200"
+              step="1"
+              type="number"
+              value={plantCount}
             />
           </div>
           <div className="space-y-2">

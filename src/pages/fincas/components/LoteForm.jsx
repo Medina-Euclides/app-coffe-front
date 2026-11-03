@@ -7,6 +7,8 @@ export default function LoteForm({
   setVariedadLote,
   hectareasLote,
   setHectareasLote,
+  plantasLote,
+  setPlantasLote,
   descripcionLote,
   setDescripcionLote,
   guardando,
@@ -69,6 +71,26 @@ export default function LoteForm({
           <option value="Borbón">Borbón</option>
           <option value="Geisha">Geisha</option>
         </select>
+      </label>
+
+      <label style={{ display: 'block', marginBottom: '16px' }}>
+        Número de Plantas de Café (Opcional):
+        <input
+          type="number"
+          min="0"
+          step="1"
+          placeholder="Ej: 1200"
+          value={plantasLote}
+          onChange={(e) => setPlantasLote(e.target.value)}
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: '10px',
+            marginTop: '6px',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+          }}
+        />
       </label>
 
       <label style={{ display: 'block', marginBottom: '16px' }}>
