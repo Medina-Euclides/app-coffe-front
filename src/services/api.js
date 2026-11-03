@@ -266,6 +266,15 @@ export const api = {
         await apiRequest(`/farms/${id}/`, { method: 'PATCH', data }),
       ),
   },
+  analytics: {
+    summary: ({ farmId, period = 'month' } = {}) =>
+      apiRequest('/analytics/summary/', {
+        params: {
+          ...(farmId ? { farm_id: farmId } : {}),
+          period,
+        },
+      }),
+  },
   lots: {
     list: async () =>
       normalizeList(await apiRequest('/farms/lots/'), 'lotes').map(normalizeLot),
