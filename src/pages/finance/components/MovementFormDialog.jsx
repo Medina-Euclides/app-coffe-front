@@ -73,7 +73,6 @@ export default function MovementFormDialog({
               concept: concept.trim(),
               amount: Number(amount),
               category,
-              notes: notes.trim(),
             };
       const result = await onSave(payload);
       if (result) {
@@ -285,20 +284,22 @@ export default function MovementFormDialog({
             </>
           )}
 
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-[#36483a]"
-              htmlFor="movement-notes"
-            >
-              Notas (opcional)
-            </label>
-            <textarea
-              className="min-h-20 w-full rounded-xl border border-input bg-white px-3 py-2 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
-              id="movement-notes"
-              onChange={(event) => setNotes(event.target.value)}
-              value={notes}
-            />
-          </div>
+          {type === 'sale' && (
+            <div className="space-y-2">
+              <label
+                className="text-sm font-medium text-[#36483a]"
+                htmlFor="movement-notes"
+              >
+                Notas (opcional)
+              </label>
+              <textarea
+                className="min-h-20 w-full rounded-xl border border-input bg-white px-3 py-2 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
+                id="movement-notes"
+                onChange={(event) => setNotes(event.target.value)}
+                value={notes}
+              />
+            </div>
+          )}
 
           {error && (
             <p aria-live="polite" className="text-sm text-red-700" role="alert">

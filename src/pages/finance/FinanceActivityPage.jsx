@@ -227,7 +227,7 @@ function MovementCard({ movement, expanded, onToggle, onEdit }) {
                 </dd>
               </div>
             )}
-            {movement.notes && (
+            {isSale && movement.notes && (
               <div className="sm:col-span-2">
                 <dt className="text-xs text-[#8a8b83]">Notas</dt>
                 <dd className="mt-0.5 whitespace-pre-wrap text-[#36483a]">
@@ -315,7 +315,7 @@ export default function FinanceActivityPage({ usuario }) {
           movement.title,
           movement.buyer,
           movement.categoryLabel,
-          movement.notes,
+          ...(movement.type === 'sale' ? [movement.notes] : []),
         ]
           .filter(Boolean)
           .join(' ')
