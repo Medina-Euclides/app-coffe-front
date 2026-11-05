@@ -26,6 +26,7 @@ const WorkdayPage = lazy(() => import('#pages/workday/WorkdayPage.jsx'));
 const PaymentPage = lazy(() => import('#pages/payment/PaymentPage.jsx'));
 const FinanceActivityPage = lazy(() => import('#pages/finance/FinanceActivityPage.jsx'));
 const AnalyticPage = lazy(() => import('#pages/analytics/AnalyticPage.jsx'));
+const AssistantPage = lazy(() => import('#pages/assistant/AssistantPage.jsx'));
 
 
 export default function RoutesApp({
@@ -133,6 +134,11 @@ export default function RoutesApp({
           <Route
             element={<AnalyticPage  usuario={usuario} />}
             path="/analitica"
+          />
+
+          <Route
+            element={<AssistantPage  usuario={usuario} />}
+            path="/asistente-ia"
           />
 
           <Route element={<Navigate replace to="/inicio" />} path="*" />
