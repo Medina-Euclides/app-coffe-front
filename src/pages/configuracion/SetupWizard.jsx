@@ -1,3 +1,4 @@
+// Asistente de configuración inicial: crea finca, lote y actividad del usuario.
 import { useState } from 'react';
 import { Button } from '#components/ui/button';
 import {
@@ -7,6 +8,7 @@ import {
   CardHeader,
 } from '#components/ui/card';
 import { Input } from '#components/ui/input';
+import NoticeBanner from '#components/shared/NoticeBanner';
 import { api } from '#services/api';
 import {
   guardarCacheFincasYLotes,
@@ -269,15 +271,7 @@ export function SetupWizard({ usuario, onComplete }) {
                   value={ubicacion}
                 />
               </div>
-              {error && (
-                <p
-                  aria-live="polite"
-                  className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-                  role="alert"
-                >
-                  {error}
-                </p>
-              )}
+              <NoticeBanner message={error} isError />
               <div className="flex gap-3 pt-2">
                 <Button
                   className="h-12 flex-1 rounded-xl"
@@ -327,15 +321,7 @@ export function SetupWizard({ usuario, onComplete }) {
                 </p>
               </div>
 
-              {error && (
-                <p
-                  aria-live="polite"
-                  className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-                  role="alert"
-                >
-                  {error}
-                </p>
-              )}
+              <NoticeBanner message={error} isError />
 
               <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                 <Button
@@ -468,15 +454,7 @@ export function SetupWizard({ usuario, onComplete }) {
                 />
               </div>
 
-              {error && (
-                <p
-                  aria-live="polite"
-                  className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-                  role="alert"
-                >
-                  {error}
-                </p>
-              )}
+              <NoticeBanner message={error} isError />
 
               <div className="flex gap-3 pt-2">
                 <Button

@@ -1,5 +1,7 @@
+// Listado de tipos de actividad laboral con búsqueda, formularios y tarjetas consistentes.
 import { useEffect, useMemo, useState } from 'react';
-import ActivityCard from './components/ActivityCard.jsx';
+import ItemCard from '#components/shared/ItemCard';
+import NoticeBanner from '#components/shared/NoticeBanner';
 import ActivityFormDialog from './components/ActivityFormDialog.jsx';
 import EmptyState from '#components/shared/EmptyState';
 import ManagementPage from '#components/shared/ManagementPage';
@@ -29,6 +31,7 @@ export default function ActividadesLaborales({ usuario }) {
   const [notice, setNotice] = useState('');
   const [noticeIsError, setNoticeIsError] = useState(false);
 
+  // Carga tipos de actividad desde la API y guarda caché local.
   useEffect(() => {
     let active = true;
     api.activities
@@ -160,19 +163,7 @@ export default function ActividadesLaborales({ usuario }) {
         searchValue={search}
         title="Actividades laborales"
       >
-        {notice && (
-          <p
-            aria-live="polite"
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              noticeIsError
-                ? 'border-red-200 bg-red-50 text-red-800'
-                : 'border-[#dce8d9] bg-[#f0f5ed] text-[#426548]'
-            }`}
-            role="status"
-          >
-            {notice}
-          </p>
-        )}
+        <NoticeBanner message={notice} isError={noticeIsError} />
         {loading ? (
           <p
             aria-live="polite"
@@ -200,15 +191,51 @@ export default function ActividadesLaborales({ usuario }) {
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredActivities.map((activity) => (
-              <ActivityCard
-                activity={activity}
-                key={activity.id || activity.name}
-                onDelete={deleteActivity}
-                onEdit={openEditActivityDialog}
-                onView={setActivityToView}
-              />
-            ))}
+            {filteredActivities.map((activity) => {
+              const isHarvest = activity.is_harvest;
+              return (
+                <ItemCard
+                  key={activity.id || activity.name}
+                  avatar={
+                    <span
+                      aria-hidden="true"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#edf3e9] text-[#426b48]"
+                    >
+                      {activity.name?.trim()?.charAt(0)?.toUpperCase() || '?'}
+                    </span>
+                  }
+                  title={activity.name}
+                  subtitle={
+                    activity.description ||
+                      (isHarvest
+                        ? 'Pago por kilogramo recolectado.'
+                        : 'Pago por jornada laboral.')
+                  }
+                  badge={isHarvest ? 'Recolección' : 'Labor por jornal'}
+                  badgeProps={{
+                    className: 'border-[#dce8d9] bg-[#f0f5ed] text-[#426548]',
+                  }}
+                  actions={[
+                    {
+                      label: 'Consultar',
+                      onClick: setActivityToView,
+                      item: activity,
+                    },
+                    {
+                      label: 'Editar',
+                      onClick: openEditActivityDialog,
+                      item: activity,
+                    },
+                    {
+                      label: 'Eliminar',
+                      onClick: deleteActivity,
+                      item: activity,
+                      className: 'min-h-10 rounded-lg text-red-700 hover:bg-red-50',
+                    },
+                  ]}
+                />
+              );
+            })}
           </div>
         )}
       </ManagementPage>

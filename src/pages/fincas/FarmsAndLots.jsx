@@ -1,10 +1,11 @@
+// Listado de fincas y lotes con búsqueda, formularios y tarjetas consistentes.
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import EmptyState from '#components/shared/EmptyState';
+import ItemCard from '#components/shared/ItemCard';
+import NoticeBanner from '#components/shared/NoticeBanner';
 import ManagementPage from '#components/shared/ManagementPage';
-import FarmCard from './components/FarmCard.jsx';
 import FarmFormDialog from './components/FarmFormDialog.jsx';
-import LotCard from './components/LotCard.jsx';
 import LotFormDialog from './components/LotFormDialog.jsx';
 import { Button } from '#components/ui/button';
 import {
@@ -14,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#components/ui/dialog';
+import { MapPin } from 'lucide-react';
 import { api } from '#services/api';
 import {
   guardarCacheFincasYLotes,
@@ -47,6 +49,7 @@ export default function FarmsAndLots({ usuario }) {
   const [notice, setNotice] = useState('');
   const [noticeIsError, setNoticeIsError] = useState(false);
 
+  // Carga fincas y lotes en paralelo (regla async-parallel).
   useEffect(() => {
     let active = true;
 
@@ -260,19 +263,7 @@ export default function FarmsAndLots({ usuario }) {
         searchValue={search}
         title={selectedFarm ? selectedFarm.nombre : 'Fincas y lotes'}
       >
-        {notice && (
-          <p
-            aria-live="polite"
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              noticeIsError
-                ? 'border-red-200 bg-red-50 text-red-800'
-                : 'border-[#dce8d9] bg-[#f0f5ed] text-[#426548]'
-            }`}
-            role="status"
-          >
-            {notice}
-          </p>
-        )}
+        <NoticeBanner message={notice} isError={noticeIsError} />
         {loading ? (
           <p aria-live="polite" className="py-8 text-center text-sm text-[#68766b]" role="status">
             Cargando fincas y lotes…
@@ -321,16 +312,52 @@ export default function FarmsAndLots({ usuario }) {
               />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {lotsForFarm.map((lot) => (
-                  <LotCard
-                    farmName={selectedFarm.nombre}
-                    key={lot.id}
-                    lot={lot}
-                    onEdit={openEditLotDialog}
-                    onToggleStatus={toggleLotStatus}
-                    onView={setLotToView}
-                  />
-                ))}
+                {lotsForFarm.map((lot) => {
+                  const isActive = lot.estado !== 'inactivo';
+                  return (
+                    <ItemCard
+                      key={lot.id}
+                      title={lot.nombre || 'Lote sin nombre'}
+                      subtitle={`Pertenece a ${selectedFarm.nombre}`}
+                      details={[
+                        lot.variedad
+                          ? `Variedad: ${lot.variedad}`
+                          : 'Variedad no especificada',
+                        lot.hectareas
+                          ? `Área: ${new Intl.NumberFormat('es-CO', {
+                              maximumFractionDigits: 2,
+                            }).format(Number(lot.hectareas))} ha`
+                          : 'Área no especificada',
+                        lot.plant_count !== null && lot.plant_count !== undefined
+                          ? `Plantas: ${new Intl.NumberFormat('es-CO').format(lot.plant_count)}`
+                          : 'Plantas no especificadas',
+                      ]}
+                      badge={isActive ? 'Activo' : 'Inactivo'}
+                      badgeProps={{
+                        className: isActive
+                          ? 'shrink-0 border-[#d5e8d4] bg-[#edf6eb] text-[#35643b]'
+                          : 'shrink-0 border-[#e6e7e2] bg-[#f3f4f1] text-[#687168]',
+                      }}
+                      actions={[
+                        {
+                          label: 'Consultar',
+                          onClick: setLotToView,
+                          item: lot,
+                        },
+                        {
+                          label: 'Editar',
+                          onClick: openEditLotDialog,
+                          item: lot,
+                        },
+                        {
+                          label: isActive ? 'Desactivar' : 'Activar',
+                          onClick: toggleLotStatus,
+                          item: lot,
+                        },
+                      ]}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
@@ -352,23 +379,45 @@ export default function FarmsAndLots({ usuario }) {
           )
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {farmsInSearch.map((farm) => (
-              <FarmCard
-                farm={farm}
-                key={farm.id}
-                lotCount={
-                  lots.filter(
-                    (lot) => String(lot.fincaId) === String(farm.id),
-                  ).length
-                }
-                onEdit={openEditFarmDialog}
-                onView={(item) => {
-                  setSelectedFarmId(item.id);
-                  guardarFincaActiva(userId, item.id);
-                  setSearch('');
-                }}
-              />
-            ))}
+            {farmsInSearch.map((farm) => {
+              const lotCount = lots.filter(
+                (lot) => String(lot.fincaId) === String(farm.id),
+              ).length;
+              return (
+                <ItemCard
+                  key={farm.id}
+                  avatar={
+                    <span
+                      aria-hidden="true"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#edf3e9] text-[#426b48]"
+                    >
+                      <MapPin className="size-5" />
+                    </span>
+                  }
+                  title={farm.nombre || 'Finca sin nombre'}
+                  subtitle={`${lotCount} ${lotCount === 1 ? 'lote' : 'lotes'}`}
+                  details={farm.ubicacion ? [`Ubicación: ${farm.ubicacion}`] : undefined}
+                  actions={[
+                    {
+                      label: 'Administrar lotes',
+                      onClick: (item) => {
+                        setSelectedFarmId(item.id);
+                        guardarFincaActiva(userId, item.id);
+                        setSearch('');
+                      },
+                      item: farm,
+                      className: 'min-h-10 rounded-lg text-[#315d3b] hover:bg-[#edf3e9]',
+                    },
+                    {
+                      label: 'Editar finca',
+                      onClick: openEditFarmDialog,
+                      item: farm,
+                      className: 'min-h-10 rounded-lg text-[#526254] hover:bg-[#f1f3ee]',
+                    },
+                  ]}
+                />
+              );
+            })}
           </div>
         )}
       </ManagementPage>

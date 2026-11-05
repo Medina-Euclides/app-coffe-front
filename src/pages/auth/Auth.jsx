@@ -1,3 +1,4 @@
+// Página de autenticación: gestiona login y registro de usuarios.
 import { useState } from 'react';
 import { Button } from '#components/ui/button';
 import {
@@ -8,6 +9,7 @@ import {
   CardHeader,
 } from '#components/ui/card';
 import { Input } from '#components/ui/input';
+import NoticeBanner from '#components/shared/NoticeBanner';
 import { api } from '#services/api';
 
 export function AuthField({
@@ -193,15 +195,7 @@ export default function Auth({
               value={password}
             />
 
-            {error && (
-              <p
-                aria-live="polite"
-                className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
+            <NoticeBanner message={error} isError />
 
             <Button
               className="h-12 w-full rounded-xl bg-emerald-800 text-base font-semibold text-white shadow-sm hover:bg-emerald-900"

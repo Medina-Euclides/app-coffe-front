@@ -1,3 +1,4 @@
+// Página de analíticas: muestra producción de café, gastos y balance por finca.
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import {

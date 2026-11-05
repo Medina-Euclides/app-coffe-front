@@ -1,3 +1,4 @@
+// Página de finanzas: registra ventas y gastos, muestra resumen y movimientos.
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownCircle,

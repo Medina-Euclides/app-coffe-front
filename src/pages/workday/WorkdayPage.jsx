@@ -1,3 +1,4 @@
+// Página de jornadas laborales: lista, crea, edita y cierra jornadas de trabajadores.
 import { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '#components/ui/button';
 import { Card } from '#components/ui/card';
+import NoticeBanner from '#components/shared/NoticeBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
 import { api } from '#services/api';
 import WorkdayCard from './components/WorkdayCard.jsx';
@@ -940,15 +942,7 @@ export default function WorkdayPage() {
         periodLabel={periodLabel}
       />
 
-      {notice && (
-        <p
-          aria-live="polite"
-          className="rounded-xl border border-[#dce8d9] bg-[#f0f5ed] px-4 py-3 text-sm text-[#315d3b]"
-          role="status"
-        >
-          {notice}
-        </p>
-      )}
+      <NoticeBanner message={notice} />
       {actionError && (
         <p
           aria-live="assertive"

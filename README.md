@@ -12,7 +12,9 @@ src/
 ├── components/
 │   ├── ui/          # Componentes shadcn/ui; mantenerlos independientes de las pantallas
 │   ├── layout/      # Estructura y navegación global
-│   └── shared/      # Componentes compartidos entre áreas
+│   └── shared/      # Componentes compartidos entre áreas: ItemCard, StatusBadge,
+│   │                  ActionButton, NoticeBanner, SectionHeader, EmptyState,
+│   │                  ManagementPage, SyncStatus
 ├── pages/
 │   ├── inicio/
 │   ├── trabajadores/
@@ -33,6 +35,29 @@ Cada carpeta dentro de `pages/` contiene las pantallas de esa área y, cuando ap
 su propia carpeta `components/`. Mantén ahí los componentes de uso local; comparte
 componentes entre áreas desde `components/shared/`. Los componentes base de shadcn
 permanecen en `components/ui/`.
+
+### Componentes compartidos (`components/shared/`)
+
+- `ItemCard` — tarjeta genérica de entidad (avatar, título, subtítulo, detalles,
+  badge y fila de acciones). Reemplaza las tarjetas repetidas de trabajadores,
+  fincas, lotes y actividades.
+- `StatusBadge` — badge de estado con colores consistentes (Activo/Inactivo,
+  Recolección/Labor).
+- `ActionButton` — botón ghost con estilos consistentes para acciones de tarjeta.
+- `NoticeBanner` — banner de aviso (éxito/error) con `aria-live` para accesibilidad.
+- `SectionHeader` — título de sección con `id` para accesibilidad.
+- `EmptyState`, `ManagementPage`, `SyncStatus` — ya existentes, reutilizados en
+  páginas de listado.
+
+### Buenas prácticas aplicadas (Vercel React Best Practices)
+
+- `rendering-conditional-render`: ternarios en lugar de `&&` para condicionales.
+- `rerender-memo`: tarjetas y componentes de lista aislados para evitar re-renders.
+- `rerender-use-deferred-value`: búsquedas/filtros diferidos para inputs fluidos.
+- `async-parallel`: `Promise.all` para cargas independientes (fincas+lotes, finanzas, pagos).
+- `js-set-map-lookups`: `Map` para búsquedas por ID en lugar de `.find` repetido.
+- `rendering-content-visibility`: listas largas con contención de render.
+- `components/ui/` sin modificar: se compone sobre shadcn sin tocar los base.
 
 ## Comandos
 

@@ -1,7 +1,9 @@
+// Carga y filtra trabajadores del usuario; abre, guarda y desactiva registros.
 import { useEffect, useMemo, useState } from 'react';
 import EmptyState from '#components/shared/EmptyState';
+import ItemCard from '#components/shared/ItemCard';
+import NoticeBanner from '#components/shared/NoticeBanner';
 import ManagementPage from '#components/shared/ManagementPage';
-import WorkerCard from './components/WorkerCard.jsx';
 import WorkerFormDialog from './components/WorkerFormDialog.jsx';
 import {
   Dialog,
@@ -14,6 +16,7 @@ import { leerLocal } from '#lib/storage';
 import { api } from '#services/api';
 import { guardarCacheTrabajadores } from '#services/workerStorage';
 
+// Normaliza trabajadores cargados desde localStorage al esquema actual.
 function cargarTrabajadores(clave) {
   const guardados = leerLocal(clave, []);
   if (!Array.isArray(guardados)) return [];
@@ -45,6 +48,7 @@ export default function Trabajadores({ usuario }) {
   const [notice, setNotice] = useState('');
   const [noticeIsError, setNoticeIsError] = useState(false);
 
+  // Carga inicial desde la API y guarda copia local.
   useEffect(() => {
     let active = true;
     api.workers
@@ -69,6 +73,7 @@ export default function Trabajadores({ usuario }) {
     };
   }, [userId]);
 
+  // Filtra trabajadores por el texto de búsqueda (derivado durante render).
   const filteredWorkers = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     if (!query) return workers;
@@ -167,19 +172,7 @@ export default function Trabajadores({ usuario }) {
         searchValue={search}
         title="Trabajadores"
       >
-        {notice && (
-          <p
-            aria-live="polite"
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              noticeIsError
-                ? 'border-red-200 bg-red-50 text-red-800'
-                : 'border-[#dce8d9] bg-[#f0f5ed] text-[#426548]'
-            }`}
-            role="status"
-          >
-            {notice}
-          </p>
-        )}
+        <NoticeBanner message={notice} isError={noticeIsError} />
         {loading ? (
           <p aria-live="polite" className="py-8 text-center text-sm text-[#68766b]" role="status">
             Cargando trabajadores…
@@ -201,15 +194,57 @@ export default function Trabajadores({ usuario }) {
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredWorkers.map((worker) => (
-              <WorkerCard
-                key={worker.id}
-                onEdit={openEditWorkerDialog}
-                onToggleStatus={toggleWorkerStatus}
-                onView={setWorkerToView}
-                worker={worker}
-              />
-            ))}
+            {filteredWorkers.map((worker) => {
+              const isActive = worker.is_active !== false;
+              return (
+                <ItemCard
+                  key={worker.id}
+                  avatar={
+                    <span
+                      aria-hidden="true"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#edf3e9] text-sm font-bold text-[#315d3b]"
+                    >
+                      {worker.nombre?.trim()?.charAt(0)?.toUpperCase() || '?'}
+                    </span>
+                  }
+                  title={worker.nombre || 'Sin nombre'}
+                  subtitle={
+                    <>
+                      Identificación: {worker.identification || 'No registrada'}{' '}
+                      {worker.phone && (
+                        <>
+                          <br />
+                          Teléfono: {worker.phone}
+                        </>
+                      )}
+                    </>
+                  }
+                  badge={isActive ? 'Activo' : 'Inactivo'}
+                  badgeProps={{
+                    className: isActive
+                      ? 'shrink-0 border-[#d5e8d4] bg-[#edf6eb] text-[#35643b]'
+                      : 'shrink-0 border-[#e6e7e2] bg-[#f3f4f1] text-[#687168]',
+                  }}
+                  actions={[
+                    {
+                      label: 'Consultar',
+                      onClick: setWorkerToView,
+                      item: worker,
+                    },
+                    {
+                      label: 'Editar',
+                      onClick: openEditWorkerDialog,
+                      item: worker,
+                    },
+                    {
+                      label: isActive ? 'Desactivar' : 'Activar',
+                      onClick: toggleWorkerStatus,
+                      item: worker,
+                    },
+                  ]}
+                />
+              );
+            })}
           </div>
         )}
       </ManagementPage>

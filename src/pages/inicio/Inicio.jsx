@@ -1,3 +1,4 @@
+// Pantalla de inicio: saludo, accesos rápidos, indicadores y actividad del día.
 import {
   ClipboardList,
   Coffee,
@@ -11,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '#components/ui/card';
+import SectionHeader from '#components/shared/SectionHeader';
 import { leerLocal } from '#lib/storage';
 import { hoy } from '#lib/formatters';
 
@@ -36,6 +38,7 @@ const formatoCantidad = (valor) =>
     maximumFractionDigits: 2,
   });
 
+// Resume las operaciones del usuario para la fecha dada.
 function obtenerResumenDelDia(usuarioId, fechaHoy) {
   const jornadas = leerLocal(`cafesmart_jornadas_${usuarioId}`, []);
 
@@ -43,7 +46,9 @@ function obtenerResumenDelDia(usuarioId, fechaHoy) {
   const recolecciones = jornadasHoy.filter(
     (jornada) => jornada.modalidad === 'recoleccion',
   );
-  const labores = jornadasHoy.filter((jornada) => jornada.modalidad !== 'recoleccion');
+  const labores = jornadasHoy.filter(
+    (jornada) => jornada.modalidad !== 'recoleccion',
+  );
 
   const actividades = jornadasHoy.map((jornada) => ({
       id: `jornada-${jornada.id}`,
@@ -119,135 +124,121 @@ export default function Inicio({ usuario }) {
         </p>
       </header>
 
-      <section aria-labelledby="acciones-rapidas">
-        <div className="mb-4">
-          <h2
-            className="text-xl font-semibold tracking-tight text-slate-900"
-            id="acciones-rapidas"
+      <SectionHeader
+        title="Accesos rápidos"
+        description="Elige una operación para continuar."
+        headingId="acciones-rapidas"
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        {accionesRapidas.map(({ titulo, descripcion, ruta, icono: Icono, color }) => (
+          <Link
+            className="group min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+            key={ruta}
+            to={ruta}
           >
-            Accesos rápidos
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Elige una operación para continuar.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {accionesRapidas.map(({ titulo, descripcion, ruta, icono: Icono, color }) => (
-            <Link
-              className="group min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
-              key={ruta}
-              to={ruta}
-            >
-              <Card className="h-full rounded-2xl border border-emerald-950/10 bg-white shadow-sm transition-colors hover:border-emerald-800/30 hover:bg-emerald-50/40">
-                <CardContent className="flex h-full flex-col items-start p-5">
-                  <span
-                    aria-hidden="true"
-                    className={`flex size-11 items-center justify-center rounded-xl ${color}`}
-                  >
-                    <Icono className="size-5" />
-                  </span>
-                  <h3 className="mt-4 break-words font-semibold text-slate-900 group-hover:text-emerald-900">
-                    {titulo}
-                  </h3>
-                  <p className="mt-2 text-pretty text-sm leading-relaxed text-slate-600">
-                    {descripcion}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section aria-labelledby="resumen-hoy" className="space-y-4">
-        <div>
-          <h2
-            className="text-xl font-semibold tracking-tight text-slate-900"
-            id="resumen-hoy"
-          >
-            Resumen de hoy
-          </h2>
-          <p className="mt-1 capitalize text-sm text-slate-600">{fechaLegible}</p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          {indicadores.map(({ etiqueta, valor, detalle, estilo, icono: Icono }) => (
-            <Card
-              className="min-w-0 rounded-2xl border border-emerald-950/10 bg-white shadow-sm"
-              key={etiqueta}
-            >
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-slate-600">{etiqueta}</p>
-                  <Icono aria-hidden="true" className={`size-5 shrink-0 ${estilo}`} />
-                </div>
-                <p className={`mt-3 break-words text-2xl font-semibold tabular-nums ${estilo}`}>
-                  {valor}
+            <Card className="h-full rounded-2xl border border-emerald-950/10 bg-white shadow-sm transition-colors hover:border-emerald-800/30 hover:bg-emerald-50/40">
+              <CardContent className="flex h-full flex-col items-start p-5">
+                <span
+                  aria-hidden="true"
+                  className={`flex size-11 items-center justify-center rounded-xl ${color}`}
+                >
+                  <Icono className="size-5" />
+                </span>
+                <h3 className="mt-4 break-words font-semibold text-slate-900 group-hover:text-emerald-900">
+                  {titulo}
+                </h3>
+                <p className="mt-2 text-pretty text-sm leading-relaxed text-slate-600">
+                  {descripcion}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">{detalle}</p>
               </CardContent>
             </Card>
-          ))}
-        </div>
+          </Link>
+        ))}
+      </div>
 
-        <Card className="rounded-2xl border border-emerald-950/10 bg-white shadow-sm">
-          <CardHeader className="px-5 pt-5">
-            <CardTitle className="text-base font-semibold text-slate-900">
-              Actividad registrada
-            </CardTitle>
-            <CardDescription>
-              Operaciones con fecha de hoy.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {resumen.actividades.length === 0 ? (
-              <div className="flex flex-col items-center rounded-xl bg-stone-50 px-5 py-8 text-center">
-                <Coffee aria-hidden="true" className="size-8 text-emerald-800" />
-                <p className="mt-3 font-medium text-slate-800">
-                  Aún no hay operaciones registradas hoy
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  Usa los accesos rápidos para agregar la primera.
-                </p>
+      <SectionHeader
+        title="Resumen de hoy"
+        description={fechaLegible}
+        headingId="resumen-hoy"
+      />
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {indicadores.map(({ etiqueta, valor, detalle, estilo, icono: Icono }) => (
+          <Card
+            className="min-w-0 rounded-2xl border border-emerald-950/10 bg-white shadow-sm"
+            key={etiqueta}
+          >
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-slate-600">{etiqueta}</p>
+                <Icono aria-hidden="true" className={`size-5 shrink-0 ${estilo}`} />
               </div>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {resumen.actividades.map(
-                  ({ id, titulo, detalle, valor, complemento, icono: Icono, estilo }) => (
-                    <li
-                      className="flex min-w-0 items-center gap-3 py-4 first:pt-1 last:pb-1"
-                      key={id}
+              <p className={`mt-3 break-words text-2xl font-semibold tabular-nums ${estilo}`}>
+                {valor}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">{detalle}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="rounded-2xl border border-emerald-950/10 bg-white shadow-sm">
+        <CardHeader className="px-5 pt-5">
+          <CardTitle className="text-base font-semibold text-slate-900">
+            Actividad registrada
+          </CardTitle>
+          <CardDescription>
+            Operaciones con fecha de hoy.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-5 pb-5">
+          {resumen.actividades.length === 0 ? (
+            <div className="flex flex-col items-center rounded-xl bg-stone-50 px-5 py-8 text-center">
+              <Coffee aria-hidden="true" className="size-8 text-emerald-800" />
+              <p className="mt-3 font-medium text-slate-800">
+                Aún no hay operaciones registradas hoy
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Usa los accesos rápidos para agregar la primera.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {resumen.actividades.map(
+                ({ id, titulo, detalle, valor, complemento, icono: Icono, estilo }) => (
+                  <li
+                    className="flex min-w-0 items-center gap-3 py-4 first:pt-1 last:pb-1"
+                    key={id}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${estilo}`}
                     >
-                      <span
-                        aria-hidden="true"
-                        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${estilo}`}
-                      >
-                        <Icono className="size-5" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="break-words text-sm font-semibold text-slate-900">
-                          {titulo}
+                      <Icono className="size-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words text-sm font-semibold text-slate-900">
+                        {titulo}
+                      </p>
+                      <p className="break-words text-sm text-slate-600">{detalle}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {valor && (
+                        <p className="text-sm font-semibold tabular-nums text-slate-900">
+                          {valor}
                         </p>
-                        <p className="break-words text-sm text-slate-600">{detalle}</p>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        {valor && (
-                          <p className="text-sm font-semibold tabular-nums text-slate-900">
-                            {valor}
-                          </p>
-                        )}
-                        {complemento && (
-                          <p className="text-xs text-slate-500">{complemento}</p>
-                        )}
-                      </div>
-                    </li>
-                  ),
-                )}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </section>
+                      )}
+                      {complemento && (
+                        <p className="text-xs text-slate-500">{complemento}</p>
+                      )}
+                    </div>
+                  </li>
+                ),
+              )}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

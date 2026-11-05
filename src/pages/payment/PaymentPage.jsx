@@ -1,3 +1,4 @@
+// Página de pagos laborales: gestiona liquidaciones y registros de pago a trabajadores.
 import { useEffect, useMemo, useState } from 'react';
 import {
   Banknote,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '#components/ui/button';
 import { Card } from '#components/ui/card';
+import NoticeBanner from '#components/shared/NoticeBanner';
 import {
   Dialog,
   DialogContent,
@@ -870,15 +872,7 @@ export default function PaymentPage() {
         </div>
       </header>
 
-      {actionError && (
-        <p
-          aria-live="assertive"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-          role="alert"
-        >
-          {actionError}
-        </p>
-      )}
+      <NoticeBanner message={actionError} isError />
 
       <Tabs className="w-full gap-4" onValueChange={setTab} value={tab}>
         <TabsList className="grid h-auto w-full max-w-[535px] grid-cols-2 rounded-2xl bg-[#e9ede7] p-1">
