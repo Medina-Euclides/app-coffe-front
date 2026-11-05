@@ -1,5 +1,5 @@
-// Listado de tipos de actividad laboral con búsqueda, formularios y tarjetas consistentes.
-import { useEffect, useMemo, useState } from 'react';
+// Lista, crea y elimina tipos de actividad laboral del usuario.
+import { useState } from 'react';
 import ItemCard from '#components/shared/ItemCard';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import ActivityFormDialog from './components/ActivityFormDialog.jsx';
@@ -13,61 +13,35 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { api } from '#services/api';
-import {
-  cargarCacheActividades,
-  guardarCacheActividades,
-} from '#services/activityStorage';
+import { guardarCacheActividades } from '#services/activityStorage';
+import { useApiList } from '#hooks/useApiList';
+import { useSearchFilter } from '#hooks/useSearchFilter';
+import { useNotice } from '#hooks/useNotice';
+import { useDialog } from '#hooks/useDialog';
 
 export default function ActividadesLaborales({ usuario }) {
   const userId = usuario?.id || 'default';
-  const [activities, setActivities] = useState(() =>
-    cargarCacheActividades(userId),
+  const storageKey = `cafesmart_actividades_${userId}`;
+
+  const { data: activities, setData, loading } = useApiList(
+    storageKey,
+    () => api.activities.list(),
+    (key, result) => guardarCacheActividades(userId, result),
   );
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [activityToEdit, setActivityToEdit] = useState(null);
+
+  const { search, setSearch, filtered } = useSearchFilter(
+    activities,
+    (activity) => `${activity.name} ${activity.description}`,
+  );
+
+  const { notice, isError, show: setNotice } = useNotice();
+  const {
+    open: dialogOpen,
+    item: activityToEdit,
+    openWith: openEditActivityDialog,
+    close: closeDialog,
+  } = useDialog();
   const [activityToView, setActivityToView] = useState(null);
-  const [notice, setNotice] = useState('');
-  const [noticeIsError, setNoticeIsError] = useState(false);
-
-  // Carga tipos de actividad desde la API y guarda caché local.
-  useEffect(() => {
-    let active = true;
-    api.activities
-      .list()
-      .then((loadedActivities) => {
-        if (!active) return;
-        setActivities(loadedActivities);
-        guardarCacheActividades(userId, loadedActivities);
-      })
-      .catch((error) => {
-        if (!active) return;
-        console.error('Error al cargar tipos de actividad:', error);
-        setNotice(
-          `${error.message} Se muestran las actividades guardadas en este dispositivo.`,
-        );
-        setNoticeIsError(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [userId]);
-
-  const filteredActivities = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return query
-      ? activities.filter((activity) =>
-          `${activity.name} ${activity.description}`
-            .toLocaleLowerCase()
-            .includes(query),
-        )
-      : activities;
-  }, [activities, search]);
 
   const saveActivity = async (data) => {
     if (data.name.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
@@ -97,22 +71,20 @@ export default function ActividadesLaborales({ usuario }) {
               : activity,
           )
         : [...activities, savedActivity];
-      setActivities(nextActivities);
+      setData(nextActivities);
       guardarCacheActividades(userId, nextActivities);
-      setNotice(activityToEdit ? 'Actividad actualizada.' : 'Actividad agregada.');
-      setNoticeIsError(false);
-      setActivityToEdit(null);
+      setNotice(activityToEdit ? 'Actividad actualizada.' : 'Actividad agregada.', false);
+      closeDialog();
       return '';
-    } catch (error) {
-      console.error('Error al guardar tipo de actividad:', error);
-      return error.message || 'No se pudo guardar la actividad. Inténtalo de nuevo.';
+    } catch (err) {
+      console.error('Error al guardar tipo de actividad:', err);
+      return err.message || 'No se pudo guardar la actividad. Inténtalo de nuevo.';
     }
   };
 
   const deleteActivity = async (activity) => {
     if (!activity.id) {
-      setNotice('Esta actividad solo existe en la caché local. No se puede borrar del servidor.');
-      setNoticeIsError(true);
+      setNotice('Esta actividad solo existe en la caché local. No se puede borrar del servidor.', true);
       return;
     }
     if (
@@ -128,28 +100,20 @@ export default function ActividadesLaborales({ usuario }) {
       const nextActivities = activities.filter(
         (item) => String(item.id) !== String(activity.id),
       );
-      setActivities(nextActivities);
+      setData(nextActivities);
       guardarCacheActividades(userId, nextActivities);
       if (String(activityToView?.id) === String(activity.id)) {
         setActivityToView(null);
       }
-      setNotice('Actividad eliminada.');
-      setNoticeIsError(false);
-    } catch (error) {
-      console.error('Error al eliminar tipo de actividad:', error);
-      setNotice(error.message || 'No se pudo eliminar la actividad.');
-      setNoticeIsError(true);
+      setNotice('Actividad eliminada.', false);
+    } catch (err) {
+      console.error('Error al eliminar tipo de actividad:', err);
+      setNotice(err.message || 'No se pudo eliminar la actividad.', true);
     }
   };
 
   const openNewActivityDialog = () => {
-    setActivityToEdit(null);
-    setDialogOpen(true);
-  };
-
-  const openEditActivityDialog = (activity) => {
-    setActivityToEdit(activity);
-    setDialogOpen(true);
+    openEditActivityDialog(null);
   };
 
   return (
@@ -163,7 +127,7 @@ export default function ActividadesLaborales({ usuario }) {
         searchValue={search}
         title="Actividades laborales"
       >
-        <NoticeBanner message={notice} isError={noticeIsError} />
+        <NoticeBanner message={notice} isError={isError} />
         {loading ? (
           <p
             aria-live="polite"
@@ -172,26 +136,26 @@ export default function ActividadesLaborales({ usuario }) {
           >
             Cargando actividades…
           </p>
-        ) : filteredActivities.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <EmptyState
             description={
               activities.length
                 ? 'Prueba con otro término de búsqueda.'
-                : noticeIsError
+                : isError
                   ? 'No se pudo consultar el catálogo del servidor.'
                   : 'Agrega los tipos de labores que organizas en tus fincas.'
             }
             title={
               activities.length
                 ? 'No encontramos actividades'
-                : noticeIsError
+                : isError
                   ? 'No se pudo cargar el catálogo'
                   : 'Aún no hay actividades'
             }
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredActivities.map((activity) => {
+            {filtered.map((activity) => {
               const isHarvest = activity.is_harvest;
               return (
                 <ItemCard
@@ -244,8 +208,7 @@ export default function ActividadesLaborales({ usuario }) {
         <ActivityFormDialog
           activity={activityToEdit}
           onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) setActivityToEdit(null);
+            if (!open) closeDialog();
           }}
           onSave={saveActivity}
           open={dialogOpen}

@@ -1,9 +1,9 @@
-// Carga y filtra trabajadores del usuario; abre, guarda y desactiva registros.
-import { useEffect, useMemo, useState } from 'react';
+// Carga, filtra y gestiona trabajadores del usuario.
+import { useMemo, useState } from 'react';
 import EmptyState from '#components/shared/EmptyState';
 import ItemCard from '#components/shared/ItemCard';
-import NoticeBanner from '#components/shared/NoticeBanner';
 import ManagementPage from '#components/shared/ManagementPage';
+import NoticeBanner from '#components/shared/NoticeBanner';
 import WorkerFormDialog from './components/WorkerFormDialog.jsx';
 import {
   Dialog,
@@ -12,77 +12,59 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#components/ui/dialog';
-import { leerLocal } from '#lib/storage';
 import { api } from '#services/api';
 import { guardarCacheTrabajadores } from '#services/workerStorage';
+import { useApiList } from '#hooks/useApiList';
+import { useSearchFilter } from '#hooks/useSearchFilter';
+import { useNotice } from '#hooks/useNotice';
+import { useDialog } from '#hooks/useDialog';
 
-// Normaliza trabajadores cargados desde localStorage al esquema actual.
-function cargarTrabajadores(clave) {
-  const guardados = leerLocal(clave, []);
-  if (!Array.isArray(guardados)) return [];
-  return guardados.map((worker) => {
-    if (worker.first_name && worker.last_name) return worker;
-    const [firstName = '', ...lastNames] = String(worker.nombre || '')
-      .trim()
-      .split(/\s+/);
-    return {
-      ...worker,
-      first_name: firstName,
-      last_name: lastNames.join(' '),
-      identification: worker.identification || worker.cedula || '',
-      phone: worker.phone || '',
-      is_active: worker.is_active ?? worker.estado !== 'inactivo',
-    };
-  });
+// Normaliza trabajadores del localStorage al esquema actual.
+function normalizarTrabajador(worker) {
+  if (worker.first_name && worker.last_name) return worker;
+  const [firstName = '', ...lastNames] = String(worker.nombre || '')
+    .trim()
+    .split(/\s+/);
+  return {
+    ...worker,
+    first_name: firstName,
+    last_name: lastNames.join(' '),
+    identification: worker.identification || worker.cedula || '',
+    phone: worker.phone || '',
+    is_active: worker.is_active ?? worker.estado !== 'inactivo',
+  };
 }
 
 export default function Trabajadores({ usuario }) {
   const userId = usuario?.id || 'default';
   const storageKey = `cafesmart_trabajadores_${userId}`;
-  const [workers, setWorkers] = useState(() => cargarTrabajadores(storageKey));
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [workerToEdit, setWorkerToEdit] = useState(null);
-  const [workerToView, setWorkerToView] = useState(null);
-  const [notice, setNotice] = useState('');
-  const [noticeIsError, setNoticeIsError] = useState(false);
 
-  // Carga inicial desde la API y guarda copia local.
-  useEffect(() => {
-    let active = true;
-    api.workers
-      .list()
-      .then((loadedWorkers) => {
-        if (!active) return;
-        setWorkers(loadedWorkers);
-        guardarCacheTrabajadores(userId, loadedWorkers);
-      })
-      .catch((error) => {
-        if (!active) return;
-        console.error('Error al cargar trabajadores:', error);
-        setNotice(error.message || 'No se pudieron cargar los trabajadores.');
-        setNoticeIsError(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+  const { data: workersRaw, setData, loading } = useApiList(
+    storageKey,
+    () => api.workers.list(),
+    (key, result) => guardarCacheTrabajadores(userId, result)
+  );
 
-    return () => {
-      active = false;
-    };
-  }, [userId]);
+  // Normaliza los trabajadores al esquema usado por la UI.
+  const workers = useMemo(
+    () => workersRaw.map(normalizarTrabajador),
+    [workersRaw],
+  );
 
-  // Filtra trabajadores por el texto de búsqueda (derivado durante render).
-  const filteredWorkers = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    if (!query) return workers;
-    return workers.filter((worker) =>
+  const { search, setSearch, filtered } = useSearchFilter(
+    workers,
+    (worker) =>
       `${worker.nombre || ''} ${worker.identification || ''} ${worker.phone || ''}`
-        .toLocaleLowerCase()
-        .includes(query),
-    );
-  }, [search, workers]);
+  );
+
+  const { notice, isError, show: setNotice } = useNotice();
+  const {
+    open: dialogOpen,
+    item: workerToEdit,
+    openWith: openEditWorkerDialog,
+    close: closeDialog,
+  } = useDialog();
+  const [workerToView, setWorkerToView] = useState(null);
 
   const saveWorker = async (data) => {
     if (data.first_name.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
@@ -115,26 +97,20 @@ export default function Trabajadores({ usuario }) {
               : worker,
           )
         : [...workers, savedWorker];
-      setWorkers(nextWorkers);
+      setData(nextWorkers);
       guardarCacheTrabajadores(userId, nextWorkers);
-      setNotice(workerToEdit ? 'Trabajador actualizado.' : 'Trabajador agregado.');
-      setNoticeIsError(false);
-      setWorkerToEdit(null);
+      setNotice(workerToEdit ? 'Trabajador actualizado.' : 'Trabajador agregado.', false);
+      closeDialog();
       return '';
-    } catch (error) {
-      console.error('Error al guardar el trabajador:', error);
-      return error.message || 'No se pudo guardar el trabajador. Inténtalo de nuevo.';
+    } catch (err) {
+      console.error('Error al guardar el trabajador:', err);
+      setNotice(err.message || 'No se pudo guardar el trabajador. Inténtalo de nuevo.', true);
+      return err.message || 'No se pudo guardar el trabajador. Inténtalo de nuevo.';
     }
   };
 
   const openNewWorkerDialog = () => {
-    setWorkerToEdit(null);
-    setDialogOpen(true);
-  };
-
-  const openEditWorkerDialog = (worker) => {
-    setWorkerToEdit(worker);
-    setDialogOpen(true);
+    openEditWorkerDialog(null);
   };
 
   const toggleWorkerStatus = async (worker) => {
@@ -146,18 +122,17 @@ export default function Trabajadores({ usuario }) {
       const nextWorkers = workers.map((item) =>
         String(item.id) === String(updatedWorker.id) ? updatedWorker : item,
       );
-      setWorkers(nextWorkers);
+      setData(nextWorkers);
       guardarCacheTrabajadores(userId, nextWorkers);
       setNotice(
         !isActive
           ? `${worker.nombre} está activo nuevamente.`
           : `${worker.nombre} quedó inactivo. Sus registros históricos se conservan.`,
+        false,
       );
-      setNoticeIsError(false);
-    } catch (error) {
-      console.error('Error al actualizar estado del trabajador:', error);
-      setNotice(error.message || 'No se pudo actualizar el estado del trabajador.');
-      setNoticeIsError(true);
+    } catch (err) {
+      console.error('Error al actualizar estado del trabajador:', err);
+      setNotice(err.message || 'No se pudo actualizar el estado del trabajador.', true);
     }
   };
 
@@ -172,29 +147,29 @@ export default function Trabajadores({ usuario }) {
         searchValue={search}
         title="Trabajadores"
       >
-        <NoticeBanner message={notice} isError={noticeIsError} />
+        <NoticeBanner message={notice} isError={isError} />
         {loading ? (
           <p aria-live="polite" className="py-8 text-center text-sm text-[#68766b]" role="status">
             Cargando trabajadores…
           </p>
-        ) : filteredWorkers.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <EmptyState
             description={
-              workers.length || noticeIsError
+              workers.length || isError
                 ? 'Prueba con otro nombre o número de identificación.'
                 : 'Agrega a las personas que realizan labores en tus fincas para tener su información a mano.'
             }
             title={
               workers.length
                 ? 'No encontramos trabajadores'
-                : noticeIsError
+                : isError
                   ? 'No se pudo consultar la lista'
                   : 'Aún no hay trabajadores'
             }
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredWorkers.map((worker) => {
+            {filtered.map((worker) => {
               const isActive = worker.is_active !== false;
               return (
                 <ItemCard
@@ -252,8 +227,7 @@ export default function Trabajadores({ usuario }) {
       {dialogOpen && (
         <WorkerFormDialog
           onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) setWorkerToEdit(null);
+            if (!open) closeDialog();
           }}
           onSave={saveWorker}
           open={dialogOpen}

@@ -59,6 +59,15 @@ permanecen en `components/ui/`.
 - `rendering-content-visibility`: listas largas con contención de render.
 - `components/ui/` sin modificar: se compone sobre shadcn sin tocar los base.
 
+### Hooks globales (`src/hooks/`)
+
+- `useApiList(storageKey, fetchFn, saveFn)` — carga una lista desde la API con caché en localStorage. Devuelve `data`, `setData`, `loading`, `error` y `refetch`. Usado en Trabajadores, Actividades y Fincas/Lotes.
+- `useSearchFilter(items, getSearchText)` — filtra una lista por texto de búsqueda sobre los campos indicados. Devuelve `search`, `setSearch` y `filtered`.
+- `useNotice()` — maneja un mensaje de aviso temporal (éxito o error) con `show(message, isError)` y `clear()`.
+- `useDialog()` — maneja apertura/cierre de un diálogo con un elemento opcional seleccionado. Devuelve `open`, `item`, `setOpen`, `setItem`, `openWith(item)` y `close()`.
+- `useOnlineStatus()` — detecta si el navegador está en línea o fuera de línea.
+- `useIsMobile()` — detecta si la pantalla está por debajo del breakpoint móvil (768px).
+
 ## Comandos
 
 - `npm run dev`: inicia el servidor local de Vite.

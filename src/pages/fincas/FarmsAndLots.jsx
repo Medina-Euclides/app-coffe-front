@@ -21,79 +21,66 @@ import {
   guardarCacheFincasYLotes,
   guardarFincaActiva,
 } from '#services/farmStorage';
-import { leerLocal } from '#lib/storage';
-
-function cargarListaGuardada(key) {
-  const saved = leerLocal(key, []);
-  return Array.isArray(saved) ? saved : [];
-}
+import { useApiList } from '#hooks/useApiList';
+import { useSearchFilter } from '#hooks/useSearchFilter';
+import { useNotice } from '#hooks/useNotice';
 
 export default function FarmsAndLots({ usuario }) {
   const userId = usuario?.id || 'default';
-  const [farms, setFarms] = useState(() =>
-    cargarListaGuardada(`cafesmart_fincas_${userId}`),
+  const farmsKey = `cafesmart_fincas_${userId}`;
+  const lotsKey = `cafesmart_lotes_${userId}`;
+
+  const {
+    data: farmsRaw,
+    setData: setFarmsRaw,
+    loading: farmsLoading,
+    error: farmsError,
+  } = useApiList(
+    farmsKey,
+    () => api.farms.list(),
+    (key, result) => guardarCacheFincasYLotes(userId, result, []),
   );
-  const [lots, setLots] = useState(() =>
-    cargarListaGuardada(`cafesmart_lotes_${userId}`),
+
+  const {
+    data: lotsRaw,
+    setData: setLotsRaw,
+    loading: lotsLoading,
+    error: lotsError,
+  } = useApiList(
+    lotsKey,
+    () => api.lots.list(),
+    (key, result) => guardarCacheFincasYLotes(userId, [], result),
   );
+
   const [selectedFarmId, setSelectedFarmId] = useState(() =>
     localStorage.getItem(`cafesmart_finca_activa_${userId}`),
   );
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(farmsLoading || lotsLoading);
   const [farmDialogOpen, setFarmDialogOpen] = useState(false);
   const [lotDialogOpen, setLotDialogOpen] = useState(false);
   const [farmToEdit, setFarmToEdit] = useState(null);
   const [lotToEdit, setLotToEdit] = useState(null);
   const [lotToView, setLotToView] = useState(null);
-  const [notice, setNotice] = useState('');
-  const [noticeIsError, setNoticeIsError] = useState(false);
+  const { notice, isError, show: setNotice } = useNotice();
 
-  // Carga fincas y lotes en paralelo (regla async-parallel).
+  // Sincroniza loading cuando terminan ambas cargas.
   useEffect(() => {
-    let active = true;
+    setLoading(farmsLoading || lotsLoading);
+  }, [farmsLoading, lotsLoading]);
 
-    Promise.all([api.farms.list(), api.lots.list()])
-      .then(([loadedFarms, loadedLots]) => {
-        if (!active) return;
-        setFarms(loadedFarms);
-        setLots(loadedLots);
-        guardarCacheFincasYLotes(userId, loadedFarms, loadedLots);
-        setSelectedFarmId((currentId) =>
-          loadedFarms.some((farm) => String(farm.id) === String(currentId))
-            ? currentId
-            : null,
-        );
-      })
-      .catch((error) => {
-        if (active) {
-          console.error('Error al cargar fincas y lotes:', error);
-          setNotice(error.message || 'No se pudieron cargar las fincas y los lotes.');
-          setNoticeIsError(true);
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [userId]);
+  const farms = useMemo(() => farmsRaw || [], [farmsRaw]);
+  const lots = useMemo(() => lotsRaw || [], [lotsRaw]);
 
   const selectedFarm = farms.find(
     (farm) => String(farm.id) === String(selectedFarmId),
   );
-  const farmsInSearch = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return query
-      ? farms.filter((farm) =>
-          `${farm.nombre || ''} ${farm.ubicacion || ''}`
-            .toLocaleLowerCase()
-            .includes(query),
-        )
-      : farms;
-  }, [farms, search]);
+
+  const { filtered: farmsInSearch } = useSearchFilter(
+    farms,
+    (farm) => `${farm.nombre || ''} ${farm.ubicacion || ''}`,
+  );
+
   const lotsForFarm = useMemo(() => {
     if (!selectedFarm) return [];
     const query = search.trim().toLocaleLowerCase();
@@ -129,14 +116,15 @@ export default function FarmsAndLots({ usuario }) {
             String(farm.id) === String(savedFarm.id) ? savedFarm : farm,
           )
         : [...farms, savedFarm];
-      setFarms(nextFarms);
+      setFarmsRaw(nextFarms);
       guardarCacheFincasYLotes(userId, nextFarms, lots);
-      setNotice(farmToEdit ? 'Finca actualizada.' : 'Finca agregada.');
-      setNoticeIsError(false);
+      setNotice(farmToEdit ? 'Finca actualizada.' : 'Finca agregada.', false);
       setFarmToEdit(null);
+      setFarmDialogOpen(false);
       return '';
     } catch (error) {
       console.error('Error al guardar la finca:', error);
+      setNotice(error.message || 'No se pudo guardar la finca. Inténtalo de nuevo.', true);
       return error.message || 'No se pudo guardar la finca. Inténtalo de nuevo.';
     }
   };
@@ -191,14 +179,15 @@ export default function FarmsAndLots({ usuario }) {
             String(lot.id) === String(savedLot.id) ? savedLot : lot,
           )
         : [...lots, savedLot];
-      setLots(nextLots);
+      setLotsRaw(nextLots);
       guardarCacheFincasYLotes(userId, farms, nextLots);
-      setNotice(lotToEdit ? 'Lote actualizado.' : 'Lote agregado a la finca.');
-      setNoticeIsError(false);
+      setNotice(lotToEdit ? 'Lote actualizado.' : 'Lote agregado a la finca.', false);
       setLotToEdit(null);
+      setLotDialogOpen(false);
       return '';
     } catch (error) {
       console.error('Error al guardar el lote:', error);
+      setNotice(error.message || 'No se pudo guardar el lote. Inténtalo de nuevo.', true);
       return error.message || 'No se pudo guardar el lote. Inténtalo de nuevo.';
     }
   };
@@ -217,14 +206,12 @@ export default function FarmsAndLots({ usuario }) {
       const nextLots = lots.map((item) =>
         String(item.id) === String(updatedLot.id) ? updatedLot : item,
       );
-      setLots(nextLots);
+      setLotsRaw(nextLots);
       guardarCacheFincasYLotes(userId, farms, nextLots);
-      setNotice(isActive ? 'Lote desactivado.' : 'Lote reactivado.');
-      setNoticeIsError(false);
+      setNotice(isActive ? 'Lote desactivado.' : 'Lote reactivado.', false);
     } catch (error) {
       console.error('Error al cambiar el estado del lote:', error);
-      setNotice(error.message || 'No se pudo actualizar el estado del lote.');
-      setNoticeIsError(true);
+      setNotice(error.message || 'No se pudo actualizar el estado del lote.', true);
     }
   };
 
@@ -248,6 +235,13 @@ export default function FarmsAndLots({ usuario }) {
     setLotDialogOpen(true);
   };
 
+  const handleSelectFarm = (farm) => {
+    setSelectedFarmId(farm.id);
+    guardarFincaActiva(userId, farm.id);
+    setSearch('');
+    setLotToView(null);
+  };
+
   return (
     <>
       <ManagementPage
@@ -263,7 +257,7 @@ export default function FarmsAndLots({ usuario }) {
         searchValue={search}
         title={selectedFarm ? selectedFarm.nombre : 'Fincas y lotes'}
       >
-        <NoticeBanner message={notice} isError={noticeIsError} />
+        <NoticeBanner message={notice} isError={isError} />
         {loading ? (
           <p aria-live="polite" className="py-8 text-center text-sm text-[#68766b]" role="status">
             Cargando fincas y lotes…
@@ -362,9 +356,9 @@ export default function FarmsAndLots({ usuario }) {
             )}
           </div>
         ) : farmsInSearch.length === 0 ? (
-          noticeIsError && farms.length === 0 ? (
+          farmsError || lotsError ? (
             <p className="py-8 text-center text-sm text-[#68766b]">
-              No se pudo consultar la lista de fincas. Intenta de nuevo cuando
+              No se pudieron consultar las fincas y lotes. Intenta de nuevo cuando
               el servidor esté disponible.
             </p>
           ) : (
@@ -400,11 +394,7 @@ export default function FarmsAndLots({ usuario }) {
                   actions={[
                     {
                       label: 'Administrar lotes',
-                      onClick: (item) => {
-                        setSelectedFarmId(item.id);
-                        guardarFincaActiva(userId, item.id);
-                        setSearch('');
-                      },
+                      onClick: handleSelectFarm,
                       item: farm,
                       className: 'min-h-10 rounded-lg text-[#315d3b] hover:bg-[#edf3e9]',
                     },
