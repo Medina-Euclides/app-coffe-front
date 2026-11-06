@@ -40,3 +40,11 @@ export const formatearMiles = (valor) => {
 export const desformatearNumero = (valorFormateado) => {
   return String(valorFormateado ?? '').replace(/\D/g, '');
 };
+
+// Iniciales de nombre y apellido para los círculos de las tarjetas.
+export function getInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  return `${parts[0][0]}${last}`.toLocaleUpperCase('es');
+}

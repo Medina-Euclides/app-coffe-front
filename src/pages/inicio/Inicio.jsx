@@ -1,9 +1,9 @@
 // Pantalla de inicio: accesos rápidos, indicadores y actividad del día.
 import {
+  Cherry,
   ClipboardList,
   Coffee,
   Scale,
-  Sprout,
   UserPlus,
 } from 'lucide-react';
 import { lazy, Suspense, useState } from 'react';
@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from '#components/ui/card';
 import SectionHeader from '#components/shared/SectionHeader';
+import IconBadge from '#components/shared/IconBadge';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { useNotice } from '#hooks/useNotice';
 import { api } from '#services/api';
@@ -23,6 +24,7 @@ import { createWorkdayWithWorkers, toExistingWorkdays } from '#pages/workday/wor
 import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions.js';
 import { leerLocal } from '#lib/storage';
 import { hoy } from '#lib/formatters';
+import PageTitle from '#components/shared/PageTitle';
 
 // Las dos acciones del día en campo: botones grandes, uno al lado del otro.
 // El borde inferior más oscuro les da relieve de tecla y baja al tocarlos.
@@ -109,9 +111,9 @@ function obtenerResumenDeLaSemana(usuarioId, semana) {
       detalle:
         jornada.modalidad === 'recoleccion'
           ? Number(jornada.cantidad) > 0
-            ? `${formatoCantidad(jornada.cantidad)} kg · ${jornada.lote || 'Lote'}`
-            : `${jornada.lote || 'Lote'} · Kilos pendientes de liquidar`
-          : `${jornada.lote || 'Lote'} · ${jornada.estado === 'pagado' ? 'Liquidada' : 'Pendiente'}`,
+            ? `${formatoCantidad(jornada.cantidad)} kg en ${jornada.lote || 'el lote'}`
+            : `${jornada.lote || 'Lote'}, kilos pendientes de liquidar`
+          : `${jornada.lote || 'Lote'}, ${jornada.estado === 'pagado' ? 'liquidada' : 'pendiente'}`,
       valor:
         jornada.modalidad === 'recoleccion' && Number(jornada.cantidad) > 0
           ? `${formatoCantidad(jornada.cantidad)} kg`
@@ -119,8 +121,8 @@ function obtenerResumenDeLaSemana(usuarioId, semana) {
       complemento: jornada.fecha
         ? formatoDiaCorto.format(new Date(`${jornada.fecha}T12:00:00`))
         : '',
-      icono: jornada.modalidad === 'recoleccion' ? Sprout : ClipboardList,
-      estilo: 'bg-secondary text-primary',
+      icono: jornada.modalidad === 'recoleccion' ? Cherry : ClipboardList,
+      estilo: jornada.modalidad === 'recoleccion' ? 'harvest' : 'primary',
     }))
     .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.momento - a.momento);
 
@@ -205,14 +207,14 @@ export default function Inicio({ usuario }) {
       etiqueta: 'Recolecciones',
       valor: resumen.recolecciones.length,
       detalle: 'registradas esta semana',
-      estilo: 'text-primary',
-      icono: Sprout,
+      estilo: 'text-cereza',
+      icono: Cherry,
     },
     {
       etiqueta: 'Jornadas',
       valor: resumen.labores.length,
       detalle: 'registradas esta semana',
-      estilo: 'text-warning',
+      estilo: 'text-primary',
       icono: ClipboardList,
     },
   ];
@@ -222,12 +224,9 @@ export default function Inicio({ usuario }) {
       <section aria-labelledby="acciones-rapidas" className="space-y-4">
         <div>
           <p className="text-sm capitalize text-muted-foreground">{fechaLegible}</p>
-          <h1
-            className="mt-1 text-3xl text-foreground sm:text-4xl"
-            id="acciones-rapidas"
-          >
+          <PageTitle id="acciones-rapidas">
             Accesos rápidos
-          </h1>
+          </PageTitle>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -243,7 +242,7 @@ export default function Inicio({ usuario }) {
                   aria-hidden="true"
                   className={`flex size-14 items-center justify-center rounded-full bg-primary-foreground ${estiloIcono}`}
                 >
-                  <Icono className="size-7" strokeWidth={2.25} />
+                  <Icono className="size-6" strokeWidth={2} />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-balance font-heading text-xl font-semibold leading-tight sm:text-2xl">
@@ -262,12 +261,7 @@ export default function Inicio({ usuario }) {
             onClick={() => abrirFormulario('trabajador')}
             type="button"
           >
-            <span
-              aria-hidden="true"
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-primary"
-            >
-              <UserPlus className="size-5" strokeWidth={2.25} />
-            </span>
+            <IconBadge icon={UserPlus} />
             <span className="font-heading text-lg font-semibold">
               Agregar trabajador
             </span>
@@ -292,12 +286,12 @@ export default function Inicio({ usuario }) {
             <CardContent className="p-5">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-muted-foreground">{etiqueta}</p>
-                <Icono aria-hidden="true" className={`size-5 shrink-0 ${estilo}`} />
+                <Icono aria-hidden="true" className={`size-4 shrink-0 ${estilo}`} />
               </div>
               <p className={`cifra mt-2 break-words text-5xl leading-none ${estilo}`}>
                 {valor}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">{detalle}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{detalle}</p>
             </CardContent>
           </Card>
         ))}
@@ -331,14 +325,9 @@ export default function Inicio({ usuario }) {
                     className="flex min-w-0 items-center gap-3 py-4 first:pt-1 last:pb-1"
                     key={id}
                   >
-                    <span
-                      aria-hidden="true"
-                      className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${estilo}`}
-                    >
-                      <Icono className="size-5" />
-                    </span>
+                    <IconBadge icon={Icono} tone={estilo} />
                     <div className="min-w-0 flex-1">
-                      <p className="break-words text-sm font-semibold text-foreground">
+                      <p className="break-words font-semibold text-foreground">
                         {titulo}
                       </p>
                       <p className="break-words text-sm text-muted-foreground">{detalle}</p>
@@ -350,7 +339,7 @@ export default function Inicio({ usuario }) {
                         </p>
                       )}
                       {complemento && (
-                        <p className="text-xs text-muted-foreground">{complemento}</p>
+                        <p className="text-sm text-muted-foreground">{complemento}</p>
                       )}
                     </div>
                   </li>

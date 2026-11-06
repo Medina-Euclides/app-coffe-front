@@ -1,5 +1,4 @@
-import { CalendarDays, Search, SlidersHorizontal } from 'lucide-react';
-import { Button } from '#components/ui/button';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { Input } from '#components/ui/input';
 import {
   Select,
@@ -8,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#components/ui/select';
+import SegmentedControl from '#components/shared/SegmentedControl';
 
 const periods = [
   { value: 'today', label: 'Hoy' },
@@ -37,7 +37,7 @@ export default function WorkdayFilters({
         />
         <Input
           autoComplete="off"
-          className="h-10 rounded-xl border-border bg-card pl-9 text-sm shadow-none placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-ring/20"
+          className="h-12 rounded-xl border-border bg-card pl-9 text-base shadow-none placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-ring/20"
           id="workday-search"
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={searchPlaceholder}
@@ -46,36 +46,12 @@ export default function WorkdayFilters({
         />
       </div>
 
-      <div
-        aria-label="Filtrar por periodo"
-        className="flex h-10 items-center rounded-xl bg-muted p-1"
-        role="group"
-      >
-        {periods.map((option) => (
-          <Button
-            aria-pressed={period === option.value}
-            className={
-              period === option.value
-                ? 'h-8 rounded-lg bg-primary px-3 text-xs text-primary-foreground shadow-none hover:bg-primary-hover'
-                : 'h-8 rounded-lg px-2.5 text-xs text-muted-foreground hover:bg-card hover:text-foreground'
-            }
-            key={option.value}
-            onClick={() => onPeriodChange(option.value)}
-            type="button"
-            variant="ghost"
-          >
-            {option.value === 'today' && (
-              <CalendarDays aria-hidden="true" className="size-3.5" />
-            )}
-            {option.label}
-          </Button>
-        ))}
-      </div>
+      <SegmentedControl label="Filtrar por periodo" onChange={onPeriodChange} options={periods} value={period} />
 
       <Select onValueChange={onModalityChange} value={modality}>
         <SelectTrigger
           aria-label="Filtrar por modalidad de pago"
-          className="h-10 w-full rounded-xl border-border bg-muted px-3 text-sm text-ink-soft sm:w-[190px]"
+          className="h-12 w-full rounded-xl border-border bg-muted px-3 text-base text-ink-soft sm:w-[190px]"
         >
           <SelectValue placeholder="Todas las modalidades" />
           <SlidersHorizontal aria-hidden="true" className="size-4 text-muted-foreground" />

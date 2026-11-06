@@ -91,7 +91,7 @@ export default function SyncStatus() {
     <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
       <div
         aria-live="polite"
-        className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ${
+        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium ${
           isOnline
             ? 'bg-leaf-soft text-leaf'
             : 'bg-warning-soft text-warning'
@@ -108,7 +108,7 @@ export default function SyncStatus() {
 
       {pendientes > 0 && (
         <>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             {pendientes} pendiente(s)
           </span>
           {isOnline && !sincronizando && (
@@ -128,7 +128,7 @@ export default function SyncStatus() {
       {mensaje && (
         <span
           aria-live="polite"
-          className="basis-full text-right text-xs text-muted-foreground"
+          className="basis-full text-right text-sm text-muted-foreground"
           role="status"
         >
           {mensaje}

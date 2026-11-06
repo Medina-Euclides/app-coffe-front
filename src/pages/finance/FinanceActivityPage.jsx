@@ -13,6 +13,8 @@ import MovementFormDialog from './components/MovementFormDialog.jsx';
 import MovementCard from './components/MovementCard.jsx';
 import MovementDetailDialog from './components/MovementDetailDialog.jsx';
 import { currencyFormatter } from './movementFormat.js';
+import PageTitle from '#components/shared/PageTitle';
+import SegmentedControl from '#components/shared/SegmentedControl';
 
 const categories = {
   labor: 'Mano de obra',
@@ -223,12 +225,12 @@ export default function FinanceActivityPage({ usuario }) {
     .reduce((total, movement) => total + movement.amount, 0);
 
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
+    <section className="mx-auto w-full max-w-6xl space-y-5">
       <header className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <h1 className="text-4xl text-foreground sm:text-5xl">
+          <PageTitle>
             Movimientos financieros
-          </h1>
+          </PageTitle>
           <p className="mt-1 text-sm leading-6 text-muted-foreground sm:text-base">
             Registro simplificado de ventas de café y gastos operativos de la
             finca.
@@ -259,27 +261,7 @@ export default function FinanceActivityPage({ usuario }) {
         aria-label="Filtros de movimientos"
         className="flex flex-col gap-3 lg:flex-row lg:items-center"
       >
-        <div
-          aria-label="Tipo de movimiento"
-          className="inline-flex w-full rounded-xl bg-muted p-1 sm:w-fit"
-          role="group"
-        >
-          {filters.map((filter) => (
-            <button
-              aria-pressed={typeFilter === filter.value}
-              className={`min-h-9 flex-1 rounded-lg px-4 text-sm font-medium transition-colors sm:flex-none ${
-                typeFilter === filter.value
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-ink-soft hover:text-foreground'
-              }`}
-              key={filter.value}
-              onClick={() => setTypeFilter(filter.value)}
-              type="button"
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl label="Tipo de movimiento" onChange={setTypeFilter} options={filters} value={typeFilter} />
 
         <div className="relative min-w-0 flex-1">
           <label className="sr-only" htmlFor="finance-search">
@@ -290,7 +272,7 @@ export default function FinanceActivityPage({ usuario }) {
             className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
           />
           <Input
-            className="h-11 rounded-xl border-border bg-card pl-10 text-sm shadow-sm placeholder:text-subtle"
+            className="h-12 rounded-xl border-border bg-card pl-10 text-base shadow-sm placeholder:text-subtle"
             id="finance-search"
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar por concepto, comprador o categoría…"
@@ -303,7 +285,7 @@ export default function FinanceActivityPage({ usuario }) {
           Filtrar por finca
         </label>
         <select
-          className="h-11 rounded-xl border border-border bg-card px-3 text-sm text-ink-soft shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+          className="h-12 rounded-xl border border-border bg-card px-3 text-base text-ink-soft shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
           id="finance-farm"
           onChange={(event) => {
             setSelectedFarmId(event.target.value);
@@ -324,27 +306,7 @@ export default function FinanceActivityPage({ usuario }) {
           ))}
         </select>
 
-        <div
-          aria-label="Período"
-          className="inline-flex rounded-xl bg-muted p-1"
-          role="group"
-        >
-          {dateFilters.map((filter) => (
-            <button
-              aria-pressed={dateFilter === filter.value}
-              className={`min-h-9 flex-1 rounded-lg px-3 text-xs font-medium transition-colors ${
-                dateFilter === filter.value
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-ink-soft hover:text-foreground'
-              }`}
-              key={filter.value}
-              onClick={() => setDateFilter(filter.value)}
-              type="button"
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl label="Período" onChange={setDateFilter} options={dateFilters} value={dateFilter} />
       </section>
 
       <section
@@ -437,6 +399,6 @@ export default function FinanceActivityPage({ usuario }) {
           type={dialogType}
         />
       )}
-    </main>
+    </section>
   );
 }

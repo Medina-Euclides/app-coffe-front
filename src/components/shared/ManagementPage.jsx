@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react';
 import { Button } from '#components/ui/button';
 import { Input } from '#components/ui/input';
+import PageTitle from './PageTitle.jsx';
 
 export default function ManagementPage({
   title,
@@ -16,9 +17,9 @@ export default function ManagementPage({
     <section className="mx-auto w-full max-w-6xl space-y-6">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-balance text-4xl text-foreground sm:text-5xl">
+          <PageTitle>
             {title}
-          </h1>
+          </PageTitle>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
             {description}
           </p>
@@ -43,7 +44,7 @@ export default function ManagementPage({
         />
         <Input
           autoComplete="off"
-          className="h-11 rounded-xl border-border bg-card pl-10 text-base shadow-sm placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-ring/20"
+          className="h-12 rounded-xl border-border bg-card pl-10 text-base shadow-sm placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-ring/20"
           id="management-search"
           name="search"
           onChange={(event) => onSearchChange(event.target.value)}

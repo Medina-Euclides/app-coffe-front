@@ -45,6 +45,7 @@
   --color-leaf: var(--leaf);
   --color-leaf-soft: var(--leaf-soft);
   --color-cereza: var(--cereza);
+  --color-cereza-soft: var(--cereza-soft);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
@@ -99,6 +100,7 @@
   --accent: #e0eadb;
   --accent-foreground: #1f4a35;
   --cereza: #a3202f;
+  --cereza-soft: color-mix(in oklab, var(--cereza) 12%, var(--card));
 
   /* Estados */
   --leaf: #2c7549;
@@ -153,6 +155,7 @@
   --accent: #23382b;
   --accent-foreground: #d4e6d6;
   --cereza: #e2606a;
+  --cereza-soft: color-mix(in oklab, var(--cereza) 16%, var(--card));
 
   --leaf: #7cc395;
   --leaf-soft: #183323;

@@ -14,6 +14,8 @@ import {
 } from '#components/ui/card';
 import { Button } from '#components/ui/button';
 import { api } from '#services/api';
+import PageTitle from '#components/shared/PageTitle';
+import SegmentedControl from '#components/shared/SegmentedControl';
 
 const periods = [
   { value: 'week', label: 'Esta semana' },
@@ -223,9 +225,9 @@ export default function AnalyticPage({ usuario }) {
     <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
       <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-4xl text-foreground sm:text-5xl">
+          <PageTitle>
             Analítica de la finca
-          </h1>
+          </PageTitle>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
             Consulta la producción de café y el destino de tus gastos de forma
             clara y sencilla.
@@ -259,30 +261,15 @@ export default function AnalyticPage({ usuario }) {
       </header>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div
-          aria-label="Período de producción"
-          className="inline-flex w-full rounded-full bg-muted p-1 sm:w-fit"
-          role="group"
-        >
-          {periods.map((option) => (
-            <button
-              aria-pressed={period === option.value}
-              className={`min-h-10 flex-1 rounded-full px-4 text-sm font-medium transition-colors sm:flex-none ${
-                period === option.value
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-ink-soft hover:text-foreground'
-              }`}
-              key={option.value}
-              onClick={() => {
-                setError('');
-                setPeriod(option.value);
-              }}
-              type="button"
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Período de producción"
+          onChange={(value) => {
+            setError('');
+            setPeriod(value);
+          }}
+          options={periods}
+          value={period}
+        />
         <p className="text-sm text-muted-foreground" aria-live="polite">
           {periodLabel}
           {productionSeries ? ` · ${formatPeriodRange(productionSeries)}` : ''}

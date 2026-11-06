@@ -46,7 +46,7 @@ export default function AssistantFab() {
           title="Asistente de IA"
           to={ASSISTANT_PATH}
         >
-          <BotMessageSquare aria-hidden="true" className="size-7" strokeWidth={1.75} />
+          <BotMessageSquare aria-hidden="true" className="size-6" strokeWidth={2} />
         </Link>
       ) : (
         <button
@@ -57,7 +57,7 @@ export default function AssistantFab() {
           title="Sin conexión"
           type="button"
         >
-          <BotMessageSquare aria-hidden="true" className="size-7" strokeWidth={1.75} />
+          <BotMessageSquare aria-hidden="true" className="size-6" strokeWidth={2} />
           <span
             aria-hidden="true"
             className="absolute -top-1 -right-1 flex size-6 items-center justify-center rounded-full border-2 border-background bg-warning text-white"

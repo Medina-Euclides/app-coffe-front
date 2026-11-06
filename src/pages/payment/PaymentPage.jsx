@@ -10,6 +10,7 @@ import WorkdayFilters from '#pages/workday/components/WorkdayFilters.jsx';
 import PaymentCard from './components/PaymentCard.jsx';
 import PaymentDetailDialog from './components/PaymentDetailDialog.jsx';
 import { currencyFormatter, getDateKey } from './utils/paymentFormat.js';
+import PageTitle from '#components/shared/PageTitle';
 
 function getId(value) {
   if (value && typeof value === 'object') return String(value.id ?? '');
@@ -625,9 +626,9 @@ export default function PaymentPage() {
     <section className="mx-auto w-full max-w-6xl space-y-5">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-balance text-4xl text-foreground sm:text-5xl">
+          <PageTitle>
             Pagos laborales
-          </h1>
+          </PageTitle>
           <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
             <span aria-hidden="true" className="size-2 rounded-full bg-leaf" />
             <span>
