@@ -927,7 +927,7 @@ export default function WorkdayPage() {
               Cargando jornadas laborales…
             </p>
           ) : filteredWorkdays.length ? (
-            <div className="space-y-3">
+            <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {filteredWorkdays.map((workday) => (
                 <WorkdayCard
                   busyAction={busyAction}

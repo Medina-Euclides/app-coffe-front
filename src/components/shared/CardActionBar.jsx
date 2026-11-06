@@ -1,5 +1,7 @@
 // Botonera al pie de una tarjeta: botones redondeados del mismo ancho, con ícono
 // y texto, altos para tocarlos fácil con el dedo.
+import { LoaderCircle } from 'lucide-react';
+
 const tonos = {
   primary: 'bg-muted text-primary hover:bg-secondary active:bg-secondary',
   danger:
@@ -18,18 +20,26 @@ export default function CardActionBar({ actions, subject }) {
           .join(' '),
       }}
     >
-      {actions.map(({ label, icon: Icon, onClick, tone = 'primary' }) => (
+      {actions.map(({ label, ariaLabel, icon, onClick, tone = 'primary', disabled = false, loading = false }) => {
+        const Icon = loading ? LoaderCircle : icon;
+        return (
         <button
-          aria-label={subject ? `${label} ${subject}` : label}
-          className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${tonos[tone]}`}
+          aria-label={ariaLabel || (subject ? `${label} ${subject}` : label)}
+          className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 ${tonos[tone]}`}
+          disabled={disabled || loading}
           key={label}
           onClick={onClick}
           type="button"
         >
-          <Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={2.25} />
+          <Icon
+            aria-hidden="true"
+            className={`size-4 shrink-0 ${loading ? 'motion-safe:animate-spin' : ''}`}
+            strokeWidth={2.25}
+          />
           <span className="truncate">{label}</span>
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 }
