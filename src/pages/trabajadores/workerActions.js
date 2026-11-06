@@ -1,6 +1,16 @@
 // Validación y guardado de trabajadores, compartidos entre Trabajadores e Inicio.
 import { api } from '#services/api';
 
+// Nombre visible del trabajador, sin importar el formato en que llegó.
+export function getWorkerDisplayName(worker) {
+  return (
+    worker.nombre ||
+    worker.full_name ||
+    [worker.first_name, worker.last_name].filter(Boolean).join(' ') ||
+    'Sin nombre'
+  );
+}
+
 // Devuelve el mensaje de error para mostrar en el formulario, o '' si los datos son válidos.
 export function validateWorker(data, workers, editingId) {
   if (data.first_name.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';

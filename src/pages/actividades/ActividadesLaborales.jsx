@@ -1,8 +1,8 @@
 // Lista, crea y elimina tipos de actividad laboral del usuario.
 import { useState } from 'react';
-import ItemCard from '#components/shared/ItemCard';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import ActivityFormDialog from './components/ActivityFormDialog.jsx';
+import ActivityCard from './components/ActivityCard.jsx';
 import EmptyState from '#components/shared/EmptyState';
 import ManagementPage from '#components/shared/ManagementPage';
 import {
@@ -155,51 +155,15 @@ export default function ActividadesLaborales({ usuario }) {
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((activity) => {
-              const isHarvest = activity.is_harvest;
-              return (
-                <ItemCard
-                  key={activity.id || activity.name}
-                  avatar={
-                    <span
-                      aria-hidden="true"
-                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-tint text-primary"
-                    >
-                      {activity.name?.trim()?.charAt(0)?.toUpperCase() || '?'}
-                    </span>
-                  }
-                  title={activity.name}
-                  subtitle={
-                    activity.description ||
-                      (isHarvest
-                        ? 'Pago por kilogramo recolectado.'
-                        : 'Pago por jornada laboral.')
-                  }
-                  badge={isHarvest ? 'Recolección' : 'Labor por jornal'}
-                  badgeProps={{
-                    className: 'border-border bg-muted text-primary',
-                  }}
-                  actions={[
-                    {
-                      label: 'Consultar',
-                      onClick: setActivityToView,
-                      item: activity,
-                    },
-                    {
-                      label: 'Editar',
-                      onClick: openEditActivityDialog,
-                      item: activity,
-                    },
-                    {
-                      label: 'Eliminar',
-                      onClick: deleteActivity,
-                      item: activity,
-                      className: 'min-h-10 rounded-lg text-destructive hover:bg-destructive-soft',
-                    },
-                  ]}
-                />
-              );
-            })}
+            {filtered.map((activity) => (
+              <ActivityCard
+                activity={activity}
+                key={activity.id || activity.name}
+                onDelete={deleteActivity}
+                onEdit={openEditActivityDialog}
+                onView={setActivityToView}
+              />
+            ))}
           </div>
         )}
       </ManagementPage>

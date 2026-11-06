@@ -1,10 +1,10 @@
 // Carga, filtra y gestiona trabajadores del usuario.
 import { useMemo, useState } from 'react';
 import EmptyState from '#components/shared/EmptyState';
-import ItemCard from '#components/shared/ItemCard';
 import ManagementPage from '#components/shared/ManagementPage';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import WorkerFormDialog from './components/WorkerFormDialog.jsx';
+import WorkerCard from './components/WorkerCard.jsx';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,11 @@ import { useApiList } from '#hooks/useApiList';
 import { useSearchFilter } from '#hooks/useSearchFilter';
 import { useNotice } from '#hooks/useNotice';
 import { useDialog } from '#hooks/useDialog';
-import { saveWorkerRequest, validateWorker } from './workerActions.js';
+import {
+  getWorkerDisplayName,
+  saveWorkerRequest,
+  validateWorker,
+} from './workerActions.js';
 
 // Normaliza trabajadores del localStorage al esquema actual.
 function normalizarTrabajador(worker) {
@@ -109,8 +113,8 @@ export default function Trabajadores({ usuario }) {
       guardarCacheTrabajadores(userId, nextWorkers);
       setNotice(
         !isActive
-          ? `${worker.nombre} está activo nuevamente.`
-          : `${worker.nombre} quedó inactivo. Sus registros históricos se conservan.`,
+          ? `${getWorkerDisplayName(worker)} está activo nuevamente.`
+          : `${getWorkerDisplayName(worker)} quedó inactivo. Sus registros históricos se conservan.`,
         false,
       );
     } catch (err) {
@@ -152,57 +156,15 @@ export default function Trabajadores({ usuario }) {
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((worker) => {
-              const isActive = worker.is_active !== false;
-              return (
-                <ItemCard
-                  key={worker.id}
-                  avatar={
-                    <span
-                      aria-hidden="true"
-                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-tint text-sm font-bold text-primary"
-                    >
-                      {worker.nombre?.trim()?.charAt(0)?.toUpperCase() || '?'}
-                    </span>
-                  }
-                  title={worker.nombre || 'Sin nombre'}
-                  subtitle={
-                    <>
-                      Identificación: {worker.identification || 'No registrada'}{' '}
-                      {worker.phone && (
-                        <>
-                          <br />
-                          Teléfono: {worker.phone}
-                        </>
-                      )}
-                    </>
-                  }
-                  badge={isActive ? 'Activo' : 'Inactivo'}
-                  badgeProps={{
-                    className: isActive
-                      ? 'shrink-0 border-border bg-tint text-primary'
-                      : 'shrink-0 border-border bg-muted text-muted-foreground',
-                  }}
-                  actions={[
-                    {
-                      label: 'Consultar',
-                      onClick: setWorkerToView,
-                      item: worker,
-                    },
-                    {
-                      label: 'Editar',
-                      onClick: openEditWorkerDialog,
-                      item: worker,
-                    },
-                    {
-                      label: isActive ? 'Desactivar' : 'Activar',
-                      onClick: toggleWorkerStatus,
-                      item: worker,
-                    },
-                  ]}
-                />
-              );
-            })}
+            {filtered.map((worker) => (
+              <WorkerCard
+                key={worker.id}
+                onEdit={openEditWorkerDialog}
+                onToggleStatus={toggleWorkerStatus}
+                onView={setWorkerToView}
+                worker={worker}
+              />
+            ))}
           </div>
         )}
       </ManagementPage>
@@ -227,7 +189,7 @@ export default function Trabajadores({ usuario }) {
         <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-md sm:p-6">
           <DialogHeader className="pr-8">
             <DialogTitle className="text-2xl text-foreground">
-              {workerToView?.nombre}
+              {workerToView ? getWorkerDisplayName(workerToView) : ''}
             </DialogTitle>
             <DialogDescription>
               Información del trabajador
