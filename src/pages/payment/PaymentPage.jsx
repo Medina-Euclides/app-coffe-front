@@ -1,48 +1,15 @@
 // Página de pagos laborales: gestiona liquidaciones y registros de pago a trabajadores.
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Banknote,
-  CalendarDays,
-  ChevronDown,
-  ChevronUp,
-  Clock3,
-  LoaderCircle,
-  MapPin,
-  Search,
-  UserRound,
-} from 'lucide-react';
+import { Search, UserRound } from 'lucide-react';
 import { Button } from '#components/ui/button';
 import { Card } from '#components/ui/card';
 import NoticeBanner from '#components/shared/NoticeBanner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '#components/ui/dialog';
-import { Input } from '#components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
 import { api } from '#services/api';
 import WorkdayFilters from '#pages/workday/components/WorkdayFilters.jsx';
-
-const currencyFormatter = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  maximumFractionDigits: 0,
-});
-
-const kilogramsFormatter = new Intl.NumberFormat('es-CO', {
-  maximumFractionDigits: 3,
-});
+import PaymentCard from './components/PaymentCard.jsx';
+import PaymentDetailDialog from './components/PaymentDetailDialog.jsx';
+import { currencyFormatter, getDateKey } from './utils/paymentFormat.js';
 
 function getId(value) {
   if (value && typeof value === 'object') return String(value.id ?? '');
@@ -85,29 +52,12 @@ function getWorkerId(participant) {
   return '';
 }
 
-function getDateKey(value) {
-  return value ? String(value).slice(0, 10) : '';
-}
-
 function getLocalDate() {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
     2,
     '0',
   )}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function formatDate(value) {
-  const dateKey = getDateKey(value);
-  if (!dateKey) return 'Fecha sin registrar';
-  const date = new Date(`${dateKey}T00:00:00`);
-  return Number.isNaN(date.getTime())
-    ? 'Fecha sin registrar'
-    : new Intl.DateTimeFormat('es-CO', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }).format(date);
 }
 
 function getWorkerName(worker) {
@@ -118,14 +68,6 @@ function getWorkerName(worker) {
     worker.full_name ||
     [worker.first_name, worker.last_name].filter(Boolean).join(' ')
   );
-}
-
-function getPaymentMethodLabel(method) {
-  return {
-    efectivo: 'Efectivo',
-    transferencia: 'Transferencia',
-    otro: 'Otro',
-  }[method] || method || 'Sin método registrado';
 }
 
 function mapPaymentData({
@@ -420,177 +362,6 @@ function mapPaymentData({
   ];
 }
 
-function PaymentCard({ settlement, onPay, paying }) {
-  const [expanded, setExpanded] = useState(false);
-  const isPaid = settlement.status === 'pagada';
-  const isPending = settlement.status === 'pendiente';
-  const paymentDay = isPaid ? settlement.paymentDate : settlement.endDate;
-  const paymentDateLabel = isPaid
-    ? 'Pagada el'
-    : isPending
-      ? 'Jornada finalizada'
-      : settlement.status === 'abierta'
-        ? 'Liquidación abierta'
-        : 'Liquidada el';
-
-  return (
-    <Card className="gap-0 rounded-2xl border border-border bg-card py-0 shadow-none">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3 sm:px-5">
-        <span
-          className={
-            isPaid
-              ? 'rounded-lg border border-leaf/30 bg-leaf-soft px-3 py-1.5 text-xs font-semibold text-leaf'
-              : 'rounded-lg border border-warning/30 bg-warning-soft px-3 py-1.5 text-xs font-semibold text-warning'
-          }
-        >
-          {isPaid
-            ? 'Pago realizado'
-            : isPending
-              ? 'Pendiente de liquidar'
-              : settlement.status === 'abierta'
-                ? 'En liquidación'
-                : 'Pendiente de pago'}
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-          <CalendarDays aria-hidden="true" className="size-3.5" />
-          {paymentDateLabel}
-          {!isPending && ` ${formatDate(paymentDay)}`}
-        </span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-5">
-        <span
-          aria-hidden="true"
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-base font-semibold text-primary-foreground"
-        >
-          {settlement.workerName
-            .trim()
-            .split(/\s+/)
-            .slice(0, 2)
-            .map((part) => part[0] || '')
-            .join('')
-            .toLocaleUpperCase('es')}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate font-semibold text-foreground">
-            {settlement.workerName}
-          </h2>
-          {settlement.identification && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              C.C. {settlement.identification}
-            </p>
-          )}
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
-            {settlement.farmName}
-          </p>
-        </div>
-        <div className="ml-auto text-right">
-          <p className="cifra text-2xl text-foreground sm:text-3xl">
-            {currencyFormatter.format(settlement.total)}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatDate(settlement.startDate)} – {formatDate(settlement.endDate)}
-          </p>
-        </div>
-        <Button
-          aria-expanded={expanded}
-          aria-label={`${expanded ? 'Ocultar' : 'Ver'} detalles de pago de ${settlement.workerName}`}
-          className="h-10 shrink-0 rounded-xl bg-muted px-3 text-sm font-medium text-ink-soft hover:bg-muted"
-          onClick={() => setExpanded((current) => !current)}
-          type="button"
-          variant="ghost"
-        >
-          {expanded ? 'Ocultar detalle' : 'Ver detalle'}
-          {expanded ? (
-            <ChevronUp aria-hidden="true" className="size-4" />
-          ) : (
-            <ChevronDown aria-hidden="true" className="size-4" />
-          )}
-        </Button>
-      </div>
-
-      {expanded && (
-        <div className="border-t border-border/60 bg-muted px-4 py-3 sm:px-5">
-          {isPaid && (
-            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border/60 pb-3 text-sm text-ink-soft">
-              <span className="inline-flex items-center gap-1.5">
-                <Banknote aria-hidden="true" className="size-4" />
-                {getPaymentMethodLabel(settlement.paymentMethod)}
-              </span>
-              {settlement.notes && <span>{settlement.notes}</span>}
-            </div>
-          )}
-          {settlement.items.length ? (
-            <ul className="divide-y divide-border/60">
-              {settlement.items.map((item) => (
-                <li
-                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm"
-                  key={`${item.type}-${item.id}`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-ink-soft">
-                      {item.type === 'kilogram'
-                        ? `${kilogramsFormatter.format(item.kilograms)} kg · ${item.lotName || 'Recolección'}`
-                        : 'Jornada por jornal'}
-                    </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                      <span>{formatDate(item.date)}</span>
-                      {item.time && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span className="inline-flex items-center gap-1">
-                            <Clock3 aria-hidden="true" className="size-3" />
-                            {item.time.slice(0, 5)}
-                          </span>
-                        </>
-                      )}
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        Tarifa{' '}
-                        {currencyFormatter.format(item.rate)}
-                        {item.type === 'kilogram' ? ' / kg' : ' / jornal'}
-                      </span>
-                    </p>
-                  </div>
-                  <p className="shrink-0 font-semibold text-primary">
-                    {currencyFormatter.format(item.amount)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="py-2 text-sm text-muted-foreground">
-              No hay detalles disponibles para esta liquidación.
-            </p>
-          )}
-        </div>
-      )}
-      <div className="flex justify-end border-t border-border/60 px-4 py-3 sm:px-5">
-        <Button
-          className={
-            isPaid
-              ? 'min-w-28 rounded-xl bg-tint text-ink-soft'
-              : 'min-w-28 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover'
-          }
-          disabled={isPaid || paying || settlement.total <= 0}
-          onClick={() => onPay(settlement)}
-          type="button"
-          variant={isPaid ? 'outline' : 'default'}
-        >
-          {paying ? (
-            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-          ) : isPaid ? (
-            'Pagado'
-          ) : (
-            'Pagar'
-          )}
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
 function EmptyPayments({ hasSettlements, errorMessage, onRetry }) {
   const hasError = Boolean(errorMessage);
   return (
@@ -643,8 +414,6 @@ export default function PaymentPage() {
   const [retry, setRetry] = useState(0);
   const [todayKey] = useState(() => new Date().toLocaleDateString('en-CA'));
   const [paymentTarget, setPaymentTarget] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('efectivo');
-  const [paymentNotes, setPaymentNotes] = useState('');
   const [payingId, setPayingId] = useState('');
   const [actionError, setActionError] = useState('');
 
@@ -768,12 +537,12 @@ export default function PaymentPage() {
         settlement_id: settlementId,
         date: getLocalDate(),
         amount_paid: amount.toFixed(2),
-        payment_method: paymentMethod,
-        notes: paymentNotes.trim(),
+        // Por ahora todos los pagos se registran en efectivo.
+        payment_method: 'efectivo',
+        notes: '',
       });
 
       setPaymentTarget(null);
-      setPaymentNotes('');
       setTab('paid');
       setLoading(true);
       setRetry((current) => current + 1);
@@ -911,19 +680,18 @@ export default function PaymentPage() {
                 Cargando pagos laborales…
               </p>
             ) : filteredSettlements.length ? (
-              filteredSettlements.map((settlement) => (
-                <PaymentCard
-                  key={settlement.id}
-                  onPay={(target) => {
-                    setPaymentMethod('efectivo');
-                    setPaymentNotes('');
-                    setActionError('');
-                    setPaymentTarget(target);
-                  }}
-                  paying={payingId === settlement.id}
-                  settlement={settlement}
-                />
-              ))
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredSettlements.map((settlement) => (
+                  <PaymentCard
+                    key={settlement.id}
+                    onOpen={(target) => {
+                      setActionError('');
+                      setPaymentTarget(target);
+                    }}
+                    settlement={settlement}
+                  />
+                ))}
+              </div>
             ) : (
               <EmptyPayments
                 errorMessage={errorMessage}
@@ -938,96 +706,12 @@ export default function PaymentPage() {
         ))}
       </Tabs>
 
-      <Dialog
-        onOpenChange={(open) => {
-          if (!open && !payingId) setPaymentTarget(null);
-        }}
-        open={Boolean(paymentTarget)}
-      >
-        <DialogContent className="rounded-2xl border-border sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-2xl text-foreground">
-              Confirmar pago laboral
-            </DialogTitle>
-            <DialogDescription className="leading-5">
-              Registra el pago de {paymentTarget?.workerName} por{' '}
-              {currencyFormatter.format(paymentTarget?.total || 0)}. La
-              liquidación pasará a la pestaña de pagos realizados.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label
-                className="text-sm font-semibold text-primary"
-                htmlFor="payment-method"
-              >
-                Método de pago
-              </label>
-              <Select
-                onValueChange={setPaymentMethod}
-                value={paymentMethod}
-              >
-                <SelectTrigger
-                  className="h-11 w-full rounded-xl border-input bg-card"
-                  id="payment-method"
-                >
-                  <SelectValue placeholder="Selecciona el método" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="efectivo">Efectivo</SelectItem>
-                  <SelectItem value="transferencia">Transferencia</SelectItem>
-                  <SelectItem value="otro">Otro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label
-                className="text-sm font-semibold text-primary"
-                htmlFor="payment-notes"
-              >
-                Nota (opcional)
-              </label>
-              <Input
-                autoComplete="off"
-                className="h-11 rounded-xl border-input bg-card"
-                id="payment-notes"
-                onChange={(event) => setPaymentNotes(event.target.value)}
-                placeholder="Referencia o comentario del pago"
-                value={paymentNotes}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
-            <Button
-              className="rounded-xl text-muted-foreground"
-              disabled={Boolean(payingId)}
-              onClick={() => setPaymentTarget(null)}
-              type="button"
-              variant="ghost"
-            >
-              Cancelar
-            </Button>
-            <Button
-              className="rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary-hover"
-              disabled={Boolean(payingId) || !paymentTarget}
-              onClick={handlePaySettlement}
-              type="button"
-            >
-              {payingId ? (
-                <LoaderCircle
-                  aria-hidden="true"
-                  className="size-4 animate-spin"
-                />
-              ) : (
-                <Banknote aria-hidden="true" className="size-4" />
-              )}
-              {payingId ? 'Procesando pago…' : 'Confirmar pago'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PaymentDetailDialog
+        onOpenChange={() => setPaymentTarget(null)}
+        onPay={handlePaySettlement}
+        paying={Boolean(payingId)}
+        settlement={paymentTarget}
+      />
     </section>
   );
 }
