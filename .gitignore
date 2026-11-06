@@ -25,4 +25,5 @@ dist-ssr
 
 # Herramientas y extensiones de desarrollo
 .agents/
+.claude/
 skills-lock.json
