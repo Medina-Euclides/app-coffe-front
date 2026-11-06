@@ -21,6 +21,7 @@ import AddWorkdayWorkersDialog from './components/AddWorkdayWorkersDialog.jsx';
 import EditWorkdayLaborDialog from './components/EditWorkdayLaborDialog.jsx';
 import HarvestRecordFormDialog from './components/HarvestRecordFormDialog.jsx';
 import WorkdayHeader from './components/WorkdayHeader.jsx';
+import { createWorkdayWithWorkers } from './workdayActions.js';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -556,81 +557,8 @@ export default function WorkdayPage() {
   }[period];
 
   const saveWorkday = async (payload, context) => {
-    let createdWorkday;
-    const createdParticipations = [];
-    const createdDetails = [];
-    const savedParticipants = [];
-    try {
-      createdWorkday = await api.workdays.create(payload);
-      for (const worker of context.workers) {
-        const participation = await api.workdayWorkers.create({
-          workday: createdWorkday.id,
-          worker: worker.id,
-          payment_mode: context.paymentMode,
-          agreed_rate: context.agreedRate,
-        });
-        createdParticipations.push(participation);
-
-        const details = [];
-        for (const lot of context.lots) {
-          const createdDetail = await api.workdayDetails.create({
-            workday_worker: participation.id,
-            activity_type: context.activity.id,
-            lot: lot.id,
-          });
-          createdDetails.push(createdDetail);
-          details.push({
-            ...createdDetail,
-            activity_type: context.activity,
-            activity_name:
-              createdDetail.activity_name || context.activity.name,
-            lot_name: createdDetail.lot_name || lot.nombre || lot.name,
-            farm_name:
-              createdDetail.farm_name ||
-              context.farm.nombre ||
-              context.farm.name ||
-              '',
-            harvest_records: createdDetail.harvest_records || [],
-          });
-        }
-        savedParticipants.push({
-          ...participation,
-          worker,
-          worker_name:
-            participation.worker_name ||
-            [worker.first_name, worker.last_name].filter(Boolean).join(' '),
-          details,
-        });
-      }
-    } catch (saveError) {
-      const cleanupErrors = [];
-      for (const detail of createdDetails.reverse()) {
-        try {
-          await api.workdayDetails.delete(detail.id);
-        } catch (cleanupError) {
-          cleanupErrors.push(cleanupError);
-        }
-      }
-      for (const participation of createdParticipations.reverse()) {
-        try {
-          await api.workdayWorkers.delete(participation.id);
-        } catch (cleanupError) {
-          cleanupErrors.push(cleanupError);
-        }
-      }
-      try {
-        if (createdWorkday) await api.workdays.delete(createdWorkday.id);
-      } catch (cleanupError) {
-        cleanupErrors.push(cleanupError);
-      }
-      if (cleanupErrors.length) {
-        console.error('Error al limpiar una jornada incompleta:', cleanupErrors);
-        throw new Error(
-          `${saveError.message} No se pudieron limpiar todos los registros creados; verifica la jornada ${createdWorkday?.id || ''} antes de volver a intentarlo.`,
-        );
-      }
-      throw saveError;
-    }
+    const { createdWorkday, savedParticipants } =
+      await createWorkdayWithWorkers(payload, context);
 
     setWorkdays((currentWorkdays) => [
       ...mapWorkday({

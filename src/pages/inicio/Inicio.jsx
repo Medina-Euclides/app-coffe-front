@@ -1,10 +1,12 @@
-// Pantalla de inicio: saludo, accesos rápidos, indicadores y actividad del día.
+// Pantalla de inicio: accesos rápidos, indicadores y actividad del día.
 import {
   ClipboardList,
   Coffee,
+  Scale,
   Sprout,
+  UserPlus,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { lazy, Suspense, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -13,26 +15,50 @@ import {
   CardTitle,
 } from '#components/ui/card';
 import SectionHeader from '#components/shared/SectionHeader';
-import MaduracionStripe from '#components/shared/MaduracionStripe';
+import NoticeBanner from '#components/shared/NoticeBanner';
+import { useNotice } from '#hooks/useNotice';
+import { api } from '#services/api';
+import { guardarCacheTrabajadores } from '#services/workerStorage';
+import { createWorkdayWithWorkers, toExistingWorkdays } from '#pages/workday/workdayActions.js';
+import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions.js';
 import { leerLocal } from '#lib/storage';
 import { hoy } from '#lib/formatters';
 
-const accionesRapidas = [
+// Las dos acciones del día en campo: botones grandes, uno al lado del otro.
+// El borde inferior más oscuro les da relieve de tecla y baja al tocarlos.
+const accionesPrincipales = [
   {
-    titulo: 'Recolección de café',
-    descripcion: 'Registra los kilogramos recolectados por trabajador y lote.',
-    ruta: '/operaciones/recoleccion',
-    icono: Sprout,
-    color: 'bg-secondary text-primary',
+    verbo: 'Agregar',
+    titulo: 'Pesaje',
+    descripcion: 'Kilos por trabajador',
+    formulario: 'pesaje',
+    icono: Scale,
+    estilo:
+      'bg-primary [--relieve:color-mix(in_oklab,var(--primary),black_45%)] hover:bg-primary-hover',
+    estiloIcono: 'text-primary',
   },
   {
-    titulo: 'Jornada laboral',
-    descripcion: 'Registra una labor por jornal para un trabajador.',
-    ruta: '/operaciones/jornadas',
+    verbo: 'Agregar',
+    titulo: 'Jornada',
+    descripcion: 'Labor por jornal',
+    formulario: 'jornada',
     icono: ClipboardList,
-    color: 'bg-warning-soft text-warning',
+    estilo:
+      'bg-leaf [--relieve:color-mix(in_oklab,var(--leaf),black_40%)] hover:bg-[color-mix(in_oklab,var(--leaf),black_10%)]',
+    estiloIcono: 'text-leaf',
   },
 ];
+
+// Los formularios se cargan solo cuando se abren, para que Inicio cargue rápido.
+const HarvestRecordFormDialog = lazy(() =>
+  import('#pages/workday/components/HarvestRecordFormDialog.jsx'),
+);
+const WorkdayFormDialog = lazy(() =>
+  import('#pages/workday/components/WorkdayFormDialog.jsx'),
+);
+const WorkerFormDialog = lazy(() =>
+  import('#pages/trabajadores/components/WorkerFormDialog.jsx'),
+);
 
 const formatoCantidad = (valor) =>
   Number(valor || 0).toLocaleString('es-CO', {
@@ -40,19 +66,41 @@ const formatoCantidad = (valor) =>
   });
 
 // Resume las operaciones del usuario para la fecha dada.
-function obtenerResumenDelDia(usuarioId, fechaHoy) {
+// Semana de lunes a domingo que contiene la fecha dada (YYYY-MM-DD).
+function obtenerSemana(fecha) {
+  const base = new Date(`${fecha}T12:00:00`);
+  const diasDesdeLunes = (base.getDay() + 6) % 7;
+  const lunes = new Date(base);
+  lunes.setDate(base.getDate() - diasDesdeLunes);
+  const domingo = new Date(lunes);
+  domingo.setDate(lunes.getDate() + 6);
+  const aClave = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return { inicio: aClave(lunes), fin: aClave(domingo), lunes, domingo };
+}
+
+const formatoDiaCorto = new Intl.DateTimeFormat('es-CO', {
+  weekday: 'short',
+  day: 'numeric',
+});
+
+// Resume las operaciones del usuario registradas en la semana dada.
+function obtenerResumenDeLaSemana(usuarioId, semana) {
   const jornadas = leerLocal(`cafesmart_jornadas_${usuarioId}`, []);
 
-  const jornadasHoy = jornadas.filter((jornada) => jornada.fecha === fechaHoy);
-  const recolecciones = jornadasHoy.filter(
+  const jornadasSemana = jornadas.filter(
+    (jornada) => jornada.fecha >= semana.inicio && jornada.fecha <= semana.fin,
+  );
+  const recolecciones = jornadasSemana.filter(
     (jornada) => jornada.modalidad === 'recoleccion',
   );
-  const labores = jornadasHoy.filter(
+  const labores = jornadasSemana.filter(
     (jornada) => jornada.modalidad !== 'recoleccion',
   );
 
-  const actividades = jornadasHoy.map((jornada) => ({
+  const actividades = jornadasSemana.map((jornada) => ({
       id: `jornada-${jornada.id}`,
+      fecha: jornada.fecha || '',
       momento: Number(jornada.id) || 0,
       titulo:
         jornada.modalidad === 'recoleccion'
@@ -68,10 +116,13 @@ function obtenerResumenDelDia(usuarioId, fechaHoy) {
         jornada.modalidad === 'recoleccion' && Number(jornada.cantidad) > 0
           ? `${formatoCantidad(jornada.cantidad)} kg`
           : '',
+      complemento: jornada.fecha
+        ? formatoDiaCorto.format(new Date(`${jornada.fecha}T12:00:00`))
+        : '',
       icono: jornada.modalidad === 'recoleccion' ? Sprout : ClipboardList,
       estilo: 'bg-secondary text-primary',
     }))
-    .sort((a, b) => b.momento - a.momento);
+    .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.momento - a.momento);
 
   return {
     recolecciones,
@@ -81,12 +132,67 @@ function obtenerResumenDelDia(usuarioId, fechaHoy) {
 }
 
 export default function Inicio({ usuario }) {
-  const nombreProductor =
-    usuario?.full_name ||
-    [usuario?.first_name, usuario?.last_name].filter(Boolean).join(' ') ||
-    'Productor';
+  const userId = usuario?.id || 'default';
+  const [formulario, setFormulario] = useState('');
+  const [jornadasExistentes, setJornadasExistentes] = useState([]);
+  const [trabajadores, setTrabajadores] = useState(() =>
+    leerLocal(`cafesmart_trabajadores_${userId}`, []),
+  );
+  const { notice, isError, show: mostrarAviso } = useNotice();
+
+  // Abre el formulario sobre Inicio y trae en segundo plano los datos que necesita
+  // para validar duplicados.
+  const abrirFormulario = (tipo) => {
+    mostrarAviso('');
+    setFormulario(tipo);
+    if (tipo === 'jornada') {
+      api.workdays
+        .list()
+        .then((items) => setJornadasExistentes(toExistingWorkdays(items)))
+        .catch((error) => console.error('Error al cargar jornadas:', error));
+    }
+    if (tipo === 'trabajador') {
+      api.workers
+        .list()
+        .then(setTrabajadores)
+        .catch((error) => console.error('Error al cargar trabajadores:', error));
+    }
+  };
+
+  const cerrarFormulario = (open) => {
+    if (!open) setFormulario('');
+  };
+
+  const guardarJornada = async (payload, context) => {
+    await createWorkdayWithWorkers(payload, context);
+    mostrarAviso('La jornada laboral se registró correctamente.');
+  };
+
+  const guardarPesaje = () => {
+    mostrarAviso('El pesaje de recolección se registró correctamente.');
+  };
+
+  const guardarTrabajador = async (data) => {
+    const errorValidacion = validateWorker(data, trabajadores);
+    if (errorValidacion) return errorValidacion;
+    try {
+      const nuevo = await saveWorkerRequest(data);
+      const siguientes = [...trabajadores, nuevo];
+      setTrabajadores(siguientes);
+      guardarCacheTrabajadores(userId, siguientes);
+      mostrarAviso('Trabajador agregado.');
+      return '';
+    } catch (error) {
+      console.error('Error al guardar el trabajador:', error);
+      return error.message || 'No se pudo guardar el trabajador. Inténtalo de nuevo.';
+    }
+  };
+
   const fechaHoy = hoy();
-  const resumen = obtenerResumenDelDia(usuario?.id || 'default', fechaHoy);
+  const semana = obtenerSemana(fechaHoy);
+  const resumen = obtenerResumenDeLaSemana(userId, semana);
+  const formatoDiaMes = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'long' });
+  const rangoSemana = `Del lunes ${formatoDiaMes.format(semana.lunes)} al domingo ${formatoDiaMes.format(semana.domingo)}.`;
   const fechaLegible = new Intl.DateTimeFormat('es-CO', {
     weekday: 'long',
     day: 'numeric',
@@ -98,14 +204,14 @@ export default function Inicio({ usuario }) {
     {
       etiqueta: 'Recolecciones',
       valor: resumen.recolecciones.length,
-      detalle: 'registradas hoy',
+      detalle: 'registradas esta semana',
       estilo: 'text-primary',
       icono: Sprout,
     },
     {
       etiqueta: 'Jornadas',
       valor: resumen.labores.length,
-      detalle: 'registradas hoy',
+      detalle: 'registradas esta semana',
       estilo: 'text-warning',
       icono: ClipboardList,
     },
@@ -113,57 +219,68 @@ export default function Inicio({ usuario }) {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
-      <header className="overflow-hidden rounded-2xl bg-primary text-primary-foreground">
-        <div className="px-6 pt-7 pb-8 sm:px-9 sm:pt-9 sm:pb-10">
-          <p className="text-sm capitalize text-primary-foreground/75">
-            {fechaLegible}
-          </p>
-          <h1 className="mt-2 break-words text-[2.5rem] leading-[1.02] sm:text-6xl">
-            Hola, {nombreProductor}
-          </h1>
-          <p className="mt-4 max-w-[52ch] text-pretty leading-relaxed text-primary-foreground/85">
-            Registra las actividades de tu finca y consulta el resumen de hoy.
-          </p>
-        </div>
-        <MaduracionStripe />
-      </header>
-
-      <SectionHeader
-        title="Accesos rápidos"
-        description="Elige una operación para continuar."
-        headingId="acciones-rapidas"
-      />
-      <div className="grid gap-4 sm:grid-cols-2">
-        {accionesRapidas.map(({ titulo, descripcion, ruta, icono: Icono, color }) => (
-          <Link
-            className="group min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            key={ruta}
-            to={ruta}
+      <section aria-labelledby="acciones-rapidas" className="space-y-4">
+        <div>
+          <p className="text-sm capitalize text-muted-foreground">{fechaLegible}</p>
+          <h1
+            className="mt-1 text-3xl text-foreground sm:text-4xl"
+            id="acciones-rapidas"
           >
-            <Card className="h-full rounded-2xl border border-border bg-card shadow-none transition-colors hover:border-primary/40 hover:bg-tint">
-              <CardContent className="flex h-full flex-col items-start p-5">
+            Accesos rápidos
+          </h1>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          {accionesPrincipales.map(
+            ({ verbo, titulo, descripcion, formulario: tipo, icono: Icono, estilo, estiloIcono }) => (
+              <button
+                className={`flex min-h-40 min-w-0 cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl p-4 text-center text-primary-foreground shadow-[0_4px_0_var(--relieve)] transition-[background-color,box-shadow,translate] duration-100 focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-ring active:translate-y-[4px] active:shadow-[0_0_0_var(--relieve)] motion-reduce:transition-none sm:min-h-44 ${estilo}`}
+                key={tipo}
+                onClick={() => abrirFormulario(tipo)}
+                type="button"
+              >
                 <span
                   aria-hidden="true"
-                  className={`flex size-11 items-center justify-center rounded-xl ${color}`}
+                  className={`flex size-14 items-center justify-center rounded-full bg-primary-foreground ${estiloIcono}`}
                 >
-                  <Icono className="size-5" />
+                  <Icono className="size-7" strokeWidth={2.25} />
                 </span>
-                <h3 className="mt-4 break-words font-semibold text-lg text-foreground group-hover:text-primary">
-                  {titulo}
-                </h3>
-                <p className="mt-2 text-pretty text-sm leading-relaxed text-muted-foreground">
-                  {descripcion}
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+                <span className="min-w-0">
+                  <span className="block text-balance font-heading text-xl font-semibold leading-tight sm:text-2xl">
+                    {verbo} {titulo.toLowerCase()}
+                  </span>
+                  <span className="mt-1 block text-sm text-primary-foreground/80">
+                    {descripcion}
+                  </span>
+                </span>
+              </button>
+            ),
+          )}
+
+          <button
+            className="col-span-2 flex min-h-16 cursor-pointer items-center justify-center gap-3 rounded-3xl border border-border bg-card px-4 text-foreground shadow-[0_3px_0_var(--border-strong)] transition-[background-color,box-shadow,translate] duration-100 hover:bg-tint focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-ring active:translate-y-[3px] active:shadow-[0_0_0_var(--border-strong)] motion-reduce:transition-none"
+            onClick={() => abrirFormulario('trabajador')}
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-primary"
+            >
+              <UserPlus className="size-5" strokeWidth={2.25} />
+            </span>
+            <span className="font-heading text-lg font-semibold">
+              Agregar trabajador
+            </span>
+          </button>
+        </div>
+
+        <NoticeBanner isError={isError} message={notice} />
+      </section>
 
       <SectionHeader
-        title="Resumen de hoy"
-        description="Totales registrados con fecha de hoy."
-        headingId="resumen-hoy"
+        title="Resumen de la semana"
+        description={rangoSemana}
+        headingId="resumen-semana"
       />
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -192,7 +309,7 @@ export default function Inicio({ usuario }) {
             Actividad registrada
           </CardTitle>
           <CardDescription>
-            Operaciones con fecha de hoy.
+            Operaciones de esta semana, de la más reciente a la más antigua.
           </CardDescription>
         </CardHeader>
         <CardContent className="px-5 pb-5">
@@ -200,7 +317,7 @@ export default function Inicio({ usuario }) {
             <div className="flex flex-col items-center rounded-xl bg-muted px-5 py-8 text-center">
               <Coffee aria-hidden="true" className="size-8 text-primary" />
               <p className="mt-3 font-medium text-ink-soft">
-                Aún no hay operaciones registradas hoy
+                Aún no hay operaciones registradas esta semana
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Usa los accesos rápidos para agregar la primera.
@@ -243,6 +360,31 @@ export default function Inicio({ usuario }) {
           )}
         </CardContent>
       </Card>
+
+      <Suspense fallback={null}>
+        {formulario === 'pesaje' && (
+          <HarvestRecordFormDialog
+            onOpenChange={cerrarFormulario}
+            onSave={guardarPesaje}
+            open
+          />
+        )}
+        {formulario === 'jornada' && (
+          <WorkdayFormDialog
+            existingWorkdays={jornadasExistentes}
+            onOpenChange={cerrarFormulario}
+            onSave={guardarJornada}
+            open
+          />
+        )}
+        {formulario === 'trabajador' && (
+          <WorkerFormDialog
+            onOpenChange={cerrarFormulario}
+            onSave={guardarTrabajador}
+            open
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

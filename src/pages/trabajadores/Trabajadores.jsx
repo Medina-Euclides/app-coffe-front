@@ -18,6 +18,7 @@ import { useApiList } from '#hooks/useApiList';
 import { useSearchFilter } from '#hooks/useSearchFilter';
 import { useNotice } from '#hooks/useNotice';
 import { useDialog } from '#hooks/useDialog';
+import { saveWorkerRequest, validateWorker } from './workerActions.js';
 
 // Normaliza trabajadores del localStorage al esquema actual.
 function normalizarTrabajador(worker) {
@@ -67,29 +68,11 @@ export default function Trabajadores({ usuario }) {
   const [workerToView, setWorkerToView] = useState(null);
 
   const saveWorker = async (data) => {
-    if (data.first_name.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
-    if (data.last_name.length < 2) return 'Escribe un apellido de al menos 2 caracteres.';
-    if (
-      data.identification &&
-      workers.some(
-        (worker) =>
-          String(worker.id) !== String(workerToEdit?.id) &&
-          String(worker.identification || '').trim().toLowerCase() ===
-            data.identification.toLowerCase(),
-      )
-    ) {
-      return 'Ya existe un trabajador con ese número de identificación.';
-    }
+    const validationError = validateWorker(data, workers, workerToEdit?.id);
+    if (validationError) return validationError;
 
-    const payload = {
-      ...data,
-      identification: data.identification || null,
-      phone: data.phone || null,
-    };
     try {
-      const savedWorker = workerToEdit
-        ? await api.workers.update(workerToEdit.id, payload)
-        : await api.workers.create(payload);
+      const savedWorker = await saveWorkerRequest(data, workerToEdit?.id);
       const nextWorkers = workerToEdit
         ? workers.map((worker) =>
             String(worker.id) === String(savedWorker.id)
