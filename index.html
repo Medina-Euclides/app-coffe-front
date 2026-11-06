@@ -13,7 +13,6 @@
       content="CafeSmart - Aplicación PWA para gestión cafetera offline."
     />
 
-    <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/icon.png" />
     <link rel="apple-touch-icon" href="/icon.png" />
 
@@ -25,25 +24,5 @@
 
     <script type="module" src="/src/main.jsx"></script>
 
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker
-            .register('/sw.js')
-            .then((registro) => {
-              console.log(
-                'Service Worker de CafeSmart registrado:',
-                registro.scope
-              );
-            })
-            .catch((error) => {
-              console.error(
-                'No se pudo registrar el Service Worker:',
-                error
-              );
-            });
-        });
-      }
-    </script>
   </body>
 </html>

@@ -1,42 +1,49 @@
-const QUEUE_KEY = 'cafesmart_sync_queue';
+// Cola de operaciones pendientes (outbox) guardada en IndexedDB.
+import { db, newId } from '#lib/db';
 
-const leerCola = () => {
-  try {
-    const dato = localStorage.getItem(QUEUE_KEY);
-    return dato ? JSON.parse(dato) : [];
-  } catch {
-    return [];
-  }
-};
+export const OUTBOX_EVENT = 'cafesmart:outbox-changed';
 
-const guardarCola = (cola) => {
-  try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(cola));
-  } catch {
-    // Ignorar errores de almacenamiento
-  }
-};
+const notify = (type = 'changed') =>
+  window.dispatchEvent(new CustomEvent(OUTBOX_EVENT, { detail: { type } }));
 
-export const agregarAPendientes = (registro) => {
-  const cola = leerCola();
-  const nuevoRegistro = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    timestamp: new Date().toISOString(),
-    ...registro
+export async function agregarAPendientes({ op_id, client_ts, entity, action, object_id, data }) {
+  const op = {
+    op_id: op_id || newId(),
+    entity,
+    action,
+    object_id,
+    data: data || {},
+    client_ts: client_ts || new Date().toISOString(),
+    status: 'pending',
+    error: null,
   };
-  cola.push(nuevoRegistro);
-  guardarCola(cola);
-  return nuevoRegistro;
-};
+  op.seq = await db.outbox.add(op);
+  notify('added');
+  return op;
+}
 
-export const obtenerPendientes = () => leerCola();
+export const obtenerPendientes = () =>
+  db.outbox.where('status').equals('pending').sortBy('seq');
 
-export const limpiarPendientes = () => guardarCola([]);
+export const obtenerRechazados = () =>
+  db.outbox.where('status').equals('rejected').sortBy('seq');
 
-export const marcarSincronizados = (ids) => {
-  if (!Array.isArray(ids) || ids.length === 0) return;
-  const cola = leerCola().filter((item) => !ids.includes(item.id));
-  guardarCola(cola);
-};
+export const contarPendientes = () => db.outbox.where('status').equals('pending').count();
 
-export const contarPendientes = () => leerCola().length;
+export const contarRechazados = () => db.outbox.where('status').equals('rejected').count();
+
+export async function marcarSincronizados(seqs) {
+  if (!seqs.length) return;
+  await db.outbox.bulkDelete(seqs);
+  notify();
+}
+
+export async function marcarRechazado(seq, error) {
+  await db.outbox.update(seq, { status: 'rejected', error });
+  notify();
+}
+
+export async function descartarRechazados() {
+  await db.outbox.where('status').equals('rejected').delete();
+  notify();
+}

@@ -1,20 +1,19 @@
 import { useEffect, useState } from 'react';
+import { CONNECTIVITY_EVENT, isOnline as currentlyOnline } from '#services/connectivity';
 
+// true solo si hay red Y el servidor responde (no basta con estar conectado al Wi-Fi).
 export function useOnlineStatus() {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
+  const [isOnline, setIsOnline] = useState(currentlyOnline);
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
+    const update = () => setIsOnline(currentlyOnline());
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    window.addEventListener(CONNECTIVITY_EVENT, update);
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+      window.removeEventListener(CONNECTIVITY_EVENT, update);
     };
   }, []);
 

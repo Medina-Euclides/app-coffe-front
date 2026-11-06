@@ -1,8 +1,19 @@
 import axios from 'axios';
+import { newId } from '#lib/db';
+import { local, readCache, writeCache, clearLocalData } from './offlineStore.js';
+import { agregarAPendientes, contarPendientes } from './syncQueue.js';
+import {
+  configureConnectivity,
+  isOnline,
+  markServerDown,
+  markServerUp,
+  probeSoon,
+} from './connectivity.js';
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 ).replace(/\/$/, '');
+configureConnectivity({ baseUrl: API_BASE_URL });
 const AUTH_STORAGE_KEY = 'cafesmart_auth';
 const LOGIN_ENDPOINT = '/accounts/login/';
 const REGISTER_ENDPOINT = '/accounts/register/';
@@ -10,6 +21,8 @@ const REFRESH_ENDPOINT = '/accounts/token/refresh/';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  // Con señal débil en la finca es mejor pasar a modo sin conexión que esperar indefinidamente.
+  timeout: 12000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -153,8 +166,9 @@ async function refreshAccessToken() {
     const refreshedTokens = { ...tokens, ...response.data };
     saveAuthTokens(refreshedTokens);
     return refreshedTokens;
-  } catch {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch (error) {
+    // Solo se cierra la sesión si el servidor rechazó el token, no por falta de conexión.
+    if (error.response) localStorage.removeItem(AUTH_STORAGE_KEY);
     return null;
   }
 }
@@ -175,8 +189,13 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    markServerUp();
+    return response;
+  },
   async (error) => {
+    if (error.response) markServerUp();
+    else markServerDown();
     const request = error.config;
     const isPublicEndpoint = [
       LOGIN_ENDPOINT,
@@ -230,14 +249,124 @@ export async function apiRequest(endpoint, options = {}) {
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// Modo sin conexión
+// ---------------------------------------------------------------------------
+export function isNetworkError(error) {
+  const cause = error?.cause ?? error;
+  return Boolean(cause?.isAxiosError && !cause.response);
+}
+
+// Tiempo máximo que se espera al servidor antes de mostrar la copia local de una lista.
+const CACHE_FIRST_WAIT_MS = 1000;
+// Tiempo máximo de una escritura antes de guardarla en la cola (es seguro: el servidor
+// descarta duplicados por op_id, así que si sí llegó no se registra dos veces).
+const WRITE_TIMEOUT_MS = 6000;
+
+// Lista con caché local:
+//  - Sin conexión (o con cambios locales aún sin enviar): responde desde el dispositivo al instante.
+//  - Con conexión y copia local: espera al servidor como máximo 1 s; si tarda más, muestra la
+//    copia local, termina de actualizarla en segundo plano y revisa si el servidor responde.
+//  - Sin copia local: espera al servidor.
+async function cachedList(key, fetcher) {
+  const [hasPending, cached] = await Promise.all([
+    contarPendientes().then((n) => n > 0),
+    readCache(key),
+  ]);
+  if (!isOnline() || hasPending) {
+    if (cached) return cached;
+    if (!isOnline()) {
+      throw new Error(
+        'Sin conexión y sin datos guardados en este dispositivo. Conéctate una vez para descargarlos.',
+      );
+    }
+    return fetcher();
+  }
+
+  const fresh = fetcher().then(async (data) => {
+    await writeCache(key, data);
+    return data;
+  });
+  if (!cached) {
+    try {
+      return await fresh;
+    } catch (error) {
+      if (isNetworkError(error)) {
+        throw new Error(
+          'Sin conexión y sin datos guardados en este dispositivo. Conéctate una vez para descargarlos.',
+          { cause: error },
+        );
+      }
+      throw error;
+    }
+  }
+  fresh.catch(() => {}); // si falla en segundo plano se queda la copia local
+  let timer;
+  const fallback = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      void probeSoon();
+      resolve(cached);
+    }, CACHE_FIRST_WAIT_MS);
+  });
+  try {
+    return await Promise.race([fresh, fallback]);
+  } catch (error) {
+    if (isNetworkError(error)) return cached;
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Escritura con soporte offline. Toda escritura es una operación con op_id y el UUID del
+// registro generado en el dispositivo:
+//  - Con conexión y cola vacía: se envía al servidor de inmediato (POST /sync/push/) y los
+//    errores de validación se muestran en el formulario como siempre.
+//  - Sin conexión, o si el servidor no responde a tiempo: la MISMA operación se guarda en la cola
+//    y se aplica en la caché local para que la página la vea al instante.
+async function offlineWrite({ entity, action, id, data = {}, apply }) {
+  const op = {
+    op_id: newId(),
+    entity,
+    action,
+    object_id: id ?? newId(),
+    data,
+    client_ts: new Date().toISOString(),
+  };
+  if (isOnline() && (await contarPendientes()) === 0) {
+    try {
+      const response = await apiClient.post(
+        '/sync/push/',
+        { operations: [op] },
+        { timeout: WRITE_TIMEOUT_MS },
+      );
+      const result = response.data?.results?.[0];
+      const failed =
+        !result ||
+        result.status === 'rejected' ||
+        (result.status === 'duplicate' && result.original_status === 'rejected');
+      if (failed) {
+        throw new Error(getErrorMessage(result?.errors, result?.http_status), {
+          cause: { response: { data: result?.errors, status: result?.http_status } },
+        });
+      }
+      const saved = result.data && typeof result.data === 'object' ? result.data : null;
+      await apply(op.object_id, saved && Object.keys(saved).length ? saved : data, true);
+      return saved && Object.keys(saved).length ? saved : { ...data, id: op.object_id };
+    } catch (error) {
+      if (!isNetworkError(error)) throw error;
+    }
+  }
+  await agregarAPendientes(op);
+  const optimistic = await apply(op.object_id, data, false);
+  return { ...(optimistic || {}), id: op.object_id, _pending: true };
+}
+
 export const api = {
   sync: {
-    enviarPendientes: (payload) =>
-      apiRequest('/api/sync', {
-        method: 'POST',
-        data: payload,
-      }),
-    obtenerCambios: () => apiRequest('/api/sync', { method: 'GET' }),
+    push: (payload) => apiRequest('/sync/push/', { method: 'POST', data: payload }),
+    pull: () => apiRequest('/sync/pull/', { method: 'GET' }),
   },
   auth: {
     login: async (data) => {
@@ -258,11 +387,18 @@ export const api = {
       const tokens = readAuthTokens();
       return Boolean(tokens?.access || tokens?.refresh);
     },
-    logout: () => localStorage.removeItem(AUTH_STORAGE_KEY),
+    logout: async () => {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      await clearLocalData();
+    },
   },
   farms: {
     list: async () =>
-      normalizeList(await apiRequest('/farms/'), 'fincas').map(normalizeFarm),
+      (
+        await cachedList('farms', async () =>
+          normalizeList(await apiRequest('/farms/'), 'fincas'),
+        )
+      ).map(normalizeFarm),
     create: async (data) =>
       normalizeFarm(
         await apiRequest('/farms/', { method: 'POST', data }),
@@ -290,20 +426,34 @@ export const api = {
   },
   finance: {
     expenses: {
-      list: async () =>
-        normalizeList(
-          await apiRequest('/finance/expenses/'),
-          'egresos',
+      list: () =>
+        cachedList('expenses', async () =>
+          normalizeList(await apiRequest('/finance/expenses/'), 'egresos'),
         ),
       create: (data) =>
-        apiRequest('/finance/expenses/', { method: 'POST', data }),
+        offlineWrite({
+          entity: 'expense',
+          action: 'create',
+          data,
+          apply: (id, item) => local.flat.create('expenses', id, item),
+        }),
       update: (id, data) =>
-        apiRequest(`/finance/expenses/${id}/`, { method: 'PATCH', data }),
+        offlineWrite({
+          entity: 'expense',
+          action: 'update',
+          id,
+          data,
+          apply: (itemId, item) => local.flat.update('expenses', itemId, item),
+        }),
     },
   },
   lots: {
     list: async () =>
-      normalizeList(await apiRequest('/farms/lots/'), 'lotes').map(normalizeLot),
+      (
+        await cachedList('lots', async () =>
+          normalizeList(await apiRequest('/farms/lots/'), 'lotes'),
+        )
+      ).map(normalizeLot),
     create: async (data) =>
       normalizeLot(
         await apiRequest('/farms/lots/', { method: 'POST', data }),
@@ -315,23 +465,40 @@ export const api = {
   },
   workers: {
     list: async () =>
-      normalizeList(await apiRequest('/labor/workers/'), 'trabajadores').map(
-        normalizeWorker,
-      ),
+      (
+        await cachedList('workers', async () =>
+          normalizeList(await apiRequest('/labor/workers/'), 'trabajadores'),
+        )
+      ).map(normalizeWorker),
     create: async (data) =>
       normalizeWorker(
-        await apiRequest('/labor/workers/', { method: 'POST', data }),
+        await offlineWrite({
+          entity: 'worker',
+          action: 'create',
+          data,
+          apply: (id, item) => local.flat.create('workers', id, item, { is_active: true }),
+        }),
       ),
     update: async (id, data) =>
       normalizeWorker(
-        await apiRequest(`/labor/workers/${id}/`, { method: 'PATCH', data }),
+        await offlineWrite({
+          entity: 'worker',
+          action: 'update',
+          id,
+          data,
+          apply: (itemId, item) => local.flat.update('workers', itemId, item),
+        }),
       ),
   },
   activities: {
     list: async () =>
-      normalizeList(
-        await apiRequest('/labor/activity-types/'),
-        'tipos de actividad',
+      (
+        await cachedList('activities', async () =>
+          normalizeList(
+            await apiRequest('/labor/activity-types/'),
+            'tipos de actividad',
+          ),
+        )
       ).map(normalizeActivity),
     create: async (data) =>
       normalizeActivity(
@@ -349,61 +516,151 @@ export const api = {
   },
   production: {
     sales: {
-      list: async () =>
-        normalizeList(
-          await apiRequest('/production/sales/'),
-          'ventas',
+      list: () =>
+        cachedList('sales', async () =>
+          normalizeList(await apiRequest('/production/sales/'), 'ventas'),
         ),
       create: (data) =>
-        apiRequest('/production/sales/', { method: 'POST', data }),
+        offlineWrite({
+          entity: 'sale',
+          action: 'create',
+          data,
+          apply: (id, item) =>
+            local.flat.create('sales', id, item, {
+              is_active: true,
+              total_amount: (Number(data.quantity_kg) || 0) * (Number(data.unit_price) || 0),
+            }),
+        }),
       update: (id, data) =>
-        apiRequest(`/production/sales/${id}/`, { method: 'PATCH', data }),
+        offlineWrite({
+          entity: 'sale',
+          action: 'update',
+          id,
+          data,
+          apply: (itemId, item) => local.flat.update('sales', itemId, item),
+        }),
     },
   },
   workdays: {
-    list: async () =>
-      normalizeList(await apiRequest('/labor/workdays/'), 'jornadas'),
+    list: () =>
+      cachedList('workdays', async () =>
+        normalizeList(await apiRequest('/labor/workdays/'), 'jornadas'),
+      ),
     create: (data) =>
-      apiRequest('/labor/workdays/', { method: 'POST', data }),
+      offlineWrite({
+        entity: 'workday',
+        action: 'create',
+        data,
+        apply: (id, item) => local.workdays.create(id, item),
+      }),
     updateLabor: (id, data) =>
-      apiRequest(`/labor/workdays/${id}/labor/`, { method: 'PATCH', data }),
+      offlineWrite({
+        entity: 'workday',
+        action: 'update_labor',
+        id,
+        data,
+        apply: (itemId, item, fromServer) =>
+          fromServer ? local.workdays.replace(item) : local.workdays.updateLabor(itemId, item),
+      }),
     close: (id) =>
-      apiRequest(`/labor/workdays/${id}/close/`, { method: 'POST' }),
+      offlineWrite({
+        entity: 'workday',
+        action: 'close',
+        id,
+        apply: (itemId) => local.workdays.close(itemId),
+      }),
     delete: (id) =>
-      apiRequest(`/labor/workdays/${id}/`, { method: 'DELETE' }),
+      offlineWrite({
+        entity: 'workday',
+        action: 'delete',
+        id,
+        apply: (itemId) => local.workdays.remove(itemId),
+      }),
   },
   workdayWorkers: {
     create: (data) =>
-      apiRequest('/labor/workday-workers/', { method: 'POST', data }),
+      offlineWrite({
+        entity: 'workday_worker',
+        action: 'create',
+        data,
+        apply: (id, item) => local.workdayWorkers.create(id, item),
+      }),
     update: (id, data) =>
-      apiRequest(`/labor/workday-workers/${id}/`, { method: 'PATCH', data }),
+      offlineWrite({
+        entity: 'workday_worker',
+        action: 'update',
+        id,
+        data,
+        apply: (itemId, item) => local.workdayWorkers.update(itemId, item),
+      }),
     cancel: (id) =>
-      apiRequest(`/labor/workday-workers/${id}/cancel/`, { method: 'POST' }),
+      offlineWrite({
+        entity: 'workday_worker',
+        action: 'cancel',
+        id,
+        apply: (itemId) => local.workdayWorkers.setStatus(itemId, 'anulado'),
+      }),
     reactivate: (id) =>
-      apiRequest(`/labor/workday-workers/${id}/reactivate/`, { method: 'POST' }),
+      offlineWrite({
+        entity: 'workday_worker',
+        action: 'reactivate',
+        id,
+        apply: (itemId) => local.workdayWorkers.setStatus(itemId, 'pendiente'),
+      }),
     delete: (id) =>
-      apiRequest(`/labor/workday-workers/${id}/`, { method: 'DELETE' }),
+      offlineWrite({
+        entity: 'workday_worker',
+        action: 'delete',
+        id,
+        apply: (itemId) => local.workdayWorkers.remove(itemId),
+      }),
   },
   workdayDetails: {
     create: (data) =>
-      apiRequest('/labor/workday-details/', { method: 'POST', data }),
+      offlineWrite({
+        entity: 'workday_detail',
+        action: 'create',
+        data,
+        apply: (id, item) => local.workdayDetails.create(id, item),
+      }),
     update: (id, data) =>
-      apiRequest(`/labor/workday-details/${id}/`, { method: 'PATCH', data }),
+      offlineWrite({
+        entity: 'workday_detail',
+        action: 'update',
+        id,
+        data,
+        apply: (itemId, item) => local.workdayDetails.update(itemId, item),
+      }),
     delete: (id) =>
-      apiRequest(`/labor/workday-details/${id}/`, { method: 'DELETE' }),
+      offlineWrite({
+        entity: 'workday_detail',
+        action: 'delete',
+        id,
+        apply: (itemId) => local.workdayDetails.remove(itemId),
+      }),
   },
   harvestRecords: {
     create: (data) =>
-      apiRequest('/labor/harvest-records/', { method: 'POST', data }),
+      offlineWrite({
+        entity: 'harvest_record',
+        action: 'create',
+        data,
+        apply: (id, item) => local.harvestRecords.create(id, item),
+      }),
     update: (id, data) =>
-      apiRequest(`/labor/harvest-records/${id}/`, { method: 'PATCH', data }),
+      offlineWrite({
+        entity: 'harvest_record',
+        action: 'update',
+        id,
+        data,
+        apply: (itemId, item) => local.harvestRecords.update(itemId, item),
+      }),
   },
   payroll: {
     settlements: {
-      list: async () =>
-        normalizeList(
-          await apiRequest('/payroll/settlements/'),
-          'liquidaciones',
+      list: () =>
+        cachedList('settlements', async () =>
+          normalizeList(await apiRequest('/payroll/settlements/'), 'liquidaciones'),
         ),
       create: (data) =>
         apiRequest('/payroll/settlements/', { method: 'POST', data }),
@@ -426,22 +683,22 @@ export const api = {
         apiRequest('/payroll/settlements/pay/', { method: 'POST', data }),
     },
     settlementWorkdays: {
-      list: async () =>
-        normalizeList(
-          await apiRequest('/payroll/settlement-workdays/'),
-          'detalles de liquidación por jornal',
+      list: () =>
+        cachedList('settlement_workdays', async () =>
+          normalizeList(await apiRequest('/payroll/settlement-workdays/'), 'detalles de liquidación por jornal'),
         ),
     },
     settlementHarvests: {
-      list: async () =>
-        normalizeList(
-          await apiRequest('/payroll/settlement-harvests/'),
-          'detalles de liquidación por kilogramo',
+      list: () =>
+        cachedList('settlement_harvests', async () =>
+          normalizeList(await apiRequest('/payroll/settlement-harvests/'), 'detalles de liquidación por kilogramo'),
         ),
     },
     payments: {
-      list: async () =>
-        normalizeList(await apiRequest('/payroll/payments/'), 'pagos laborales'),
+      list: () =>
+        cachedList('payments', async () =>
+          normalizeList(await apiRequest('/payroll/payments/'), 'pagos laborales'),
+        ),
     },
   },
 };

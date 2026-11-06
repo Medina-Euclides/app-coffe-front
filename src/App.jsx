@@ -3,6 +3,7 @@ import { BrowserRouter, useNavigate } from 'react-router-dom';
 import RoutesApp from './routes/RoutesApp.jsx';
 import { leerLocal } from '#lib/storage';
 import { api } from '#services/api';
+import { cantidadPendientes, syncNow } from '#services/syncService';
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ function AppRoutes() {
   const handleLogin = (nuevoUsuario) => {
     localStorage.setItem('cafesmart_usuario', JSON.stringify(nuevoUsuario));
     setUsuario(nuevoUsuario);
+    // Descarga los datos de la finca para poder trabajar luego sin conexión.
+    void syncNow();
     navigate(
       nuevoUsuario.primerIngreso ? '/configuracion-inicial' : '/inicio',
       { replace: true },
@@ -40,8 +43,17 @@ function AppRoutes() {
     navigate('/inicio', { replace: true });
   };
 
-  const handleLogout = () => {
-    api.auth.logout();
+  const handleLogout = async () => {
+    const pendientes = await cantidadPendientes();
+    if (
+      pendientes > 0 &&
+      !window.confirm(
+        `Tienes ${pendientes} registro(s) sin sincronizar. Si cierras sesión se perderán. ¿Cerrar sesión de todas formas?`,
+      )
+    ) {
+      return;
+    }
+    await api.auth.logout();
     localStorage.removeItem('cafesmart_usuario');
     setUsuario(null);
     navigate('/login', { replace: true });

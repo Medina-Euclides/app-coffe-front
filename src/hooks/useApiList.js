@@ -1,6 +1,7 @@
 // Carga una lista desde la API con caché en localStorage: data, loading, error, refetch.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { leerLocal } from '#lib/storage';
+import { DATA_EVENT } from '#services/syncService';
 
 export function useApiList(storageKey, fetchFn, saveFn) {
   const [data, setData] = useState(() => leerLocal(storageKey, []));
@@ -40,6 +41,13 @@ export function useApiList(storageKey, fetchFn, saveFn) {
     return () => {
       active.current = false;
     };
+  }, [load]);
+
+  // Recargar cuando la sincronización trae datos nuevos del servidor.
+  useEffect(() => {
+    const reload = () => void load();
+    window.addEventListener(DATA_EVENT, reload);
+    return () => window.removeEventListener(DATA_EVENT, reload);
   }, [load]);
 
   const refetch = useCallback(() => {
