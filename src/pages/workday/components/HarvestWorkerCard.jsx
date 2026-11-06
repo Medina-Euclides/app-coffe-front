@@ -1,7 +1,14 @@
 // Tarjeta de recolección por trabajador: kilos del periodo como dato principal
-// y los pesajes desplegables con lote, fecha, hora y finca.
+// y los pesajes en un modal con lote, fecha, hora y finca.
 import { useState } from 'react';
-import { CalendarDays, ChevronDown, Clock3, MapPin, Scale } from 'lucide-react';
+import { CalendarDays, ChevronRight, Clock3, MapPin, Scale } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '#components/ui/dialog';
 
 const kilograms = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 3 });
 const shortDate = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' });
@@ -22,7 +29,7 @@ function getInitials(name) {
 }
 
 export default function HarvestWorkerCard({ worker, periodLabel }) {
-  const [expanded, setExpanded] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const count = worker.records.length;
   const lastTime = worker.latestRecord.time.slice(0, 5);
   const listId = `pesajes-${worker.workerId}`;
@@ -68,26 +75,37 @@ export default function HarvestWorkerCard({ worker, periodLabel }) {
           </p>
         </div>
 
-        <div>
-          <button
-            aria-controls={listId}
-            aria-expanded={expanded}
-            className="flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-xl px-1 text-sm font-medium text-ink-soft hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            onClick={() => setExpanded((value) => !value)}
-            type="button"
-          >
-            <span>{expanded ? 'Ocultar pesajes' : 'Ver pesajes'}</span>
-            <ChevronDown
-              aria-hidden="true"
-              className={`ml-auto size-4 transition-transform motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`}
-            />
-          </button>
+        <button
+          aria-haspopup="dialog"
+          className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-xl bg-muted px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-secondary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          onClick={() => setDetailOpen(true)}
+          type="button"
+        >
+          <span>Ver pesajes</span>
+          <ChevronRight aria-hidden="true" className="size-4" />
+        </button>
+      </div>
 
-          {expanded && (
-            <ul className="mt-1 divide-y divide-border/70 rounded-xl bg-muted px-3" id={listId}>
+      <Dialog onOpenChange={setDetailOpen} open={detailOpen}>
+        <DialogContent className="max-h-[min(90dvh,40rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-md sm:p-6">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="text-2xl text-foreground">
+              {worker.workerName}
+            </DialogTitle>
+            <DialogDescription>
+              {kilograms.format(worker.totalKilograms)} kg en {count}{' '}
+              {count === 1 ? 'pesaje' : 'pesajes'} {periodLabel}
+            </DialogDescription>
+          </DialogHeader>
+
+          <section>
+            <h3 className="mb-1 text-sm font-semibold text-ink-soft" id={listId}>
+              Pesajes
+            </h3>
+            <ul aria-labelledby={listId} className="divide-y divide-border/70">
               {worker.records.map((record) => (
                 <li
-                  className="flex min-w-0 items-center justify-between gap-3 py-2.5 text-sm"
+                  className="flex min-w-0 items-center justify-between gap-3 py-3 text-sm"
                   key={record.id}
                 >
                   <div className="min-w-0 flex-1">
@@ -115,9 +133,9 @@ export default function HarvestWorkerCard({ worker, periodLabel }) {
                 </li>
               ))}
             </ul>
-          )}
-        </div>
-      </div>
+          </section>
+        </DialogContent>
+      </Dialog>
     </article>
   );
 }
