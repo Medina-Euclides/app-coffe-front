@@ -17,10 +17,14 @@ import { api } from '#services/api';
 import PageTitle from '#components/shared/PageTitle';
 import SegmentedControl from '#components/shared/SegmentedControl';
 
+// Etiquetas cortas para que los cuatro botones quepan en el celular; el rango de
+// fechas debajo del filtro aclara qué se está viendo. `produccion` completa la
+// frase «Producción de…» bajo el título del gráfico.
 const periods = [
-  { value: 'week', label: 'Esta semana' },
-  { value: 'month', label: 'Este mes' },
-  { value: 'year', label: 'Este año' },
+  { value: 'week', label: 'Semana', produccion: 'esta semana' },
+  { value: 'month', label: 'Mes', produccion: 'este mes' },
+  { value: 'year', label: 'Año', produccion: 'este año' },
+  { value: 'all', label: 'Histórico', produccion: 'los últimos 5 años' },
 ];
 
 const categoryColors = {
@@ -70,6 +74,7 @@ function formatBucket(point, period) {
   if (period === 'week') {
     return new Intl.DateTimeFormat('es-CO', { weekday: 'short' }).format(start);
   }
+  if (period === 'all') return String(start.getFullYear());
   if (period === 'year') {
     return new Intl.DateTimeFormat('es-CO', { month: 'short' }).format(start);
   }
@@ -211,8 +216,8 @@ export default function AnalyticPage({ usuario }) {
   const expenses = activeSummary?.expenses_by_category || [];
   const totalExpenses =
     Number(activeSummary?.financial_summary?.total_expenses) || 0;
-  const periodLabel =
-    periods.find((option) => option.value === period)?.label || 'Este mes';
+  const periodOption =
+    periods.find((option) => option.value === period) || periods[1];
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
@@ -264,8 +269,7 @@ export default function AnalyticPage({ usuario }) {
           value={period}
         />
         <p className="text-sm text-muted-foreground" aria-live="polite">
-          {periodLabel}
-          {productionSeries ? ` · ${formatPeriodRange(productionSeries)}` : ''}
+          {productionSeries ? formatPeriodRange(productionSeries) : ''}
         </p>
       </div>
 
@@ -346,7 +350,7 @@ export default function AnalyticPage({ usuario }) {
                     Café recolectado
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    Producción de {periodLabel.toLocaleLowerCase()}
+                    Producción de {periodOption.produccion}
                   </CardDescription>
                 </div>
                 <div className="shrink-0 rounded-full border border-border bg-tint px-3 py-1.5 text-sm font-semibold text-primary">
