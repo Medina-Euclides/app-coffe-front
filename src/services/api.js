@@ -281,6 +281,13 @@ export const api = {
         },
       }),
   },
+  assistant: {
+    ask: (question, history = []) =>
+      apiRequest('/assistant/ask/', {
+        method: 'POST',
+        data: { question, history },
+      }),
+  },
   finance: {
     expenses: {
       list: async () =>
