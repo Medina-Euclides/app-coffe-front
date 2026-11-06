@@ -1,4 +1,4 @@
-// Asistente de configuración inicial: crea finca, lote y actividad del usuario.
+// Asistente de configuración inicial: crea finca, lote, actividad y primer trabajador.
 import { useState } from 'react';
 import { Button } from '#components/ui/button';
 import {
@@ -15,8 +15,11 @@ import {
   guardarFincaActiva,
 } from '#services/farmStorage';
 import MaduracionStripe from '#components/shared/MaduracionStripe';
+import { guardarCacheTrabajadores } from '#services/workerStorage';
+import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions';
 
 const variedadesCafe = ['Castillo', 'Caturra', 'Colombia', 'Borbón', 'Geisha'];
+const etapas = ['Finca', 'Lote', 'Actividad', 'Trabajador'];
 
 function leerListaGuardada(clave) {
   const valorGuardado = localStorage.getItem(clave);
@@ -42,11 +45,23 @@ export function SetupWizard({ usuario, onComplete }) {
   const [fincaCreada, setFincaCreada] = useState(null);
   const [loteCreado, setLoteCreado] = useState(null);
   const [actividadCreada, setActividadCreada] = useState(null);
+  const [nombreTrabajador, setNombreTrabajador] = useState('');
+  const [apellidoTrabajador, setApellidoTrabajador] = useState('');
+  const [cedulaTrabajador, setCedulaTrabajador] = useState('');
+  const [trabajadorCreado, setTrabajadorCreado] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  const guardarConfiguracion = async (event, actividadOpcional = nombreActividad) => {
+  const datosTrabajador = () => ({
+    first_name: nombreTrabajador.trim(),
+    last_name: apellidoTrabajador.trim(),
+    identification: cedulaTrabajador.trim(),
+    phone: '',
+  });
+
+  const guardarConfiguracion = async (event, { conTrabajador = true } = {}) => {
     event?.preventDefault();
     setError('');
+    const actividadOpcional = nombreActividad;
 
     if (!usuario?.id) {
       setError('No se encontró tu sesión. Inicia sesión para continuar.');
@@ -74,6 +89,14 @@ export function SetupWizard({ usuario, onComplete }) {
     ) {
       setError('Ingresa un número entero de plantas igual o mayor que cero.');
       return;
+    }
+
+    if (conTrabajador) {
+      const errorTrabajador = validateWorker(datosTrabajador(), [], null);
+      if (errorTrabajador) {
+        setError(errorTrabajador);
+        return;
+      }
     }
 
     setGuardando(true);
@@ -110,6 +133,16 @@ export function SetupWizard({ usuario, onComplete }) {
           is_harvest: true,
         }));
       setActividadCreada(actividad);
+      if (conTrabajador) {
+        const trabajador =
+          trabajadorCreado ||
+          (await saveWorkerRequest(datosTrabajador(), null));
+        setTrabajadorCreado(trabajador);
+        guardarCacheTrabajadores(userId, [
+          ...leerListaGuardada(`cafesmart_trabajadores_${userId}`),
+          trabajador,
+        ]);
+      }
       guardarCacheFincasYLotes(
         userId,
         [...fincasGuardadas, finca],
@@ -158,26 +191,31 @@ export function SetupWizard({ usuario, onComplete }) {
           {paso > 1 && (
             <div
               aria-label="Progreso de configuración inicial"
-              aria-valuemax={3}
+              aria-valuemax={etapas.length}
               aria-valuemin={1}
               aria-valuenow={paso - 1}
+              aria-valuetext={`${etapas[paso - 2]}, paso ${paso - 1} de ${etapas.length}`}
               className="space-y-2"
               role="progressbar"
             >
-              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
-                <span>Finca, lote y actividad</span>
-                <span>{paso - 1} de 3</span>
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">
+                  {etapas[paso - 2]}
+                </span>
+                <span className="tabular-nums">
+                  {paso - 1} de {etapas.length}
+                </span>
               </div>
-              <div
-                aria-hidden="true"
-                className="h-2 overflow-hidden rounded-full bg-secondary"
-              >
-                <div
-                  className={`h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none ${
-                    paso === 2 ? 'w-1/3' : paso === 3 ? 'w-2/3' : 'w-full'
-                  }`}
-                />
-              </div>
+              <ol aria-hidden="true" className="grid grid-cols-4 gap-1.5">
+                {etapas.map((etapa, indice) => (
+                  <li
+                    className={`h-2 rounded-full transition-colors motion-reduce:transition-none ${
+                      indice <= paso - 2 ? 'bg-primary' : 'bg-secondary'
+                    }`}
+                    key={etapa}
+                  />
+                ))}
+              </ol>
             </div>
           )}
 
@@ -187,6 +225,7 @@ export function SetupWizard({ usuario, onComplete }) {
               {paso === 2 && 'Agrega tu finca'}
               {paso === 3 && 'Crea tu primer lote'}
               {paso === 4 && 'Agrega una actividad'}
+              {paso === 5 && 'Registra tu primer trabajador'}
             </h1>
             <CardDescription className="break-words text-pretty leading-relaxed text-muted-foreground">
               {paso === 1 &&
@@ -197,6 +236,8 @@ export function SetupWizard({ usuario, onComplete }) {
                 'Los lotes te ayudan a organizar variedades y áreas de cultivo.'}
               {paso === 4 &&
                 'Crea una actividad de recolección para registrar los pesajes. Si omites este paso, agregaremos “Recolección de café” por ti.'}
+              {paso === 5 &&
+                'Con una persona registrada ya puedes abrir tu primera jornada del día. Podrás agregar más trabajadores cuando quieras.'}
             </CardDescription>
           </div>
         </CardHeader>
@@ -212,6 +253,7 @@ export function SetupWizard({ usuario, onComplete }) {
                 <li>El nombre, la variedad y el área de tu primer lote.</li>
                 <li>El número de plantas de café de tu lote (opcional).</li>
                 <li>Una actividad para registrar la recolección de café.</li>
+                <li>Tu primer trabajador, para empezar a registrar jornadas.</li>
               </ul>
             </div>
             <Button
@@ -274,9 +316,9 @@ export function SetupWizard({ usuario, onComplete }) {
                 />
               </div>
               <NoticeBanner message={error} isError />
-              <div className="flex gap-3 pt-2">
+              <WizardActions>
                 <Button
-                  className="h-12 flex-1 rounded-xl"
+                  className={btnAtras}
                   onClick={() => setPaso(1)}
                   type="button"
                   variant="outline"
@@ -284,12 +326,12 @@ export function SetupWizard({ usuario, onComplete }) {
                   Atrás
                 </Button>
                 <Button
-                  className="h-12 flex-1 rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
+                  className={btnPrimario}
                   type="submit"
                 >
-                  Continuar a la actividad
+                  Continuar al lote
                 </Button>
-              </div>
+              </WizardActions>
             </form>
           </CardContent>
         )}
@@ -297,7 +339,16 @@ export function SetupWizard({ usuario, onComplete }) {
           <CardContent className="px-6 pb-8 pt-7 sm:px-9 sm:pb-10">
             <form
               className="space-y-5"
-              onSubmit={(event) => guardarConfiguracion(event)}
+              onSubmit={(event) => {
+                event.preventDefault();
+                const nombre = nombreActividad.trim();
+                if (nombre && nombre.length < 2) {
+                  setError('El nombre de la actividad debe tener al menos 2 caracteres.');
+                  return;
+                }
+                setError('');
+                setPaso(5);
+              }}
             >
               <div className="space-y-2">
                 <label
@@ -325,9 +376,9 @@ export function SetupWizard({ usuario, onComplete }) {
 
               <NoticeBanner message={error} isError />
 
-              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+              <WizardActions>
                 <Button
-                  className="h-12 flex-1 rounded-xl"
+                  className={btnAtras}
                   disabled={guardando || Boolean(loteCreado)}
                   onClick={() => {
                     setError('');
@@ -339,22 +390,133 @@ export function SetupWizard({ usuario, onComplete }) {
                   Atrás
                 </Button>
                 <Button
-                  className="h-12 flex-1 rounded-xl"
+                  className={btnSecundario}
                   disabled={guardando}
-                  onClick={() => guardarConfiguracion(undefined, '')}
+                  onClick={() => {
+                    setNombreActividad('');
+                    setError('');
+                    setPaso(5);
+                  }}
                   type="button"
                   variant="outline"
                 >
-                  Omitir y usar la predeterminada
+                  Usar la predeterminada
                 </Button>
                 <Button
-                  className="h-12 flex-1 rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
+                  className={btnPrimario}
                   disabled={guardando}
                   type="submit"
                 >
-                  {guardando ? 'Guardando…' : 'Crear actividad y entrar'}
+                  Continuar al trabajador
                 </Button>
+              </WizardActions>
+            </form>
+          </CardContent>
+        )}
+
+        {paso === 5 && (
+          <CardContent className="px-6 pb-8 pt-7 sm:px-9 sm:pb-10">
+            <form
+              className="space-y-5"
+              onSubmit={(event) => guardarConfiguracion(event)}
+            >
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-medium text-foreground"
+                    htmlFor="nombre-trabajador"
+                  >
+                    Nombre
+                  </label>
+                  <Input
+                    autoComplete="off"
+                    className="h-12 rounded-xl px-4"
+                    disabled={Boolean(trabajadorCreado)}
+                    id="nombre-trabajador"
+                    maxLength={150}
+                    name="first_name"
+                    onChange={(event) => setNombreTrabajador(event.target.value)}
+                    placeholder="Ej.: María…"
+                    value={nombreTrabajador}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-medium text-foreground"
+                    htmlFor="apellido-trabajador"
+                  >
+                    Apellido
+                  </label>
+                  <Input
+                    autoComplete="off"
+                    className="h-12 rounded-xl px-4"
+                    disabled={Boolean(trabajadorCreado)}
+                    id="apellido-trabajador"
+                    maxLength={150}
+                    name="last_name"
+                    onChange={(event) => setApellidoTrabajador(event.target.value)}
+                    placeholder="Ej.: Gómez…"
+                    value={apellidoTrabajador}
+                  />
+                </div>
               </div>
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-medium text-foreground"
+                  htmlFor="cedula-trabajador"
+                >
+                  Cédula <span className="text-muted-foreground">(opcional)</span>
+                </label>
+                <Input
+                  autoComplete="off"
+                  className="h-12 rounded-xl px-4"
+                  disabled={Boolean(trabajadorCreado)}
+                  id="cedula-trabajador"
+                  inputMode="numeric"
+                  maxLength={150}
+                  name="identification"
+                  onChange={(event) => setCedulaTrabajador(event.target.value)}
+                  placeholder="Ej.: 1061234567…"
+                  value={cedulaTrabajador}
+                />
+                <p className="text-sm leading-5 text-muted-foreground">
+                  El teléfono y los demás datos los puedes completar luego en
+                  Trabajadores.
+                </p>
+              </div>
+
+              <NoticeBanner message={error} isError />
+
+              <WizardActions>
+                <Button
+                  className={btnAtras}
+                  disabled={guardando || Boolean(actividadCreada)}
+                  onClick={() => {
+                    setError('');
+                    setPaso(4);
+                  }}
+                  type="button"
+                  variant="outline"
+                >
+                  Atrás
+                </Button>
+                <Button
+                  className={btnSecundario}
+                  disabled={guardando || Boolean(trabajadorCreado)}
+                  onClick={() => guardarConfiguracion(undefined, { conTrabajador: false })}
+                  type="button"
+                  variant="outline"
+                >
+                  Omitir por ahora
+                </Button>
+                <Button
+                  className={btnPrimario}
+                  disabled={guardando}
+                  type="submit"
+                >
+                  {guardando ? 'Guardando…' : 'Guardar y entrar'}
+                </Button>
+              </WizardActions>
             </form>
           </CardContent>
         )}
@@ -458,9 +620,9 @@ export function SetupWizard({ usuario, onComplete }) {
 
               <NoticeBanner message={error} isError />
 
-              <div className="flex gap-3 pt-2">
+              <WizardActions>
                 <Button
-                  className="h-12 flex-1 rounded-xl"
+                  className={btnAtras}
                   disabled={guardando || Boolean(fincaCreada)}
                   onClick={() => {
                     setError('');
@@ -472,17 +634,36 @@ export function SetupWizard({ usuario, onComplete }) {
                   Atrás
                 </Button>
                 <Button
-                  className="h-12 flex-1 rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
+                  className={btnPrimario}
                   disabled={guardando}
                   type="submit"
                 >
-                  {guardando ? 'Guardando…' : 'Guardar y entrar'}
+                  Continuar a la actividad
                 </Button>
-              </div>
+              </WizardActions>
             </form>
           </CardContent>
         )}
       </Card>
     </main>
+  );
+}
+
+const btnBase =
+  'h-12 min-h-12 shrink-0 rounded-xl px-5 text-base sm:flex-1 sm:basis-0';
+const btnPrimario = `${btnBase} bg-primary font-semibold text-primary-foreground hover:bg-primary-hover`;
+const btnSecundario = `${btnBase} font-medium`;
+const btnAtras = `${btnBase} border-transparent bg-transparent font-medium text-muted-foreground shadow-none hover:bg-secondary hover:text-foreground sm:max-w-32`;
+
+/**
+ * Barra de acciones del asistente. En el DOM va Atrás → secundarias → principal
+ * (orden lógico de teclado). En móvil se apila invertida: la acción principal
+ * queda arriba a ancho completo y «Atrás» al final como acción discreta.
+ */
+function WizardActions({ children }) {
+  return (
+    <div className="flex flex-col-reverse gap-3 pt-3 sm:flex-row sm:items-center">
+      {children}
+    </div>
   );
 }
