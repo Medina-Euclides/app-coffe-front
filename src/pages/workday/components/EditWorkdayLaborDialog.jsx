@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#components/ui/dialog';
-import { Input } from '#components/ui/input';
+import MoneyInput from '#components/shared/MoneyInput';
 import {
   Select,
   SelectContent,
@@ -289,14 +289,11 @@ export default function EditWorkdayLaborDialog({
                 <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
                   $
                 </span>
-                <Input
+                <MoneyInput
                   className="h-11 rounded-xl border-input bg-card pl-8 text-sm text-foreground"
                   id="edit-workday-rate"
-                  min="0.01"
-                  onChange={(event) => setRate(event.target.value)}
+                  onValueChange={setRate}
                   required
-                  step="0.01"
-                  type="number"
                   value={rate}
                 />
               </div>

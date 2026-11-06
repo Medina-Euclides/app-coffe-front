@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { Input } from '#components/ui/input';
+import MoneyInput from '#components/shared/MoneyInput';
 import {
   Select,
   SelectContent,
@@ -600,17 +601,13 @@ export default function WorkdayFormDialog({
                   >
                     $
                   </span>
-                  <Input
-                    autoComplete="off"
+                  <MoneyInput
                     className="h-12 rounded-xl border-input bg-card pl-9 text-base font-semibold text-foreground"
                     id="workday-rate"
-                    min="0.01"
                     name="agreed_rate"
-                    onChange={(event) => setRate(event.target.value)}
+                    onValueChange={setRate}
                     placeholder="Ej. 50.000…"
                     required
-                    step="0.01"
-                    type="number"
                     value={rate}
                   />
                 </div>

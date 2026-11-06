@@ -12,7 +12,7 @@ export default function SegmentedControl({ label, options, value, onChange }) {
         return (
           <button
             aria-pressed={selected}
-            className={`min-h-10 flex-1 cursor-pointer rounded-lg px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:flex-none ${
+            className={`min-h-10 min-w-0 flex-1 cursor-pointer rounded-lg px-2 text-sm sm:px-4 font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:flex-none ${
               selected
                 ? 'bg-primary text-primary-foreground'
                 : 'text-ink-soft hover:bg-card hover:text-foreground'

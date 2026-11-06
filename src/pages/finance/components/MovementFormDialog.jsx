@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { Input } from '#components/ui/input';
+import MoneyInput from '#components/shared/MoneyInput';
 import { Button } from '#components/ui/button';
 
 const expenseCategories = [
@@ -197,14 +198,11 @@ export default function MovementFormDialog({
                   >
                     Precio por kg (COP)
                   </label>
-                  <Input
+                  <MoneyInput
                     className="h-11 rounded-xl"
                     id="sale-unit-price"
-                    min="0.01"
-                    onChange={(event) => setUnitPrice(event.target.value)}
+                    onValueChange={setUnitPrice}
                     required
-                    step="0.01"
-                    type="number"
                     value={unitPrice}
                   />
                 </div>
@@ -270,14 +268,11 @@ export default function MovementFormDialog({
                 >
                   Valor (COP)
                 </label>
-                <Input
+                <MoneyInput
                   className="h-11 rounded-xl"
                   id="expense-amount"
-                  min="0.01"
-                  onChange={(event) => setAmount(event.target.value)}
+                  onValueChange={setAmount}
                   required
-                  step="0.01"
-                  type="number"
                   value={amount}
                 />
               </div>

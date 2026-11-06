@@ -134,15 +134,8 @@ export default function AnalyticPage({ usuario }) {
       .list()
       .then((loadedFarms) => {
         if (!active) return;
+        // Abre con «Todas las fincas» para cuadrar con el resumen de Inicio.
         setFarms(loadedFarms);
-        const savedFarmId = localStorage.getItem(
-          `cafesmart_finca_activa_${userId}`,
-        );
-        setSelectedFarmId(
-          loadedFarms.some((farm) => String(farm.id) === savedFarmId)
-            ? savedFarmId
-            : '',
-        );
       })
       .catch((loadError) => {
         if (!active) return;

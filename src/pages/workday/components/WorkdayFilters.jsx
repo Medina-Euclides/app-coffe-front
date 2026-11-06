@@ -11,8 +11,9 @@ import SegmentedControl from '#components/shared/SegmentedControl';
 
 const periods = [
   { value: 'today', label: 'Hoy' },
-  { value: 'month', label: 'Este mes' },
-  { value: 'year', label: 'Este año' },
+  { value: 'week', label: 'Semana' },
+  { value: 'month', label: 'Mes' },
+  { value: 'year', label: 'Año' },
   { value: 'all', label: 'Todo' },
 ];
 

@@ -1,20 +1,14 @@
-// Pantalla de inicio: accesos rápidos, indicadores y actividad del día.
+// Pantalla de inicio: accesos rápidos y resumen de la semana (kilos, jornales y lo reciente).
 import {
+  ChevronRight,
   Cherry,
   ClipboardList,
   Coffee,
   Scale,
   UserPlus,
 } from 'lucide-react';
-import { lazy, Suspense, useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '#components/ui/card';
-import SectionHeader from '#components/shared/SectionHeader';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import IconBadge from '#components/shared/IconBadge';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { useNotice } from '#hooks/useNotice';
@@ -22,6 +16,13 @@ import { api } from '#services/api';
 import { guardarCacheTrabajadores } from '#services/workerStorage';
 import { createWorkdayWithWorkers, toExistingWorkdays } from '#pages/workday/workdayActions.js';
 import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions.js';
+import {
+  getDateKey,
+  getHarvestRecords,
+  getWeekRange,
+  groupWorkdayParticipants,
+  mapWorkday,
+} from '#pages/workday/utils/workdayMappers.js';
 import { leerLocal } from '#lib/storage';
 import { hoy } from '#lib/formatters';
 import PageTitle from '#components/shared/PageTitle';
@@ -62,76 +63,79 @@ const WorkerFormDialog = lazy(() =>
   import('#pages/trabajadores/components/WorkerFormDialog.jsx'),
 );
 
-const formatoCantidad = (valor) =>
-  Number(valor || 0).toLocaleString('es-CO', {
-    maximumFractionDigits: 2,
-  });
+const formatoKilos = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 });
+const formatoDiaSemana = new Intl.DateTimeFormat('es-CO', { weekday: 'long' });
+const formatoDiaMes = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'long' });
 
-// Resume las operaciones del usuario para la fecha dada.
-// Semana de lunes a domingo que contiene la fecha dada (YYYY-MM-DD).
-function obtenerSemana(fecha) {
-  const base = new Date(`${fecha}T12:00:00`);
-  const diasDesdeLunes = (base.getDay() + 6) % 7;
-  const lunes = new Date(base);
-  lunes.setDate(base.getDate() - diasDesdeLunes);
-  const domingo = new Date(lunes);
-  domingo.setDate(lunes.getDate() + 6);
-  const aClave = (d) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return { inicio: aClave(lunes), fin: aClave(domingo), lunes, domingo };
+const plural = (n, uno, varios) => `${formatoKilos.format(n)} ${n === 1 ? uno : varios}`;
+
+// «2 – 8 de noviembre» o «30 de octubre – 5 de noviembre».
+function rangoLegible({ monday, sunday }) {
+  const mismoMes = monday.getMonth() === sunday.getMonth();
+  const inicio = mismoMes ? monday.getDate() : formatoDiaMes.format(monday);
+  return `${inicio} – ${formatoDiaMes.format(sunday)}`;
 }
 
-const formatoDiaCorto = new Intl.DateTimeFormat('es-CO', {
-  weekday: 'short',
-  day: 'numeric',
-});
+// «Hoy», «Ayer» o el nombre del día; con hora si el pesaje la tiene.
+function cuando(dateKey, hoyKey, ayerKey, hora = '') {
+  const dia =
+    dateKey === hoyKey
+      ? 'Hoy'
+      : dateKey === ayerKey
+        ? 'Ayer'
+        : formatoDiaSemana.format(new Date(`${dateKey}T12:00:00`));
+  const hhmm = hora.slice(0, 5);
+  return hhmm ? `${dia}, ${hhmm}` : dia;
+}
 
-// Resume las operaciones del usuario registradas en la semana dada.
-function obtenerResumenDeLaSemana(usuarioId, semana) {
-  const jornadas = leerLocal(`cafesmart_jornadas_${usuarioId}`, []);
+// Kilos, jornales y operaciones recientes de la semana a partir de las jornadas.
+function resumirSemana(participaciones, semana) {
+  const enSemana = participaciones.filter(
+    (p) =>
+      p.settlementStatus !== 'anulado' &&
+      p.dateKey >= semana.start &&
+      p.dateKey <= semana.end,
+  );
+  // Igual que Analíticas: solo pesajes de actividades de recolección.
+  const pesajes = getHarvestRecords(enSemana.filter((p) => p.isHarvest));
+  const jornales = enSemana.filter((p) => !p.isPerKilogram);
+  const jornadasJornal = groupWorkdayParticipants(jornales);
 
-  const jornadasSemana = jornadas.filter(
-    (jornada) => jornada.fecha >= semana.inicio && jornada.fecha <= semana.fin,
-  );
-  const recolecciones = jornadasSemana.filter(
-    (jornada) => jornada.modalidad === 'recoleccion',
-  );
-  const labores = jornadasSemana.filter(
-    (jornada) => jornada.modalidad !== 'recoleccion',
-  );
-
-  const actividades = jornadasSemana.map((jornada) => ({
+  const recientes = [
+    ...pesajes.map((pesaje) => ({
+      id: `pesaje-${pesaje.id}`,
+      tipo: 'pesaje',
+      titulo: pesaje.workerName,
+      detalle: pesaje.lotName,
+      valor: `${formatoKilos.format(pesaje.quantityKg)} kg`,
+      dateKey: pesaje.dateKey,
+      hora: pesaje.time,
+    })),
+    ...jornadasJornal.map((jornada) => ({
       id: `jornada-${jornada.id}`,
-      fecha: jornada.fecha || '',
-      momento: Number(jornada.id) || 0,
-      titulo:
-        jornada.modalidad === 'recoleccion'
-          ? 'Recolección de café'
-          : jornada.actividad || 'Jornada laboral',
-      detalle:
-        jornada.modalidad === 'recoleccion'
-          ? Number(jornada.cantidad) > 0
-            ? `${formatoCantidad(jornada.cantidad)} kg en ${jornada.lote || 'el lote'}`
-            : `${jornada.lote || 'Lote'}, kilos pendientes de liquidar`
-          : `${jornada.lote || 'Lote'}, ${jornada.estado === 'pagado' ? 'liquidada' : 'pendiente'}`,
-      valor:
-        jornada.modalidad === 'recoleccion' && Number(jornada.cantidad) > 0
-          ? `${formatoCantidad(jornada.cantidad)} kg`
-          : '',
-      complemento: jornada.fecha
-        ? formatoDiaCorto.format(new Date(`${jornada.fecha}T12:00:00`))
-        : '',
-      icono: jornada.modalidad === 'recoleccion' ? Cherry : ClipboardList,
-      estilo: jornada.modalidad === 'recoleccion' ? 'harvest' : 'primary',
-    }))
-    .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.momento - a.momento);
+      tipo: 'jornada',
+      titulo: jornada.activityName,
+      detalle: jornada.lot || jornada.farmName,
+      valor: plural(jornada.workerCount, 'jornal', 'jornales'),
+      dateKey: jornada.dateKey,
+      hora: '',
+    })),
+  ].sort(
+    (a, b) => b.dateKey.localeCompare(a.dateKey) || b.hora.localeCompare(a.hora),
+  );
 
   return {
-    recolecciones,
-    labores,
-    actividades,
+    kilos: pesajes.reduce((total, pesaje) => total + pesaje.quantityKg, 0),
+    pesajes: pesajes.length,
+    jornales: jornales.length,
+    jornadas: jornadasJornal.length,
+    recientes,
   };
 }
+
+const MAX_RECIENTES = 5;
+const enlaceTarjeta =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 
 export default function Inicio({ usuario }) {
   const userId = usuario?.id || 'default';
@@ -141,6 +145,24 @@ export default function Inicio({ usuario }) {
     leerLocal(`cafesmart_trabajadores_${userId}`, []),
   );
   const { notice, isError, show: mostrarAviso } = useNotice();
+  // null mientras carga; la lista viene de la caché local si no hay conexión.
+  const [participaciones, setParticipaciones] = useState(null);
+
+  const cargarJornadas = useCallback(
+    () =>
+      api.workdays
+        .list()
+        .then((items) => setParticipaciones(items.flatMap(mapWorkday)))
+        .catch((error) => {
+          console.error('Error al cargar el resumen de la semana:', error);
+          setParticipaciones((actual) => actual ?? []);
+        }),
+    [],
+  );
+
+  useEffect(() => {
+    cargarJornadas();
+  }, [cargarJornadas]);
 
   // Abre el formulario sobre Inicio y trae en segundo plano los datos que necesita
   // para validar duplicados.
@@ -168,10 +190,12 @@ export default function Inicio({ usuario }) {
   const guardarJornada = async (payload, context) => {
     await createWorkdayWithWorkers(payload, context);
     mostrarAviso('La jornada laboral se registró correctamente.');
+    cargarJornadas();
   };
 
   const guardarPesaje = () => {
     mostrarAviso('El pesaje de recolección se registró correctamente.');
+    cargarJornadas();
   };
 
   const guardarTrabajador = async (data) => {
@@ -191,10 +215,11 @@ export default function Inicio({ usuario }) {
   };
 
   const fechaHoy = hoy();
-  const semana = obtenerSemana(fechaHoy);
-  const resumen = obtenerResumenDeLaSemana(userId, semana);
-  const formatoDiaMes = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'long' });
-  const rangoSemana = `Del lunes ${formatoDiaMes.format(semana.lunes)} al domingo ${formatoDiaMes.format(semana.domingo)}.`;
+  const semana = getWeekRange(fechaHoy);
+  const ayer = new Date(`${fechaHoy}T12:00:00`);
+  ayer.setDate(ayer.getDate() - 1);
+  const fechaAyer = getDateKey(ayer);
+  const resumen = participaciones ? resumirSemana(participaciones, semana) : null;
   const fechaLegible = new Intl.DateTimeFormat('es-CO', {
     weekday: 'long',
     day: 'numeric',
@@ -204,20 +229,25 @@ export default function Inicio({ usuario }) {
 
   const indicadores = [
     {
-      etiqueta: 'Recolecciones',
-      valor: resumen.recolecciones.length,
-      detalle: 'registradas esta semana',
-      estilo: 'text-cereza',
+      etiqueta: 'Kilos',
+      valor: resumen && formatoKilos.format(resumen.kilos),
+      unidad: 'kg',
+      detalle: resumen && plural(resumen.pesajes, 'pesaje', 'pesajes'),
+      color: 'text-cereza',
       icono: Cherry,
+      destino: { section: 'harvest', period: 'week', modality: 'all' },
     },
     {
-      etiqueta: 'Jornadas',
-      valor: resumen.labores.length,
-      detalle: 'registradas esta semana',
-      estilo: 'text-primary',
+      etiqueta: 'Jornales',
+      valor: resumen && formatoKilos.format(resumen.jornales),
+      unidad: '',
+      detalle: resumen && `en ${plural(resumen.jornadas, 'jornada', 'jornadas')}`,
+      color: 'text-primary',
       icono: ClipboardList,
+      destino: { section: 'workdays', period: 'week', modality: 'jornal' },
     },
   ];
+  const recientes = resumen?.recientes.slice(0, MAX_RECIENTES) ?? [];
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -271,84 +301,108 @@ export default function Inicio({ usuario }) {
         <NoticeBanner isError={isError} message={notice} />
       </section>
 
-      <SectionHeader
-        title="Resumen de la semana"
-        description={rangoSemana}
-        headingId="resumen-semana"
-      />
+      <section aria-labelledby="resumen-semana" className="space-y-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-2xl text-foreground sm:text-[1.75rem]" id="resumen-semana">
+            Esta semana
+          </h2>
+          <p className="text-sm text-muted-foreground">{rangoLegible(semana)}</p>
+        </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {indicadores.map(({ etiqueta, valor, detalle, estilo, icono: Icono }) => (
-          <Card
-            className="min-w-0 rounded-2xl border border-border bg-card shadow-none"
-            key={etiqueta}
-          >
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-muted-foreground">{etiqueta}</p>
-                <Icono aria-hidden="true" className={`size-4 shrink-0 ${estilo}`} />
-              </div>
-              <p className={`cifra mt-2 break-words text-5xl leading-none ${estilo}`}>
-                {valor}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{detalle}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          {indicadores.map(
+            ({ etiqueta, valor, unidad, detalle, color, icono: Icono, destino }) => (
+              <Link
+                aria-busy={!resumen}
+                className={`flex min-h-36 min-w-0 flex-col rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30 hover:bg-tint active:bg-secondary sm:p-5 ${enlaceTarjeta}`}
+                key={etiqueta}
+                state={destino}
+                to="/jornada-laboral"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Icono aria-hidden="true" className={`size-4 shrink-0 ${color}`} />
+                  {etiqueta}
+                </span>
+                <span className={`cifra mt-3 break-words text-4xl leading-none tabular-nums sm:text-5xl ${color}`}>
+                  {valor ?? '–'}
+                  {unidad && valor != null && (
+                    <span className="ml-1 text-lg sm:text-xl">{unidad}</span>
+                  )}
+                </span>
+                <span className="mt-auto flex items-center justify-between gap-2 pt-3 text-sm text-muted-foreground">
+                  <span className="min-w-0 truncate">{detalle ?? 'Cargando…'}</span>
+                  <ChevronRight aria-hidden="true" className="size-4 shrink-0" />
+                </span>
+              </Link>
+            ),
+          )}
+        </div>
 
-      <Card className="rounded-2xl border border-border bg-card shadow-none">
-        <CardHeader className="px-5 pt-5">
-          <CardTitle className="text-lg text-foreground">
-            Actividad registrada
-          </CardTitle>
-          <CardDescription>
-            Operaciones de esta semana, de la más reciente a la más antigua.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="px-5 pb-5">
-          {resumen.actividades.length === 0 ? (
-            <div className="flex flex-col items-center rounded-xl bg-muted px-5 py-8 text-center">
+        <div className="rounded-2xl border border-border bg-card">
+          <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-5">
+            <h3 className="text-lg text-foreground">Lo más reciente</h3>
+            {resumen && resumen.recientes.length > MAX_RECIENTES && (
+              <Link
+                className={`-mr-2 inline-flex min-h-11 items-center rounded-xl px-2 text-sm font-medium text-primary hover:bg-tint ${enlaceTarjeta}`}
+                state={{ period: 'week' }}
+                to="/jornada-laboral"
+              >
+                Ver todo
+              </Link>
+            )}
+          </div>
+
+          {resumen && recientes.length === 0 ? (
+            <div className="flex flex-col items-center px-5 pt-6 pb-8 text-center">
               <Coffee aria-hidden="true" className="size-8 text-primary" />
               <p className="mt-3 font-medium text-ink-soft">
-                Aún no hay operaciones registradas esta semana
+                Aún no hay pesajes ni jornadas esta semana
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Usa los accesos rápidos para agregar la primera.
+                Usa los accesos rápidos para registrar el primero.
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-border/70">
-              {resumen.actividades.map(
-                ({ id, titulo, detalle, valor, complemento, icono: Icono, estilo }) => (
-                  <li
-                    className="flex min-w-0 items-center gap-3 py-4 first:pt-1 last:pb-1"
-                    key={id}
+            <ul className="px-2 pt-1 pb-2">
+              {recientes.map(({ id, tipo, titulo, detalle, valor, dateKey, hora }) => (
+                <li key={id}>
+                  <Link
+                    className={`flex min-h-16 min-w-0 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-tint active:bg-secondary sm:px-3 ${enlaceTarjeta}`}
+                    state={{
+                      section: tipo === 'pesaje' ? 'harvest' : 'workdays',
+                      period: 'week',
+                    }}
+                    to="/jornada-laboral"
                   >
-                    <IconBadge icon={Icono} tone={estilo} />
-                    <div className="min-w-0 flex-1">
-                      <p className="break-words font-semibold text-foreground">
+                    <IconBadge
+                      icon={tipo === 'pesaje' ? Cherry : ClipboardList}
+                      tone={tipo === 'pesaje' ? 'harvest' : 'primary'}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-foreground">
                         {titulo}
-                      </p>
-                      <p className="break-words text-sm text-muted-foreground">{detalle}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      {valor && (
-                        <p className="cifra text-base text-foreground">
-                          {valor}
-                        </p>
+                      </span>
+                      {detalle && (
+                        <span className="block truncate text-sm text-muted-foreground">
+                          {detalle}
+                        </span>
                       )}
-                      {complemento && (
-                        <p className="text-sm text-muted-foreground">{complemento}</p>
-                      )}
-                    </div>
-                  </li>
-                ),
-              )}
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="cifra block text-base tabular-nums text-foreground">
+                        {valor}
+                      </span>
+                      <span className="block text-sm first-letter:uppercase text-muted-foreground">
+                        {cuando(dateKey, fechaHoy, fechaAyer, hora)}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <Suspense fallback={null}>
         {formulario === 'pesaje' && (

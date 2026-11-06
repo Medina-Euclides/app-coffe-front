@@ -6,6 +6,7 @@ export default function WorkdayHeader({
   title = 'Jornadas Laborales',
   visibleCount,
   itemLabel = 'jornada',
+  secondaryCount = '',
   countVerb = 'visualizadas',
   periodLabel,
   calculatedTotal,
@@ -25,8 +26,8 @@ export default function WorkdayHeader({
             className="size-2 rounded-full bg-leaf"
           />
           <span>
-            {visibleCount} {visibleCount === 1 ? itemLabel : `${itemLabel}s`}{' '}
-            {countVerb} {periodLabel}
+            {visibleCount} {visibleCount === 1 ? itemLabel : `${itemLabel}s`}
+            {secondaryCount && ` con ${secondaryCount}`} {countVerb} {periodLabel}
           </span>
           <span aria-hidden="true">·</span>
           <span>{calculatedTotal} {totalLabel}</span>
