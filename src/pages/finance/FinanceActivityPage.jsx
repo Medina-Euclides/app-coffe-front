@@ -2,19 +2,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownCircle,
-  ArrowUpCircle,
-  ChevronDown,
-  ChevronUp,
-  Pencil,
   PlusCircle,
   Search,
 } from 'lucide-react';
-import { Badge } from '#components/ui/badge';
 import { Button } from '#components/ui/button';
 import { Card } from '#components/ui/card';
 import { Input } from '#components/ui/input';
 import { api } from '#services/api';
 import MovementFormDialog from './components/MovementFormDialog.jsx';
+import MovementCard from './components/MovementCard.jsx';
+import MovementDetailDialog from './components/MovementDetailDialog.jsx';
+import { currencyFormatter } from './movementFormat.js';
 
 const categories = {
   labor: 'Mano de obra',
@@ -37,33 +35,11 @@ const dateFilters = [
   { value: 'year', label: 'Este año' },
 ];
 
-const currencyFormatter = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  maximumFractionDigits: 0,
-});
-
-const numberFormatter = new Intl.NumberFormat('es-CO', {
-  maximumFractionDigits: 2,
-});
-
 function localDateKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
     2,
     '0',
   )}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function formatDate(value) {
-  const dateKey = String(value || '').slice(0, 10);
-  if (!dateKey) return 'Fecha sin registrar';
-  const parsedDate = new Date(`${dateKey}T00:00:00`);
-  if (Number.isNaN(parsedDate.getTime())) return 'Fecha sin registrar';
-  return new Intl.DateTimeFormat('es-CO', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(parsedDate);
 }
 
 function getMovementFarmId(movement) {
@@ -115,134 +91,6 @@ function isInDateFilter(dateValue, dateFilter, today = new Date()) {
   return year === today.getFullYear();
 }
 
-function MovementCard({ movement, expanded, onToggle, onEdit }) {
-  const isSale = movement.type === 'sale';
-
-  return (
-    <Card className="rounded-2xl border-border bg-card p-4 shadow-sm sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Badge
-            className={
-              isSale
-                ? 'h-auto border-leaf/20 bg-leaf-soft px-2.5 py-1 text-leaf'
-                : 'h-auto border-destructive/20 bg-destructive-soft px-2.5 py-1 text-destructive'
-            }
-            variant="outline"
-          >
-            {isSale ? (
-              <ArrowUpCircle aria-hidden="true" />
-            ) : (
-              <ArrowDownCircle aria-hidden="true" />
-            )}
-            {isSale ? 'Venta de café' : `Gasto · ${movement.categoryLabel}`}
-          </Badge>
-          {movement.isAutomatic && (
-            <Badge
-              className="h-auto border-border bg-muted px-2 py-1 text-muted-foreground"
-              variant="outline"
-            >
-              Automático
-            </Badge>
-          )}
-          <span className="text-xs text-muted-foreground">{formatDate(movement.date)}</span>
-        </div>
-        <span
-          className={`shrink-0 text-right text-base font-semibold sm:text-lg ${
-            isSale ? 'text-leaf' : 'text-destructive'
-          }`}
-        >
-          {isSale ? '+' : '−'} {currencyFormatter.format(movement.amount)}
-        </span>
-      </div>
-
-      <div className="mt-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="break-words font-semibold text-foreground">
-            {movement.title || 'Movimiento financiero'}
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground">{movement.farmName}</p>
-        </div>
-        {isSale && (
-          <span className="shrink-0 rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            {numberFormatter.format(Number(movement.quantity_kg) || 0)} kg
-          </span>
-        )}
-      </div>
-
-      <div className="mt-4 border-t border-border/60 pt-2">
-        <div className="flex items-center justify-between">
-          <Button
-            aria-expanded={expanded}
-            className="h-8 px-1 text-xs text-muted-foreground hover:text-primary"
-            onClick={onToggle}
-            type="button"
-            variant="ghost"
-          >
-            Ver detalle
-            {expanded ? <ChevronUp /> : <ChevronDown />}
-          </Button>
-          {!movement.isAutomatic && (
-            <Button
-              className="h-8 px-1 text-xs text-muted-foreground hover:text-primary"
-              onClick={onEdit}
-              type="button"
-              variant="ghost"
-            >
-              <Pencil />
-              Editar
-            </Button>
-          )}
-        </div>
-        {expanded && (
-          <dl className="grid gap-x-4 gap-y-2 border-t border-border/60 pt-3 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-xs text-muted-foreground">Finca</dt>
-              <dd className="mt-0.5 font-medium text-ink-soft">
-                {movement.farmName}
-              </dd>
-            </div>
-            {isSale ? (
-              <>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Precio por kg</dt>
-                  <dd className="mt-0.5 font-medium text-ink-soft">
-                    {currencyFormatter.format(Number(movement.unit_price) || 0)}
-                  </dd>
-                </div>
-                {movement.buyer && (
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Comprador</dt>
-                    <dd className="mt-0.5 font-medium text-ink-soft">
-                      {movement.buyer}
-                    </dd>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div>
-                <dt className="text-xs text-muted-foreground">Categoría</dt>
-                <dd className="mt-0.5 font-medium text-ink-soft">
-                  {movement.categoryLabel}
-                  {movement.isAutomatic && ' · registrado desde Pagos laborales'}
-                </dd>
-              </div>
-            )}
-            {isSale && movement.notes && (
-              <div className="sm:col-span-2">
-                <dt className="text-xs text-muted-foreground">Notas</dt>
-                <dd className="mt-0.5 whitespace-pre-wrap text-ink-soft">
-                  {movement.notes}
-                </dd>
-              </div>
-            )}
-          </dl>
-        )}
-      </div>
-    </Card>
-  );
-}
-
 export default function FinanceActivityPage({ usuario }) {
   const userId = usuario?.id || 'default';
   const [farms, setFarms] = useState([]);
@@ -256,7 +104,7 @@ export default function FinanceActivityPage({ usuario }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [dialogType, setDialogType] = useState(null);
   const [movementToEdit, setMovementToEdit] = useState(null);
-  const [expandedMovementId, setExpandedMovementId] = useState(null);
+  const [movementToView, setMovementToView] = useState(null);
   const [today] = useState(() => new Date());
   const requestKey = `${userId}-${refreshKey}`;
   const loading = loadedRequestKey !== requestKey;
@@ -365,9 +213,6 @@ export default function FinanceActivityPage({ usuario }) {
     }
   };
 
-  const selectedFarm = farms.find(
-    (farm) => String(farm.id) === String(selectedFarmId),
-  );
   const selectedDateFilter =
     dateFilters.find((item) => item.value === dateFilter)?.label || 'Este mes';
   const filteredSales = filteredMovements
@@ -376,21 +221,12 @@ export default function FinanceActivityPage({ usuario }) {
   const filteredExpenses = filteredMovements
     .filter((movement) => movement.type === 'expense')
     .reduce((total, movement) => total + movement.amount, 0);
-  const breadcrumbDate = new Intl.DateTimeFormat('es-CO', {
-    month: 'long',
-    year: 'numeric',
-  }).format(today);
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
       <header className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-warning">
-            Finanzas · {breadcrumbDate}
-            <span className="mx-2 text-leaf" aria-hidden="true">•</span>
-            {selectedFarm?.nombre || 'Todas las fincas'}
-          </p>
-          <h1 className="mt-2 text-4xl text-foreground sm:text-5xl">
+          <h1 className="text-4xl text-foreground sm:text-5xl">
             Movimientos financieros
           </h1>
           <p className="mt-1 text-sm leading-6 text-muted-foreground sm:text-base">
@@ -567,26 +403,27 @@ export default function FinanceActivityPage({ usuario }) {
       ) : (
         <section
           aria-label="Movimientos financieros"
-          className="grid gap-4 md:grid-cols-2"
+          className="grid gap-2.5 md:grid-cols-2"
         >
           {filteredMovements.map((movement) => (
             <MovementCard
-              expanded={expandedMovementId === movement.id}
               key={`${movement.type}-${movement.id}`}
               movement={movement}
-              onEdit={() => {
-                setMovementToEdit(movement);
-                setDialogType(movement.type);
-              }}
-              onToggle={() =>
-                setExpandedMovementId((current) =>
-                  current === movement.id ? null : movement.id,
-                )
-              }
+              onOpen={setMovementToView}
             />
           ))}
         </section>
       )}
+
+      <MovementDetailDialog
+        movement={movementToView}
+        onEdit={(movement) => {
+          setMovementToView(null);
+          setMovementToEdit(movement);
+          setDialogType(movement.type);
+        }}
+        onOpenChange={() => setMovementToView(null)}
+      />
 
       {dialogType && (
         <MovementFormDialog
