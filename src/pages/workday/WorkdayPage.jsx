@@ -2,14 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
-  ChevronDown,
-  ChevronUp,
   ClipboardList,
-  Clock3,
-  MapPin,
   Search,
 } from 'lucide-react';
-import { Button } from '#components/ui/button';
 import { Card } from '#components/ui/card';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
@@ -21,6 +16,7 @@ import AddWorkdayWorkersDialog from './components/AddWorkdayWorkersDialog.jsx';
 import EditWorkdayLaborDialog from './components/EditWorkdayLaborDialog.jsx';
 import HarvestRecordFormDialog from './components/HarvestRecordFormDialog.jsx';
 import WorkdayHeader from './components/WorkdayHeader.jsx';
+import HarvestWorkerCard from './components/HarvestWorkerCard.jsx';
 import { createWorkdayWithWorkers } from './workdayActions.js';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
@@ -290,118 +286,6 @@ function groupHarvestRecords(records) {
         second.latestRecord.time.localeCompare(first.latestRecord.time) ||
         first.workerName.localeCompare(second.workerName, 'es'),
     );
-}
-
-function formatHarvestDate(dateKey) {
-  if (!dateKey) return 'Fecha sin registrar';
-  const date = new Date(`${dateKey}T00:00:00`);
-  return Number.isNaN(date.getTime())
-    ? 'Fecha sin registrar'
-    : new Intl.DateTimeFormat('es-CO', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }).format(date);
-}
-
-function getInitials(name) {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0] || '')
-    .join('')
-    .toLocaleUpperCase('es');
-}
-
-function HarvestRecordCard({ worker, periodLabel }) {
-  const [expanded, setExpanded] = useState(false);
-  const timeLabel = worker.latestRecord.time.slice(0, 5);
-  return (
-    <Card className="gap-0 rounded-2xl border border-border bg-card py-0 shadow-none">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3 sm:px-5">
-        <span className="rounded-lg border border-leaf/30 bg-leaf-soft px-3 py-1.5 text-xs font-semibold text-leaf">
-          {worker.records.length}{' '}
-          {worker.records.length === 1 ? 'pesaje' : 'pesajes'} {periodLabel}
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Clock3 aria-hidden="true" className="size-3.5" />
-          Último: {timeLabel || 'Hora sin registrar'}
-        </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-5">
-        <span
-          aria-hidden="true"
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-base font-semibold text-primary-foreground"
-        >
-          {getInitials(worker.workerName)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate font-semibold text-foreground">
-            {worker.workerName}
-          </h2>
-          {worker.identification && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              C.C. {worker.identification}
-            </p>
-          )}
-        </div>
-        <div className="ml-auto text-right">
-          <p className="cifra text-4xl text-foreground sm:text-5xl">
-            {kilogramsFormatter.format(worker.totalKilograms)}
-            <span className="ml-1 text-sm font-semibold">kg</span>
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Total recolectado {periodLabel}</p>
-        </div>
-        <Button
-          aria-expanded={expanded}
-          aria-label={`${expanded ? 'Ocultar' : 'Ver'} pesajes de ${worker.workerName}`}
-          className="h-10 shrink-0 rounded-xl bg-muted px-3 text-sm font-medium text-ink-soft hover:bg-muted"
-          onClick={() => setExpanded((current) => !current)}
-          type="button"
-          variant="ghost"
-        >
-          {expanded ? 'Ocultar pesajes' : 'Ver pesajes'}
-          {expanded ? (
-            <ChevronUp aria-hidden="true" className="size-4" />
-          ) : (
-            <ChevronDown aria-hidden="true" className="size-4" />
-          )}
-        </Button>
-      </div>
-      {expanded && (
-        <div className="border-t border-border/60 bg-muted px-4 py-3 sm:px-5">
-          <ul className="divide-y divide-border/60">
-            {worker.records.map((record) => (
-              <li
-                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm"
-                key={record.id}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-ink-soft">
-                    {record.lotName}
-                  </p>
-                  <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    <span>{formatHarvestDate(record.dateKey)}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{record.time.slice(0, 5) || 'Hora sin registrar'}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin aria-hidden="true" className="size-3" />
-                      {record.farmName || 'Finca sin nombre'}
-                    </span>
-                  </p>
-                </div>
-                <p className="shrink-0 font-semibold text-primary">
-                  {kilogramsFormatter.format(record.quantityKg)} kg
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </Card>
-  );
 }
 
 function belongsToPeriod(dateKey, period, todayKey) {
@@ -958,13 +842,15 @@ export default function WorkdayPage() {
               Cargando registros de recolección…
             </p>
           ) : filteredHarvestRecords.length ? (
-            groupHarvestRecords(filteredHarvestRecords).map((worker) => (
-              <HarvestRecordCard
-                key={worker.workerId}
-                periodLabel={periodLabel}
-                worker={worker}
-              />
-            ))
+            <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {groupHarvestRecords(filteredHarvestRecords).map((worker) => (
+                <HarvestWorkerCard
+                  key={worker.workerId}
+                  periodLabel={periodLabel}
+                  worker={worker}
+                />
+              ))}
+            </div>
           ) : (
             <Card className="flex flex-col items-center gap-3 rounded-2xl border-border bg-card px-6 py-12 text-center shadow-none">
               <span className="flex size-12 items-center justify-center rounded-2xl bg-tint text-primary">
