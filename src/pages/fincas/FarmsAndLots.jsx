@@ -259,13 +259,13 @@ export default function FarmsAndLots({ usuario }) {
       >
         <NoticeBanner message={notice} isError={isError} />
         {loading ? (
-          <p aria-live="polite" className="py-8 text-center text-sm text-[#68766b]" role="status">
+          <p aria-live="polite" className="py-8 text-center text-sm text-muted-foreground" role="status">
             Cargando fincas y lotes…
           </p>
         ) : selectedFarm ? (
           <div className="space-y-5">
             <Button
-              className="min-h-10 rounded-lg px-2 text-[#526254] hover:bg-[#edf3e9] hover:text-[#214b32]"
+              className="min-h-10 rounded-lg px-2 text-ink-soft hover:bg-tint hover:text-primary"
               onClick={() => {
                 setSelectedFarmId(null);
                 localStorage.removeItem(`cafesmart_finca_activa_${userId}`);
@@ -278,10 +278,10 @@ export default function FarmsAndLots({ usuario }) {
               Todas las fincas
             </Button>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg font-semibold text-[#294533]">
+              <h2 className="text-xl text-ink-soft">
                 Lotes de {selectedFarm.nombre}
               </h2>
-              <p className="text-sm text-[#748074]">
+              <p className="text-sm text-muted-foreground">
                 {lotsForFarm.length} {lotsForFarm.length === 1 ? 'lote' : 'lotes'}
               </p>
             </div>
@@ -329,8 +329,8 @@ export default function FarmsAndLots({ usuario }) {
                       badge={isActive ? 'Activo' : 'Inactivo'}
                       badgeProps={{
                         className: isActive
-                          ? 'shrink-0 border-[#d5e8d4] bg-[#edf6eb] text-[#35643b]'
-                          : 'shrink-0 border-[#e6e7e2] bg-[#f3f4f1] text-[#687168]',
+                          ? 'shrink-0 border-border bg-tint text-primary'
+                          : 'shrink-0 border-border bg-muted text-muted-foreground',
                       }}
                       actions={[
                         {
@@ -357,7 +357,7 @@ export default function FarmsAndLots({ usuario }) {
           </div>
         ) : farmsInSearch.length === 0 ? (
           farmsError || lotsError ? (
-            <p className="py-8 text-center text-sm text-[#68766b]">
+            <p className="py-8 text-center text-sm text-muted-foreground">
               No se pudieron consultar las fincas y lotes. Intenta de nuevo cuando
               el servidor esté disponible.
             </p>
@@ -383,7 +383,7 @@ export default function FarmsAndLots({ usuario }) {
                   avatar={
                     <span
                       aria-hidden="true"
-                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#edf3e9] text-[#426b48]"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-tint text-primary"
                     >
                       <MapPin className="size-5" />
                     </span>
@@ -396,13 +396,13 @@ export default function FarmsAndLots({ usuario }) {
                       label: 'Administrar lotes',
                       onClick: handleSelectFarm,
                       item: farm,
-                      className: 'min-h-10 rounded-lg text-[#315d3b] hover:bg-[#edf3e9]',
+                      className: 'min-h-10 rounded-lg text-primary hover:bg-tint',
                     },
                     {
                       label: 'Editar finca',
                       onClick: openEditFarmDialog,
                       item: farm,
-                      className: 'min-h-10 rounded-lg text-[#526254] hover:bg-[#f1f3ee]',
+                      className: 'min-h-10 rounded-lg text-ink-soft hover:bg-muted',
                     },
                   ]}
                 />
@@ -445,7 +445,7 @@ export default function FarmsAndLots({ usuario }) {
       >
         <DialogContent className="rounded-2xl p-5 sm:max-w-md sm:p-6">
           <DialogHeader className="pr-8">
-            <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+            <DialogTitle className="text-2xl text-foreground">
               {lotToView?.nombre}
             </DialogTitle>
             <DialogDescription>
@@ -453,20 +453,20 @@ export default function FarmsAndLots({ usuario }) {
             </DialogDescription>
           </DialogHeader>
           {lotToView && (
-            <dl className="space-y-3 rounded-xl bg-[#f7f8f3] p-4">
+            <dl className="space-y-3 rounded-xl bg-muted p-4">
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
+                <dt className="text-sm text-muted-foreground">
                   Variedad
                 </dt>
-                <dd className="mt-1 font-medium text-[#294533]">
+                <dd className="mt-1 font-medium text-ink-soft">
                   {lotToView.variedad || 'No especificada'}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
+                <dt className="text-sm text-muted-foreground">
                   Área
                 </dt>
-                <dd className="mt-1 font-medium text-[#294533]">
+                <dd className="mt-1 font-medium text-ink-soft">
                   {lotToView.hectareas
                     ? `${new Intl.NumberFormat('es-CO', {
                         maximumFractionDigits: 2,
@@ -475,10 +475,10 @@ export default function FarmsAndLots({ usuario }) {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
+                <dt className="text-sm text-muted-foreground">
                     Plantas de café
                 </dt>
-                <dd className="mt-1 font-medium text-[#294533]">
+                <dd className="mt-1 font-medium text-ink-soft">
                     {lotToView.plant_count === null ||
                     lotToView.plant_count === undefined
                       ? 'No especificadas'
@@ -488,10 +488,10 @@ export default function FarmsAndLots({ usuario }) {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
+                <dt className="text-sm text-muted-foreground">
                     Estado
                 </dt>
-                <dd className="mt-1 font-medium text-[#294533]">
+                <dd className="mt-1 font-medium text-ink-soft">
                   {lotToView.estado === 'inactivo' ? 'Inactivo' : 'Activo'}
                 </dd>
               </div>

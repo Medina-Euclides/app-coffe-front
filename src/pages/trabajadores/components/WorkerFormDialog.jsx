@@ -63,7 +63,7 @@ export default function WorkerFormDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-lg sm:p-6">
         <DialogHeader className="pr-8">
-          <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+          <DialogTitle className="text-2xl text-foreground">
             {worker ? 'Editar trabajador' : 'Agregar trabajador'}
           </DialogTitle>
           <DialogDescription className="leading-6">
@@ -73,7 +73,7 @@ export default function WorkerFormDialog({
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="worker-first-name"
             >
               Nombre
@@ -92,7 +92,7 @@ export default function WorkerFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="worker-last-name"
             >
               Apellido
@@ -111,7 +111,7 @@ export default function WorkerFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="worker-id"
             >
               Identificación (opcional)
@@ -130,7 +130,7 @@ export default function WorkerFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="worker-phone"
             >
               Teléfono (opcional)
@@ -148,7 +148,7 @@ export default function WorkerFormDialog({
             />
           </div>
           {error && (
-            <p aria-live="polite" className="text-sm text-red-700" role="alert">
+            <p aria-live="polite" className="text-sm text-destructive" role="alert">
               {error}
             </p>
           )}
@@ -163,7 +163,7 @@ export default function WorkerFormDialog({
               Cancelar
             </Button>
             <Button
-              className="min-h-11 rounded-xl bg-[#214b32] text-white hover:bg-[#173d2b]"
+              className="min-h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover"
               disabled={saving}
               type="submit"
             >

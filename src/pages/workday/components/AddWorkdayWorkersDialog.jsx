@@ -51,7 +51,7 @@ function FormField({ children, htmlFor, label }) {
   return (
     <div className="min-w-0 space-y-2">
       <label
-        className="text-xs font-semibold uppercase tracking-wide text-[#244b38]"
+        className="text-sm font-semibold text-primary"
         htmlFor={htmlFor}
       >
         {label} <span aria-hidden="true">*</span>
@@ -256,9 +256,9 @@ export default function AddWorkdayWorkersDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-[#e4e9e1] p-5 sm:max-w-2xl sm:p-7">
-        <DialogHeader className="border-b border-[#e9ede8] pb-4 pr-8">
-          <DialogTitle className="text-lg font-semibold text-[#183d2b] sm:text-xl">
+      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-border p-5 sm:max-w-2xl sm:p-7">
+        <DialogHeader className="border-b border-border/60 pb-4 pr-8">
+          <DialogTitle className="text-2xl text-foreground sm:text-[1.75rem]">
             Agregar trabajadores
           </DialogTitle>
           <DialogDescription className="leading-5">
@@ -270,7 +270,7 @@ export default function AddWorkdayWorkersDialog({
         {loading ? (
           <p
             aria-live="polite"
-            className="flex items-center justify-center gap-2 py-10 text-sm text-[#68766b]"
+            className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"
             role="status"
           >
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -278,7 +278,7 @@ export default function AddWorkdayWorkersDialog({
           </p>
         ) : loadError ? (
           <div className="space-y-4 py-2">
-            <p aria-live="polite" className="text-sm text-red-700" role="alert">
+            <p aria-live="polite" className="text-sm text-destructive" role="alert">
               {loadError}
             </p>
             <Button
@@ -297,27 +297,27 @@ export default function AddWorkdayWorkersDialog({
         ) : (
           <form className="space-y-4" onSubmit={handleSubmit}>
             {!availableWorkers.length && (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="rounded-xl border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">
                 No hay trabajadores activos disponibles para agregar.
               </p>
             )}
 
             <fieldset className="min-w-0 space-y-2">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-[#244b38]">
+              <legend className="text-sm font-semibold text-primary">
                 Trabajadores disponibles
-                <span className="ml-1 font-normal normal-case text-[#748074]">
+                <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedWorkers.length} seleccionados)
                 </span>
               </legend>
-              <div className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-[#d1ddd2] bg-white p-3 sm:grid-cols-2">
+              <div className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2">
                 {availableWorkers.map((worker) => (
                   <label
-                    className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#254334] hover:bg-[#f4f8f3]"
+                    className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted"
                     key={worker.id}
                   >
                     <input
                       checked={selectedWorkerIds.includes(String(worker.id))}
-                      className="size-4 shrink-0 accent-[#173d30]"
+                      className="size-4 shrink-0 accent-primary"
                       onChange={() => toggleWorker(worker.id)}
                       type="checkbox"
                     />
@@ -340,7 +340,7 @@ export default function AddWorkdayWorkersDialog({
                   value={activityId}
                 >
                   <SelectTrigger
-                    className="h-11 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-sm text-[#173d30]"
+                    className="h-11 w-full rounded-xl border-input bg-card px-3 text-sm text-foreground"
                     id="add-workday-activity"
                   >
                     <SelectValue placeholder="Selecciona una actividad">
@@ -360,11 +360,11 @@ export default function AddWorkdayWorkersDialog({
 
               <FormField htmlFor="add-workday-rate" label="Tarifa acordada">
                 <div className="relative">
-                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-[#748074]">
+                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
                     $
                   </span>
                   <Input
-                    className="h-11 rounded-xl border-[#d1ddd2] bg-white pl-8 text-sm text-[#173d30]"
+                    className="h-11 rounded-xl border-input bg-card pl-8 text-sm text-foreground"
                     id="add-workday-rate"
                     min="0.01"
                     onChange={(event) => setRate(event.target.value)}
@@ -378,10 +378,10 @@ export default function AddWorkdayWorkersDialog({
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-[#244b38]">
+              <legend className="text-sm font-semibold text-primary">
                 Modalidad de pago
               </legend>
-              <div className="grid h-11 grid-cols-2 rounded-xl border border-[#e1e8e0] bg-[#f7f9f6] p-1">
+              <div className="grid h-11 grid-cols-2 rounded-xl border border-border bg-muted p-1">
                 {[
                   ['jornal', 'Por jornal'],
                   ['kg', 'Pago por kg'],
@@ -389,8 +389,8 @@ export default function AddWorkdayWorkersDialog({
                   <label
                     className={`flex items-center justify-center rounded-lg px-2 text-sm font-medium ${
                       value === 'kg' && !kilogramPaymentAvailable
-                        ? 'cursor-not-allowed text-[#a0a9a0]'
-                        : 'cursor-pointer text-[#52655a] has-[:checked]:bg-[#173d30] has-[:checked]:text-white'
+                        ? 'cursor-not-allowed text-subtle'
+                        : 'cursor-pointer text-ink-soft has-[:checked]:bg-primary has-[:checked]:text-primary-foreground'
                     }`}
                     key={value}
                   >
@@ -410,21 +410,21 @@ export default function AddWorkdayWorkersDialog({
             </fieldset>
 
             <fieldset className="space-y-2">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-[#244b38]">
+              <legend className="text-sm font-semibold text-primary">
                 Lotes
-                <span className="ml-1 font-normal normal-case text-[#748074]">
+                <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedLots.length} seleccionados)
                 </span>
               </legend>
-              <div className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-[#d1ddd2] bg-white p-3 sm:grid-cols-2">
+              <div className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2">
                 {activeLots.map((lot) => (
                   <label
-                    className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#254334] hover:bg-[#f4f8f3]"
+                    className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted"
                     key={lot.id}
                   >
                     <input
                       checked={lotIds.includes(String(lot.id))}
-                      className="size-4 shrink-0 accent-[#173d30]"
+                      className="size-4 shrink-0 accent-primary"
                       onChange={() => toggleLot(lot.id)}
                       type="checkbox"
                     />
@@ -435,7 +435,7 @@ export default function AddWorkdayWorkersDialog({
                 ))}
               </div>
               {!activeLots.length && (
-                <p className="text-xs text-[#748074]">
+                <p className="text-xs text-muted-foreground">
                   No hay lotes activos en esta finca.
                 </p>
               )}
@@ -444,16 +444,16 @@ export default function AddWorkdayWorkersDialog({
             {error && (
               <p
                 aria-live="polite"
-                className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+                className="rounded-xl border border-destructive/20 bg-destructive-soft px-3 py-2 text-sm text-destructive"
                 role="alert"
               >
                 {error}
               </p>
             )}
 
-            <DialogFooter className="flex-col-reverse gap-2 border-t border-[#e9ede8] pt-4 sm:flex-row">
+            <DialogFooter className="flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row">
               <Button
-                className="min-h-11 rounded-xl text-[#68766b]"
+                className="min-h-11 rounded-xl text-muted-foreground"
                 disabled={saving}
                 onClick={() => onOpenChange(false)}
                 type="button"
@@ -462,7 +462,7 @@ export default function AddWorkdayWorkersDialog({
                 Cancelar
               </Button>
               <Button
-                className="min-h-11 rounded-xl bg-[#1d5140] px-5 text-white hover:bg-[#173d30]"
+                className="min-h-11 rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary-hover"
                 disabled={saving || formDisabled || workday?.status !== 'abierta'}
                 type="submit"
               >

@@ -3,7 +3,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -70,10 +69,10 @@ export const SidebarApp = ({ usuario, onLogout }) => {
   const inicialMostrar = nombreMostrar.charAt(0).toUpperCase()
 
   return (
-    <Sidebar className="[&_[data-slot=sidebar-inner]]:bg-[#fbfaf5] [&_[data-slot=sidebar-inner]]:text-[#24372b]">
-      <SidebarHeader className="gap-0 border-b border-[#e7e8dc] px-5 py-5">
+    <Sidebar className="[&_[data-slot=sidebar-inner]]:bg-sidebar [&_[data-slot=sidebar-inner]]:text-foreground">
+      <SidebarHeader className="gap-0 border-b border-border px-5 py-5">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#e6efe2] ring-1 ring-[#d6e3d2]">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-secondary ring-1 ring-secondary">
             <img
               src="/icon.png"
               alt="Logo CafeSmart"
@@ -83,10 +82,10 @@ export const SidebarApp = ({ usuario, onLogout }) => {
             />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold tracking-tight text-[#183d2b]">
+            <p className="truncate text-lg font-bold tracking-tight text-foreground">
               CafeSmart
             </p>
-            <p className="mt-0.5 text-xs font-medium tracking-wide text-[#718071]">
+            <p className="mt-0.5 text-xs font-medium tracking-wide text-muted-foreground">
               Gestión Cafetera
             </p>
           </div>
@@ -95,9 +94,6 @@ export const SidebarApp = ({ usuario, onLogout }) => {
 
       <SidebarContent className="px-3 py-5">
         <SidebarGroup className="gap-2 p-0">
-          <SidebarGroupLabel className="h-auto px-3 pb-2 text-[0.68rem] font-bold tracking-[0.14em] text-[#8b9488] group-data-[collapsible=icon]:hidden">
-            MENÚ PRINCIPAL
-          </SidebarGroupLabel>
           <SidebarMenu className="gap-1.5">
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -113,8 +109,8 @@ export const SidebarApp = ({ usuario, onLogout }) => {
                 isActive={pathname === "/inicio"}
                 className={
                   pathname === "/inicio"
-                    ? "h-11 rounded-xl bg-[#e7f0e3] px-3 font-semibold text-[#214b32] shadow-sm hover:bg-[#dcebd8] hover:text-[#173d2b] data-active:bg-[#e7f0e3] data-active:text-[#214b32]"
-                    : "h-11 rounded-xl px-3 font-medium text-[#68766b] hover:bg-[#eef2e9] hover:text-[#214b32] active:bg-[#e7f0e3] active:text-[#214b32]"
+                    ? "h-11 rounded-xl bg-secondary px-3 font-semibold text-primary shadow-sm hover:bg-secondary hover:text-foreground data-active:bg-secondary data-active:text-primary"
+                    : "h-11 rounded-xl px-3 font-medium text-muted-foreground hover:bg-tint hover:text-primary active:bg-secondary active:text-primary"
                 }
               >
                 <Home aria-hidden="true" className="size-[18px]" />
@@ -122,7 +118,7 @@ export const SidebarApp = ({ usuario, onLogout }) => {
                 {pathname === "/inicio" && (
                   <span
                     aria-hidden="true"
-                    className="ml-auto size-1.5 rounded-full bg-[#4d8057]"
+                    className="ml-auto size-1.5 rounded-full bg-cereza"
                   />
                 )}
               </SidebarMenuButton>
@@ -135,22 +131,22 @@ export const SidebarApp = ({ usuario, onLogout }) => {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-[#e7e8dc] p-4">
-        <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-[#e3e8dd] bg-white/80 px-3 py-3 shadow-[0_4px_16px_-12px_rgba(36,55,43,0.35)]">
+      <SidebarFooter className="border-t border-border p-4">
+        <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-card/80 px-3 py-3 shadow-[0_4px_16px_-12px_rgba(36,55,43,0.35)]">
           <div
             aria-hidden="true"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#214b32] text-sm font-bold text-[#f4f3e9] ring-4 ring-[#eaf0e5]"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground ring-4 ring-secondary"
           >
             {inicialMostrar}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold capitalize text-[#263b2c]">
+            <p className="truncate text-sm font-semibold capitalize text-foreground">
               {nombreMostrar}
             </p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[#778477]">
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
               <span
                 aria-hidden="true"
-                className="size-1.5 rounded-full bg-[#5b9b66]"
+                className="size-1.5 rounded-full bg-leaf"
               />
               Sesión activa
             </p>
@@ -158,7 +154,7 @@ export const SidebarApp = ({ usuario, onLogout }) => {
         </div>
         {onLogout && (
           <button
-            className="mt-2 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-[#68766b] transition-colors hover:bg-[#eef2e9] hover:text-[#214b32] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#214b32]"
+            className="mt-2 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-muted-foreground transition-colors hover:bg-tint hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             onClick={onLogout}
             type="button"
           >

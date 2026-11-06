@@ -93,8 +93,8 @@ export default function SyncStatus() {
         aria-live="polite"
         className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ${
           isOnline
-            ? 'bg-emerald-50 text-emerald-800'
-            : 'bg-amber-50 text-amber-900'
+            ? 'bg-leaf-soft text-leaf'
+            : 'bg-warning-soft text-warning'
         }`}
         role="status"
         title={isOnline ? 'Con conexión a internet' : 'Sin conexión a internet'}
@@ -108,13 +108,13 @@ export default function SyncStatus() {
 
       {pendientes > 0 && (
         <>
-          <span className="text-xs text-[#68766b]">
+          <span className="text-xs text-muted-foreground">
             {pendientes} pendiente(s)
           </span>
           {isOnline && !sincronizando && (
             <button
               aria-label={`Sincronizar ${pendientes} registro(s) pendiente(s)`}
-              className="rounded-full p-1.5 text-emerald-800 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+              className="rounded-full p-1.5 text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               onClick={() => void manejarSincronizacion()}
               title="Sincronizar ahora"
               type="button"
@@ -128,7 +128,7 @@ export default function SyncStatus() {
       {mensaje && (
         <span
           aria-live="polite"
-          className="basis-full text-right text-xs text-[#68766b]"
+          className="basis-full text-right text-xs text-muted-foreground"
           role="status"
         >
           {mensaje}

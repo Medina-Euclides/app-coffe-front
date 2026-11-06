@@ -12,10 +12,10 @@ import { Input } from '#components/ui/input';
 
 function CheckField({ checked, id, label, onChange }) {
   return (
-    <label className="flex items-start gap-3 rounded-xl border border-[#e2e8de] p-3 text-sm text-[#36483a]" htmlFor={id}>
+    <label className="flex items-start gap-3 rounded-xl border border-border p-3 text-sm text-ink-soft" htmlFor={id}>
       <input
         checked={checked}
-        className="mt-0.5 size-4 accent-emerald-800"
+        className="mt-0.5 size-4 accent-primary"
         id={id}
         onChange={onChange}
         type="checkbox"
@@ -64,7 +64,7 @@ export default function ActivityFormDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-lg sm:p-6">
         <DialogHeader className="pr-8">
-          <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+          <DialogTitle className="text-2xl text-foreground">
             {activity ? 'Editar actividad laboral' : 'Nueva actividad laboral'}
           </DialogTitle>
           <DialogDescription className="leading-6">
@@ -74,7 +74,7 @@ export default function ActivityFormDialog({
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="activity-name"
             >
               Nombre de la actividad
@@ -94,7 +94,7 @@ export default function ActivityFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="activity-description"
             >
               Descripción (opcional)
@@ -116,7 +116,7 @@ export default function ActivityFormDialog({
             onChange={(event) => setIsHarvest(event.target.checked)}
           />
           {error && (
-            <p aria-live="polite" className="text-sm text-red-700" role="alert">
+            <p aria-live="polite" className="text-sm text-destructive" role="alert">
               {error}
             </p>
           )}
@@ -131,7 +131,7 @@ export default function ActivityFormDialog({
               Cancelar
             </Button>
             <Button
-              className="min-h-11 rounded-xl bg-[#214b32] text-white hover:bg-[#173d2b]"
+              className="min-h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover"
               disabled={saving}
               type="submit"
             >

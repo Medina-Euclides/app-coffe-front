@@ -5,11 +5,11 @@ import { Badge } from '#components/ui/badge';
  */
 export default function StatusBadge({ children, variant = 'default' }) {
   const styles = {
-    active: 'shrink-0 border-[#d5e8d4] bg-[#edf6eb] text-[#35643b]',
+    active: 'shrink-0 border-border bg-tint text-primary',
     inactive:
-      'shrink-0 border-[#e6e7e2] bg-[#f3f4f1] text-[#687168]',
-    harvest: 'border-[#dce8d9] bg-[#f0f5ed] text-[#426548]',
-    labor: 'border-[#dce8d9] bg-[#f0f5ed] text-[#426548]',
+      'shrink-0 border-border bg-muted text-muted-foreground',
+    harvest: 'border-border bg-muted text-primary',
+    labor: 'border-border bg-muted text-primary',
     default: '',
   };
 

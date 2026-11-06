@@ -13,13 +13,13 @@ export default function SectionHeader({
     <section aria-labelledby={headingId} className="space-y-4">
       <div>
         <Heading
-          className="text-xl font-semibold tracking-tight text-slate-900"
+          className="text-2xl text-foreground sm:text-[1.75rem]"
           id={headingId}
         >
           {title}
         </Heading>
         {description && (
-          <p className="mt-1 text-sm text-slate-600">{description}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         )}
       </div>
     </section>

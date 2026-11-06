@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from '#components/ui/card';
 import SectionHeader from '#components/shared/SectionHeader';
+import MaduracionStripe from '#components/shared/MaduracionStripe';
 import { leerLocal } from '#lib/storage';
 import { hoy } from '#lib/formatters';
 
@@ -22,14 +23,14 @@ const accionesRapidas = [
     descripcion: 'Registra los kilogramos recolectados por trabajador y lote.',
     ruta: '/operaciones/recoleccion',
     icono: Sprout,
-    color: 'bg-emerald-100 text-emerald-800',
+    color: 'bg-secondary text-primary',
   },
   {
     titulo: 'Jornada laboral',
     descripcion: 'Registra una labor por jornal para un trabajador.',
     ruta: '/operaciones/jornadas',
     icono: ClipboardList,
-    color: 'bg-sky-100 text-sky-800',
+    color: 'bg-warning-soft text-warning',
   },
 ];
 
@@ -68,7 +69,7 @@ function obtenerResumenDelDia(usuarioId, fechaHoy) {
           ? `${formatoCantidad(jornada.cantidad)} kg`
           : '',
       icono: jornada.modalidad === 'recoleccion' ? Sprout : ClipboardList,
-      estilo: 'bg-emerald-100 text-emerald-800',
+      estilo: 'bg-secondary text-primary',
     }))
     .sort((a, b) => b.momento - a.momento);
 
@@ -98,30 +99,33 @@ export default function Inicio({ usuario }) {
       etiqueta: 'Recolecciones',
       valor: resumen.recolecciones.length,
       detalle: 'registradas hoy',
-      estilo: 'text-emerald-800',
+      estilo: 'text-primary',
       icono: Sprout,
     },
     {
       etiqueta: 'Jornadas',
       valor: resumen.labores.length,
       detalle: 'registradas hoy',
-      estilo: 'text-sky-800',
+      estilo: 'text-warning',
       icono: ClipboardList,
     },
   ];
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
-      <header className="rounded-3xl bg-gradient-to-br from-emerald-950 to-emerald-700 px-6 py-8 text-white shadow-lg shadow-emerald-950/10 sm:px-9 sm:py-10">
-        <p className="text-sm font-semibold tracking-wide text-emerald-100">
-          <span translate="no">CafeSmart</span> · OPERACIONES
-        </p>
-        <h1 className="mt-3 break-words text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-          Hola, {nombreProductor}
-        </h1>
-        <p className="mt-3 text-pretty leading-relaxed text-emerald-50">
-          Registra las actividades de tu finca y consulta el resumen de hoy.
-        </p>
+      <header className="overflow-hidden rounded-2xl bg-primary text-primary-foreground">
+        <div className="px-6 pt-7 pb-8 sm:px-9 sm:pt-9 sm:pb-10">
+          <p className="text-sm capitalize text-primary-foreground/75">
+            {fechaLegible}
+          </p>
+          <h1 className="mt-2 break-words text-[2.5rem] leading-[1.02] sm:text-6xl">
+            Hola, {nombreProductor}
+          </h1>
+          <p className="mt-4 max-w-[52ch] text-pretty leading-relaxed text-primary-foreground/85">
+            Registra las actividades de tu finca y consulta el resumen de hoy.
+          </p>
+        </div>
+        <MaduracionStripe />
       </header>
 
       <SectionHeader
@@ -132,11 +136,11 @@ export default function Inicio({ usuario }) {
       <div className="grid gap-4 sm:grid-cols-2">
         {accionesRapidas.map(({ titulo, descripcion, ruta, icono: Icono, color }) => (
           <Link
-            className="group min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+            className="group min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             key={ruta}
             to={ruta}
           >
-            <Card className="h-full rounded-2xl border border-emerald-950/10 bg-white shadow-sm transition-colors hover:border-emerald-800/30 hover:bg-emerald-50/40">
+            <Card className="h-full rounded-2xl border border-border bg-card shadow-none transition-colors hover:border-primary/40 hover:bg-tint">
               <CardContent className="flex h-full flex-col items-start p-5">
                 <span
                   aria-hidden="true"
@@ -144,10 +148,10 @@ export default function Inicio({ usuario }) {
                 >
                   <Icono className="size-5" />
                 </span>
-                <h3 className="mt-4 break-words font-semibold text-slate-900 group-hover:text-emerald-900">
+                <h3 className="mt-4 break-words font-semibold text-lg text-foreground group-hover:text-primary">
                   {titulo}
                 </h3>
-                <p className="mt-2 text-pretty text-sm leading-relaxed text-slate-600">
+                <p className="mt-2 text-pretty text-sm leading-relaxed text-muted-foreground">
                   {descripcion}
                 </p>
               </CardContent>
@@ -158,33 +162,33 @@ export default function Inicio({ usuario }) {
 
       <SectionHeader
         title="Resumen de hoy"
-        description={fechaLegible}
+        description="Totales registrados con fecha de hoy."
         headingId="resumen-hoy"
       />
 
       <div className="grid gap-3 sm:grid-cols-2">
         {indicadores.map(({ etiqueta, valor, detalle, estilo, icono: Icono }) => (
           <Card
-            className="min-w-0 rounded-2xl border border-emerald-950/10 bg-white shadow-sm"
+            className="min-w-0 rounded-2xl border border-border bg-card shadow-none"
             key={etiqueta}
           >
             <CardContent className="p-5">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-slate-600">{etiqueta}</p>
+                <p className="text-sm font-medium text-muted-foreground">{etiqueta}</p>
                 <Icono aria-hidden="true" className={`size-5 shrink-0 ${estilo}`} />
               </div>
-              <p className={`mt-3 break-words text-2xl font-semibold tabular-nums ${estilo}`}>
+              <p className={`cifra mt-2 break-words text-5xl leading-none ${estilo}`}>
                 {valor}
               </p>
-              <p className="mt-1 text-xs text-slate-500">{detalle}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{detalle}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Card className="rounded-2xl border border-emerald-950/10 bg-white shadow-sm">
+      <Card className="rounded-2xl border border-border bg-card shadow-none">
         <CardHeader className="px-5 pt-5">
-          <CardTitle className="text-base font-semibold text-slate-900">
+          <CardTitle className="text-lg text-foreground">
             Actividad registrada
           </CardTitle>
           <CardDescription>
@@ -193,17 +197,17 @@ export default function Inicio({ usuario }) {
         </CardHeader>
         <CardContent className="px-5 pb-5">
           {resumen.actividades.length === 0 ? (
-            <div className="flex flex-col items-center rounded-xl bg-stone-50 px-5 py-8 text-center">
-              <Coffee aria-hidden="true" className="size-8 text-emerald-800" />
-              <p className="mt-3 font-medium text-slate-800">
+            <div className="flex flex-col items-center rounded-xl bg-muted px-5 py-8 text-center">
+              <Coffee aria-hidden="true" className="size-8 text-primary" />
+              <p className="mt-3 font-medium text-ink-soft">
                 Aún no hay operaciones registradas hoy
               </p>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Usa los accesos rápidos para agregar la primera.
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-border/70">
               {resumen.actividades.map(
                 ({ id, titulo, detalle, valor, complemento, icono: Icono, estilo }) => (
                   <li
@@ -217,19 +221,19 @@ export default function Inicio({ usuario }) {
                       <Icono className="size-5" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="break-words text-sm font-semibold text-slate-900">
+                      <p className="break-words text-sm font-semibold text-foreground">
                         {titulo}
                       </p>
-                      <p className="break-words text-sm text-slate-600">{detalle}</p>
+                      <p className="break-words text-sm text-muted-foreground">{detalle}</p>
                     </div>
                     <div className="shrink-0 text-right">
                       {valor && (
-                        <p className="text-sm font-semibold tabular-nums text-slate-900">
+                        <p className="cifra text-base text-foreground">
                           {valor}
                         </p>
                       )}
                       {complemento && (
-                        <p className="text-xs text-slate-500">{complemento}</p>
+                        <p className="text-xs text-muted-foreground">{complemento}</p>
                       )}
                     </div>
                   </li>

@@ -149,7 +149,7 @@ export default function Trabajadores({ usuario }) {
       >
         <NoticeBanner message={notice} isError={isError} />
         {loading ? (
-          <p aria-live="polite" className="py-8 text-center text-sm text-[#68766b]" role="status">
+          <p aria-live="polite" className="py-8 text-center text-sm text-muted-foreground" role="status">
             Cargando trabajadores…
           </p>
         ) : filtered.length === 0 ? (
@@ -177,7 +177,7 @@ export default function Trabajadores({ usuario }) {
                   avatar={
                     <span
                       aria-hidden="true"
-                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#edf3e9] text-sm font-bold text-[#315d3b]"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-tint text-sm font-bold text-primary"
                     >
                       {worker.nombre?.trim()?.charAt(0)?.toUpperCase() || '?'}
                     </span>
@@ -197,8 +197,8 @@ export default function Trabajadores({ usuario }) {
                   badge={isActive ? 'Activo' : 'Inactivo'}
                   badgeProps={{
                     className: isActive
-                      ? 'shrink-0 border-[#d5e8d4] bg-[#edf6eb] text-[#35643b]'
-                      : 'shrink-0 border-[#e6e7e2] bg-[#f3f4f1] text-[#687168]',
+                      ? 'shrink-0 border-border bg-tint text-primary'
+                      : 'shrink-0 border-border bg-muted text-muted-foreground',
                   }}
                   actions={[
                     {
@@ -243,7 +243,7 @@ export default function Trabajadores({ usuario }) {
       >
         <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-md sm:p-6">
           <DialogHeader className="pr-8">
-            <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+            <DialogTitle className="text-2xl text-foreground">
               {workerToView?.nombre}
             </DialogTitle>
             <DialogDescription>
@@ -251,28 +251,28 @@ export default function Trabajadores({ usuario }) {
             </DialogDescription>
           </DialogHeader>
           {workerToView && (
-            <dl className="space-y-3 rounded-xl bg-[#f7f8f3] p-4">
+            <dl className="space-y-3 rounded-xl bg-muted p-4">
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
+                <dt className="text-sm text-muted-foreground">
                   Identificación
                 </dt>
-                <dd className="mt-1 break-all font-medium text-[#294533]">
+                <dd className="mt-1 break-all font-medium text-ink-soft">
                   {workerToView.cedula || 'No registrada'}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
+                <dt className="text-sm text-muted-foreground">
                   Teléfono
                 </dt>
-                <dd className="mt-1 break-all font-medium text-[#294533]">
+                <dd className="mt-1 break-all font-medium text-ink-soft">
                   {workerToView.phone || 'No registrado'}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-[#748074]">
+                <dt className="text-sm text-muted-foreground">
                   Estado
                 </dt>
-                <dd className="mt-1 font-medium text-[#294533]">
+                <dd className="mt-1 font-medium text-ink-soft">
                   {workerToView.estado === 'inactivo' ? 'Inactivo' : 'Activo'}
                 </dd>
               </div>

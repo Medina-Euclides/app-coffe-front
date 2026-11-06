@@ -157,9 +157,9 @@ export default function EditWorkdayLaborDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-[#e4e9e1] p-5 sm:max-w-xl sm:p-7">
-        <DialogHeader className="border-b border-[#e9ede8] pb-4 pr-8">
-          <DialogTitle className="text-lg font-semibold text-[#183d2b] sm:text-xl">
+      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-border p-5 sm:max-w-xl sm:p-7">
+        <DialogHeader className="border-b border-border/60 pb-4 pr-8">
+          <DialogTitle className="text-2xl text-foreground sm:text-[1.75rem]">
             Editar jornada
           </DialogTitle>
           <DialogDescription className="leading-5">
@@ -171,7 +171,7 @@ export default function EditWorkdayLaborDialog({
         {loading ? (
           <p
             aria-live="polite"
-            className="flex items-center justify-center gap-2 py-10 text-sm text-[#68766b]"
+            className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"
             role="status"
           >
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -179,7 +179,7 @@ export default function EditWorkdayLaborDialog({
           </p>
         ) : loadError ? (
           <div className="space-y-4 py-2">
-            <p aria-live="polite" className="text-sm text-red-700" role="alert">
+            <p aria-live="polite" className="text-sm text-destructive" role="alert">
               {loadError}
             </p>
             <Button
@@ -198,14 +198,14 @@ export default function EditWorkdayLaborDialog({
         ) : (
           <form className="space-y-4" onSubmit={handleSubmit}>
             {currentParticipants.length > 1 && (
-              <p className="rounded-xl border border-[#dbe9dc] bg-[#f0f5ed] px-3 py-2 text-sm text-[#315d3b]">
+              <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-primary">
                 Se actualizarán {currentParticipants.length} trabajadores.
               </p>
             )}
 
             <div className="space-y-2">
               <label
-                className="text-xs font-semibold uppercase tracking-wide text-[#244b38]"
+                className="text-sm font-semibold text-primary"
                 htmlFor="edit-workday-activity"
               >
                 Actividad <span aria-hidden="true">*</span>
@@ -221,7 +221,7 @@ export default function EditWorkdayLaborDialog({
                 value={activityId}
               >
                 <SelectTrigger
-                  className="h-11 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-sm text-[#173d30]"
+                  className="h-11 w-full rounded-xl border-input bg-card px-3 text-sm text-foreground"
                   id="edit-workday-activity"
                 >
                   <SelectValue placeholder="Selecciona una actividad">
@@ -240,10 +240,10 @@ export default function EditWorkdayLaborDialog({
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-[#244b38]">
+              <legend className="text-sm font-semibold text-primary">
                 Modalidad de pago <span aria-hidden="true">*</span>
               </legend>
-              <div className="grid h-11 grid-cols-2 rounded-xl border border-[#e1e8e0] bg-[#f7f9f6] p-1">
+              <div className="grid h-11 grid-cols-2 rounded-xl border border-border bg-muted p-1">
                 {[
                   ['jornal', 'Por jornal'],
                   ['kg', 'Pago por kg'],
@@ -254,8 +254,8 @@ export default function EditWorkdayLaborDialog({
                     <label
                       className={`flex items-center justify-center rounded-lg px-2 text-sm font-medium ${
                         disabled
-                          ? 'cursor-not-allowed text-[#a0a9a0]'
-                          : 'cursor-pointer text-[#52655a] has-[:checked]:bg-[#173d30] has-[:checked]:text-white'
+                          ? 'cursor-not-allowed text-subtle'
+                          : 'cursor-pointer text-ink-soft has-[:checked]:bg-primary has-[:checked]:text-primary-foreground'
                       }`}
                       key={value}
                     >
@@ -277,7 +277,7 @@ export default function EditWorkdayLaborDialog({
 
             <div className="space-y-2">
               <label
-                className="text-xs font-semibold uppercase tracking-wide text-[#244b38]"
+                className="text-sm font-semibold text-primary"
                 htmlFor="edit-workday-rate"
               >
                 {paymentMode === 'kg'
@@ -286,11 +286,11 @@ export default function EditWorkdayLaborDialog({
                 <span aria-hidden="true">*</span>
               </label>
               <div className="relative">
-                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-[#748074]">
+                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
                   $
                 </span>
                 <Input
-                  className="h-11 rounded-xl border-[#d1ddd2] bg-white pl-8 text-sm text-[#173d30]"
+                  className="h-11 rounded-xl border-input bg-card pl-8 text-sm text-foreground"
                   id="edit-workday-rate"
                   min="0.01"
                   onChange={(event) => setRate(event.target.value)}
@@ -305,16 +305,16 @@ export default function EditWorkdayLaborDialog({
             {error && (
               <p
                 aria-live="polite"
-                className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+                className="rounded-xl border border-destructive/20 bg-destructive-soft px-3 py-2 text-sm text-destructive"
                 role="alert"
               >
                 {error}
               </p>
             )}
 
-            <DialogFooter className="flex-col-reverse gap-2 border-t border-[#e9ede8] pt-4 sm:flex-row">
+            <DialogFooter className="flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row">
               <Button
-                className="min-h-11 rounded-xl text-[#68766b]"
+                className="min-h-11 rounded-xl text-muted-foreground"
                 disabled={saving}
                 onClick={() => onOpenChange(false)}
                 type="button"
@@ -323,7 +323,7 @@ export default function EditWorkdayLaborDialog({
                 Cancelar
               </Button>
               <Button
-                className="min-h-11 rounded-xl bg-[#1d5140] px-5 text-white hover:bg-[#173d30]"
+                className="min-h-11 rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary-hover"
                 disabled={
                   saving ||
                   !currentParticipants.length ||

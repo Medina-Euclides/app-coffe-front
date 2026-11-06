@@ -11,6 +11,7 @@ import {
 import { Input } from '#components/ui/input';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { api } from '#services/api';
+import MaduracionStripe from '#components/shared/MaduracionStripe';
 
 export function AuthField({
   autoComplete,
@@ -105,8 +106,9 @@ export default function Auth({
   };
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-gradient-to-br from-emerald-50 via-stone-50 to-amber-50 px-4 py-10">
-      <Card className="w-full max-w-md gap-0 rounded-3xl border border-emerald-950/10 bg-white/95 py-0 shadow-xl shadow-emerald-950/10 backdrop-blur">
+    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
+      <Card className="w-full max-w-md gap-0 overflow-hidden rounded-2xl border border-border bg-card py-0 shadow-[0_24px_48px_-32px_rgb(21_40_30/0.35)]">
+        <MaduracionStripe />
         <CardHeader className="items-center gap-4 px-6 pt-8 text-center sm:px-8 sm:pt-10">
           <img
             alt="Logo de CafeSmart"
@@ -116,13 +118,13 @@ export default function Auth({
             width={56}
           />
           <div className="space-y-2">
-            <p className="text-sm font-semibold tracking-wide text-emerald-800" translate="no">
+            <p className="text-sm font-semibold text-primary" translate="no">
               CafeSmart
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="text-4xl text-foreground sm:text-5xl">
               {esRegistro ? 'Crea tu cuenta' : 'Bienvenido de nuevo'}
             </h1>
-            <CardDescription className="text-pretty text-sm leading-relaxed text-slate-600">
+            <CardDescription className="text-pretty text-sm leading-relaxed text-muted-foreground">
               {esRegistro
                 ? 'Regístrate para empezar a gestionar tu producción de café.'
                 : 'Inicia sesión para continuar con la gestión de tu finca.'}
@@ -198,7 +200,7 @@ export default function Auth({
             <NoticeBanner message={error} isError />
 
             <Button
-              className="h-12 w-full rounded-xl bg-emerald-800 text-base font-semibold text-white shadow-sm hover:bg-emerald-900"
+              className="h-12 w-full rounded-xl bg-primary text-base font-semibold text-primary-foreground hover:bg-primary-hover"
               disabled={cargando}
               type="submit"
             >
@@ -211,12 +213,12 @@ export default function Auth({
           </form>
         </CardContent>
 
-        <CardFooter className="mt-7 flex-wrap justify-center gap-1 border-t border-emerald-950/10 px-6 py-5 text-center sm:px-8">
-          <span className="text-sm text-slate-600">
+        <CardFooter className="mt-7 flex-wrap justify-center gap-1 border-t border-border px-6 py-5 text-center sm:px-8">
+          <span className="text-sm text-muted-foreground">
             {esRegistro ? '¿Ya tienes una cuenta?' : '¿Aún no tienes una cuenta?'}
           </span>
           <Button
-            className="h-auto px-1 py-1 text-sm font-semibold text-emerald-800 hover:text-emerald-950"
+            className="h-auto px-1 py-1 text-sm font-semibold text-primary hover:text-foreground"
             onClick={alternarModo}
             type="button"
             variant="link"

@@ -49,7 +49,7 @@ export default function FarmFormDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-lg sm:p-6">
         <DialogHeader className="pr-8">
-          <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+          <DialogTitle className="text-2xl text-foreground">
             {farm ? 'Editar finca' : 'Agregar finca'}
           </DialogTitle>
           <DialogDescription className="leading-6">
@@ -59,7 +59,7 @@ export default function FarmFormDialog({
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="farm-name"
             >
               Nombre de la finca
@@ -79,7 +79,7 @@ export default function FarmFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="farm-location"
             >
               Ubicación (opcional)
@@ -96,13 +96,13 @@ export default function FarmFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="farm-description"
             >
               Descripción (opcional)
             </label>
             <textarea
-              className="min-h-24 w-full rounded-xl border border-input bg-white px-3 py-2 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
+              className="min-h-24 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               id="farm-description"
               name="description"
               onChange={(event) => setDescription(event.target.value)}
@@ -111,7 +111,7 @@ export default function FarmFormDialog({
             />
           </div>
           {error && (
-            <p aria-live="polite" className="text-sm text-red-700" role="alert">
+            <p aria-live="polite" className="text-sm text-destructive" role="alert">
               {error}
             </p>
           )}
@@ -126,7 +126,7 @@ export default function FarmFormDialog({
               Cancelar
             </Button>
             <Button
-              className="min-h-11 rounded-xl bg-[#214b32] text-white hover:bg-[#173d2b]"
+              className="min-h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover"
               disabled={saving}
               type="submit"
             >

@@ -434,13 +434,13 @@ function PaymentCard({ settlement, onPay, paying }) {
         : 'Liquidada el';
 
   return (
-    <Card className="gap-0 rounded-2xl border border-[#e8ebe6] bg-white py-0 shadow-none">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf0eb] px-4 py-3 sm:px-5">
+    <Card className="gap-0 rounded-2xl border border-border bg-card py-0 shadow-none">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3 sm:px-5">
         <span
           className={
             isPaid
-              ? 'rounded-lg border border-[#c2ebdc] bg-[#effbf6] px-3 py-1.5 text-xs font-semibold text-[#19805d]'
-              : 'rounded-lg border border-[#f1dfb8] bg-[#fff9eb] px-3 py-1.5 text-xs font-semibold text-[#936b18]'
+              ? 'rounded-lg border border-leaf/30 bg-leaf-soft px-3 py-1.5 text-xs font-semibold text-leaf'
+              : 'rounded-lg border border-warning/30 bg-warning-soft px-3 py-1.5 text-xs font-semibold text-warning'
           }
         >
           {isPaid
@@ -451,7 +451,7 @@ function PaymentCard({ settlement, onPay, paying }) {
                 ? 'En liquidación'
                 : 'Pendiente de pago'}
         </span>
-        <span className="inline-flex items-center gap-1.5 text-sm text-[#748074]">
+        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
           <CalendarDays aria-hidden="true" className="size-3.5" />
           {paymentDateLabel}
           {!isPending && ` ${formatDate(paymentDay)}`}
@@ -461,7 +461,7 @@ function PaymentCard({ settlement, onPay, paying }) {
       <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-5">
         <span
           aria-hidden="true"
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#173d30] text-base font-semibold text-white"
+          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-base font-semibold text-primary-foreground"
         >
           {settlement.workerName
             .trim()
@@ -472,31 +472,31 @@ function PaymentCard({ settlement, onPay, paying }) {
             .toLocaleUpperCase('es')}
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-semibold text-[#263b2c]">
+          <h2 className="truncate font-semibold text-foreground">
             {settlement.workerName}
           </h2>
           {settlement.identification && (
-            <p className="mt-1 text-sm text-[#899489]">
+            <p className="mt-1 text-sm text-muted-foreground">
               C.C. {settlement.identification}
             </p>
           )}
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-[#748074]">
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
             <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
             {settlement.farmName}
           </p>
         </div>
         <div className="ml-auto text-right">
-          <p className="text-xl font-bold tracking-tight text-[#183d2b] sm:text-2xl">
+          <p className="cifra text-2xl text-foreground sm:text-3xl">
             {currencyFormatter.format(settlement.total)}
           </p>
-          <p className="mt-0.5 text-xs text-[#899489]">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {formatDate(settlement.startDate)} – {formatDate(settlement.endDate)}
           </p>
         </div>
         <Button
           aria-expanded={expanded}
           aria-label={`${expanded ? 'Ocultar' : 'Ver'} detalles de pago de ${settlement.workerName}`}
-          className="h-10 shrink-0 rounded-xl bg-[#f4f6f3] px-3 text-sm font-medium text-[#3e5848] hover:bg-[#eaf0e8]"
+          className="h-10 shrink-0 rounded-xl bg-muted px-3 text-sm font-medium text-ink-soft hover:bg-muted"
           onClick={() => setExpanded((current) => !current)}
           type="button"
           variant="ghost"
@@ -511,9 +511,9 @@ function PaymentCard({ settlement, onPay, paying }) {
       </div>
 
       {expanded && (
-        <div className="border-t border-[#edf0eb] bg-[#fbfcfa] px-4 py-3 sm:px-5">
+        <div className="border-t border-border/60 bg-muted px-4 py-3 sm:px-5">
           {isPaid && (
-            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#edf0eb] pb-3 text-sm text-[#52655a]">
+            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border/60 pb-3 text-sm text-ink-soft">
               <span className="inline-flex items-center gap-1.5">
                 <Banknote aria-hidden="true" className="size-4" />
                 {getPaymentMethodLabel(settlement.paymentMethod)}
@@ -522,19 +522,19 @@ function PaymentCard({ settlement, onPay, paying }) {
             </div>
           )}
           {settlement.items.length ? (
-            <ul className="divide-y divide-[#edf0eb]">
+            <ul className="divide-y divide-border/60">
               {settlement.items.map((item) => (
                 <li
                   className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm"
                   key={`${item.type}-${item.id}`}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-[#34483a]">
+                    <p className="font-semibold text-ink-soft">
                       {item.type === 'kilogram'
                         ? `${kilogramsFormatter.format(item.kilograms)} kg · ${item.lotName || 'Recolección'}`
                         : 'Jornada por jornal'}
                     </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#748074]">
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       <span>{formatDate(item.date)}</span>
                       {item.time && (
                         <>
@@ -553,25 +553,25 @@ function PaymentCard({ settlement, onPay, paying }) {
                       </span>
                     </p>
                   </div>
-                  <p className="shrink-0 font-semibold text-[#244b38]">
+                  <p className="shrink-0 font-semibold text-primary">
                     {currencyFormatter.format(item.amount)}
                   </p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="py-2 text-sm text-[#748074]">
+            <p className="py-2 text-sm text-muted-foreground">
               No hay detalles disponibles para esta liquidación.
             </p>
           )}
         </div>
       )}
-      <div className="flex justify-end border-t border-[#edf0eb] px-4 py-3 sm:px-5">
+      <div className="flex justify-end border-t border-border/60 px-4 py-3 sm:px-5">
         <Button
           className={
             isPaid
-              ? 'min-w-28 rounded-xl bg-[#edf4eb] text-[#52715b]'
-              : 'min-w-28 rounded-xl bg-[#173d30] text-white hover:bg-[#214b32]'
+              ? 'min-w-28 rounded-xl bg-tint text-ink-soft'
+              : 'min-w-28 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover'
           }
           disabled={isPaid || paying || settlement.total <= 0}
           onClick={() => onPay(settlement)}
@@ -594,8 +594,8 @@ function PaymentCard({ settlement, onPay, paying }) {
 function EmptyPayments({ hasSettlements, errorMessage, onRetry }) {
   const hasError = Boolean(errorMessage);
   return (
-    <Card className="flex flex-col items-center gap-3 rounded-2xl border-[#e7ebe4] bg-white px-6 py-12 text-center shadow-none">
-      <span className="flex size-12 items-center justify-center rounded-2xl bg-[#edf4eb] text-[#315d3b]">
+    <Card className="flex flex-col items-center gap-3 rounded-2xl border-border bg-card px-6 py-12 text-center shadow-none">
+      <span className="flex size-12 items-center justify-center rounded-2xl bg-tint text-primary">
         {hasError ? (
           <Search aria-hidden="true" className="size-6" />
         ) : (
@@ -603,14 +603,14 @@ function EmptyPayments({ hasSettlements, errorMessage, onRetry }) {
         )}
       </span>
       <div>
-        <h2 className="font-semibold text-[#263b2c]">
+        <h2 className="font-semibold text-foreground">
           {hasError
             ? 'No se pudieron cargar los pagos'
             : hasSettlements
               ? 'No hay resultados para estos filtros'
               : 'No hay pagos en esta pestaña'}
         </h2>
-        <p className="mt-1 max-w-md text-sm leading-6 text-[#748074]">
+        <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
           {hasError
             ? errorMessage
             : hasSettlements
@@ -620,7 +620,7 @@ function EmptyPayments({ hasSettlements, errorMessage, onRetry }) {
       </div>
       {hasError && (
         <Button
-          className="rounded-xl border-[#dbe9dc] text-[#254d37]"
+          className="rounded-xl border-border text-primary"
           onClick={onRetry}
           type="button"
           variant="outline"
@@ -856,11 +856,11 @@ export default function PaymentPage() {
     <section className="mx-auto w-full max-w-6xl space-y-5">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-balance text-2xl font-bold tracking-tight text-[#183d2b] sm:text-3xl">
+          <h1 className="text-balance text-4xl text-foreground sm:text-5xl">
             Pagos laborales
           </h1>
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-[#738076]">
-            <span aria-hidden="true" className="size-2 rounded-full bg-[#57a276]" />
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+            <span aria-hidden="true" className="size-2 rounded-full bg-leaf" />
             <span>
               {filteredSettlements.length}{' '}
               {filteredSettlements.length === 1 ? 'liquidación' : 'liquidaciones'}{' '}
@@ -875,15 +875,15 @@ export default function PaymentPage() {
       <NoticeBanner message={actionError} isError />
 
       <Tabs className="w-full gap-4" onValueChange={setTab} value={tab}>
-        <TabsList className="grid h-auto w-full max-w-[535px] grid-cols-2 rounded-2xl bg-[#e9ede7] p-1">
+        <TabsList className="grid h-auto w-full max-w-[535px] grid-cols-2 rounded-2xl bg-muted p-1">
           <TabsTrigger
-            className="h-10 rounded-xl text-sm text-[#69776d] data-active:bg-[#173d30] data-active:text-white data-active:shadow-none"
+            className="h-10 rounded-xl text-sm text-muted-foreground data-active:bg-primary-hover data-active:text-primary-foreground data-active:shadow-none"
             value="pending"
           >
             Pendientes de pago
           </TabsTrigger>
           <TabsTrigger
-            className="h-10 rounded-xl text-sm text-[#69776d] data-active:bg-[#173d30] data-active:text-white data-active:shadow-none"
+            className="h-10 rounded-xl text-sm text-muted-foreground data-active:bg-primary-hover data-active:text-primary-foreground data-active:shadow-none"
             value="paid"
           >
             Pagados
@@ -905,7 +905,7 @@ export default function PaymentPage() {
             {loading ? (
               <p
                 aria-live="polite"
-                className="rounded-2xl border border-[#e7ebe4] bg-white px-5 py-10 text-center text-sm text-[#748074]"
+                className="rounded-2xl border border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
                 role="status"
               >
                 Cargando pagos laborales…
@@ -944,9 +944,9 @@ export default function PaymentPage() {
         }}
         open={Boolean(paymentTarget)}
       >
-        <DialogContent className="rounded-2xl border-[#e4e9e1] sm:max-w-lg">
+        <DialogContent className="rounded-2xl border-border sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+            <DialogTitle className="text-2xl text-foreground">
               Confirmar pago laboral
             </DialogTitle>
             <DialogDescription className="leading-5">
@@ -959,7 +959,7 @@ export default function PaymentPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <label
-                className="text-xs font-semibold uppercase tracking-wide text-[#244b38]"
+                className="text-sm font-semibold text-primary"
                 htmlFor="payment-method"
               >
                 Método de pago
@@ -969,7 +969,7 @@ export default function PaymentPage() {
                 value={paymentMethod}
               >
                 <SelectTrigger
-                  className="h-11 w-full rounded-xl border-[#d1ddd2] bg-white"
+                  className="h-11 w-full rounded-xl border-input bg-card"
                   id="payment-method"
                 >
                   <SelectValue placeholder="Selecciona el método" />
@@ -983,14 +983,14 @@ export default function PaymentPage() {
             </div>
             <div className="space-y-2">
               <label
-                className="text-xs font-semibold uppercase tracking-wide text-[#244b38]"
+                className="text-sm font-semibold text-primary"
                 htmlFor="payment-notes"
               >
                 Nota (opcional)
               </label>
               <Input
                 autoComplete="off"
-                className="h-11 rounded-xl border-[#d1ddd2] bg-white"
+                className="h-11 rounded-xl border-input bg-card"
                 id="payment-notes"
                 onChange={(event) => setPaymentNotes(event.target.value)}
                 placeholder="Referencia o comentario del pago"
@@ -1001,7 +1001,7 @@ export default function PaymentPage() {
 
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
             <Button
-              className="rounded-xl text-[#68766b]"
+              className="rounded-xl text-muted-foreground"
               disabled={Boolean(payingId)}
               onClick={() => setPaymentTarget(null)}
               type="button"
@@ -1010,7 +1010,7 @@ export default function PaymentPage() {
               Cancelar
             </Button>
             <Button
-              className="rounded-xl bg-[#173d30] px-5 text-white hover:bg-[#214b32]"
+              className="rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary-hover"
               disabled={Boolean(payingId) || !paymentTarget}
               onClick={handlePaySettlement}
               type="button"

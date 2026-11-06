@@ -92,7 +92,7 @@ export default function MovementFormDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto rounded-2xl p-5 sm:max-w-lg sm:p-6">
         <DialogHeader className="pr-8">
-          <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+          <DialogTitle className="text-2xl text-foreground">
             {movement
               ? type === 'sale'
                 ? 'Editar venta'
@@ -111,13 +111,13 @@ export default function MovementFormDialog({
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="movement-farm"
             >
               Finca
             </label>
             <select
-              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
+              className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               id="movement-farm"
               onChange={(event) => setFarmId(event.target.value)}
               required
@@ -136,7 +136,7 @@ export default function MovementFormDialog({
 
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="movement-date"
             >
               Fecha
@@ -156,13 +156,13 @@ export default function MovementFormDialog({
             <>
               <div className="space-y-2">
                 <label
-                  className="text-sm font-medium text-[#36483a]"
+                  className="text-sm font-medium text-ink-soft"
                   htmlFor="sale-coffee-type"
                 >
                   Tipo de café
                 </label>
                 <select
-                  className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
+                  className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   id="sale-coffee-type"
                   onChange={(event) => setConcept(event.target.value)}
                   value={concept}
@@ -174,7 +174,7 @@ export default function MovementFormDialog({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label
-                    className="text-sm font-medium text-[#36483a]"
+                    className="text-sm font-medium text-ink-soft"
                     htmlFor="sale-quantity"
                   >
                     Cantidad (kg)
@@ -192,7 +192,7 @@ export default function MovementFormDialog({
                 </div>
                 <div className="space-y-2">
                   <label
-                    className="text-sm font-medium text-[#36483a]"
+                    className="text-sm font-medium text-ink-soft"
                     htmlFor="sale-unit-price"
                   >
                     Precio por kg (COP)
@@ -211,7 +211,7 @@ export default function MovementFormDialog({
               </div>
               <div className="space-y-2">
                 <label
-                  className="text-sm font-medium text-[#36483a]"
+                  className="text-sm font-medium text-ink-soft"
                   htmlFor="sale-buyer"
                 >
                   Comprador (opcional)
@@ -229,13 +229,13 @@ export default function MovementFormDialog({
             <>
               <div className="space-y-2">
                 <label
-                  className="text-sm font-medium text-[#36483a]"
+                  className="text-sm font-medium text-ink-soft"
                   htmlFor="expense-category"
                 >
                   Categoría
                 </label>
                 <select
-                  className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
+                  className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   id="expense-category"
                   onChange={(event) => setCategory(event.target.value)}
                   value={category}
@@ -249,7 +249,7 @@ export default function MovementFormDialog({
               </div>
               <div className="space-y-2">
                 <label
-                  className="text-sm font-medium text-[#36483a]"
+                  className="text-sm font-medium text-ink-soft"
                   htmlFor="expense-concept"
                 >
                   Concepto
@@ -265,7 +265,7 @@ export default function MovementFormDialog({
               </div>
               <div className="space-y-2">
                 <label
-                  className="text-sm font-medium text-[#36483a]"
+                  className="text-sm font-medium text-ink-soft"
                   htmlFor="expense-amount"
                 >
                   Valor (COP)
@@ -287,13 +287,13 @@ export default function MovementFormDialog({
           {type === 'sale' && (
             <div className="space-y-2">
               <label
-                className="text-sm font-medium text-[#36483a]"
+                className="text-sm font-medium text-ink-soft"
                 htmlFor="movement-notes"
               >
                 Notas (opcional)
               </label>
               <textarea
-                className="min-h-20 w-full rounded-xl border border-input bg-white px-3 py-2 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
+                className="min-h-20 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 id="movement-notes"
                 onChange={(event) => setNotes(event.target.value)}
                 value={notes}
@@ -302,7 +302,7 @@ export default function MovementFormDialog({
           )}
 
           {error && (
-            <p aria-live="polite" className="text-sm text-red-700" role="alert">
+            <p aria-live="polite" className="text-sm text-destructive" role="alert">
               {error}
             </p>
           )}
@@ -318,7 +318,7 @@ export default function MovementFormDialog({
               Cancelar
             </Button>
             <Button
-              className="min-h-11 rounded-xl bg-[#214b32] text-white hover:bg-[#173d2b]"
+              className="min-h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover"
               disabled={saving}
               type="submit"
             >

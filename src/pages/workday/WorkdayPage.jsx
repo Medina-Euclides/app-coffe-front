@@ -317,13 +317,13 @@ function HarvestRecordCard({ worker, periodLabel }) {
   const [expanded, setExpanded] = useState(false);
   const timeLabel = worker.latestRecord.time.slice(0, 5);
   return (
-    <Card className="gap-0 rounded-2xl border border-[#e8ebe6] bg-white py-0 shadow-none">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf0eb] px-4 py-3 sm:px-5">
-        <span className="rounded-lg border border-[#c2ebdc] bg-[#effbf6] px-3 py-1.5 text-xs font-semibold text-[#19805d]">
+    <Card className="gap-0 rounded-2xl border border-border bg-card py-0 shadow-none">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3 sm:px-5">
+        <span className="rounded-lg border border-leaf/30 bg-leaf-soft px-3 py-1.5 text-xs font-semibold text-leaf">
           {worker.records.length}{' '}
           {worker.records.length === 1 ? 'pesaje' : 'pesajes'} {periodLabel}
         </span>
-        <span className="inline-flex items-center gap-1.5 text-sm text-[#748074]">
+        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
           <Clock3 aria-hidden="true" className="size-3.5" />
           Último: {timeLabel || 'Hora sin registrar'}
         </span>
@@ -331,31 +331,31 @@ function HarvestRecordCard({ worker, periodLabel }) {
       <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-5">
         <span
           aria-hidden="true"
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#173d30] text-base font-semibold text-white"
+          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-base font-semibold text-primary-foreground"
         >
           {getInitials(worker.workerName)}
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-semibold text-[#263b2c]">
+          <h2 className="truncate font-semibold text-foreground">
             {worker.workerName}
           </h2>
           {worker.identification && (
-            <p className="mt-1 text-sm text-[#899489]">
+            <p className="mt-1 text-sm text-muted-foreground">
               C.C. {worker.identification}
             </p>
           )}
         </div>
         <div className="ml-auto text-right">
-          <p className="text-2xl font-bold tracking-tight text-[#183d2b] sm:text-3xl">
+          <p className="cifra text-4xl text-foreground sm:text-5xl">
             {kilogramsFormatter.format(worker.totalKilograms)}
-            <span className="ml-1 text-sm font-semibold uppercase">kg</span>
+            <span className="ml-1 text-sm font-semibold">kg</span>
           </p>
-          <p className="mt-0.5 text-xs text-[#899489]">Total recolectado {periodLabel}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Total recolectado {periodLabel}</p>
         </div>
         <Button
           aria-expanded={expanded}
           aria-label={`${expanded ? 'Ocultar' : 'Ver'} pesajes de ${worker.workerName}`}
-          className="h-10 shrink-0 rounded-xl bg-[#f4f6f3] px-3 text-sm font-medium text-[#3e5848] hover:bg-[#eaf0e8]"
+          className="h-10 shrink-0 rounded-xl bg-muted px-3 text-sm font-medium text-ink-soft hover:bg-muted"
           onClick={() => setExpanded((current) => !current)}
           type="button"
           variant="ghost"
@@ -369,18 +369,18 @@ function HarvestRecordCard({ worker, periodLabel }) {
         </Button>
       </div>
       {expanded && (
-        <div className="border-t border-[#edf0eb] bg-[#fbfcfa] px-4 py-3 sm:px-5">
-          <ul className="divide-y divide-[#edf0eb]">
+        <div className="border-t border-border/60 bg-muted px-4 py-3 sm:px-5">
+          <ul className="divide-y divide-border/60">
             {worker.records.map((record) => (
               <li
                 className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm"
                 key={record.id}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-[#34483a]">
+                  <p className="font-semibold text-ink-soft">
                     {record.lotName}
                   </p>
-                  <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#748074]">
+                  <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span>{formatHarvestDate(record.dateKey)}</span>
                     <span aria-hidden="true">·</span>
                     <span>{record.time.slice(0, 5) || 'Hora sin registrar'}</span>
@@ -391,7 +391,7 @@ function HarvestRecordCard({ worker, periodLabel }) {
                     </span>
                   </p>
                 </div>
-                <p className="shrink-0 font-semibold text-[#244b38]">
+                <p className="shrink-0 font-semibold text-primary">
                   {kilogramsFormatter.format(record.quantityKg)} kg
                 </p>
               </li>
@@ -414,19 +414,19 @@ function belongsToPeriod(dateKey, period, todayKey) {
 function WorkdayEmptyState({ hasWorkdays, errorMessage }) {
   const hasError = Boolean(errorMessage);
   return (
-    <Card className="flex flex-col items-center gap-3 rounded-2xl border-[#e7ebe4] bg-white px-6 py-12 text-center shadow-none">
-      <span className="flex size-12 items-center justify-center rounded-2xl bg-[#edf4eb] text-[#315d3b]">
+    <Card className="flex flex-col items-center gap-3 rounded-2xl border-border bg-card px-6 py-12 text-center shadow-none">
+      <span className="flex size-12 items-center justify-center rounded-2xl bg-tint text-primary">
         <ClipboardList aria-hidden="true" className="size-6" />
       </span>
       <div>
-        <h2 className="font-semibold text-[#263b2c]">
+        <h2 className="font-semibold text-foreground">
           {hasError
             ? 'No se pudieron cargar las jornadas'
             : hasWorkdays
               ? 'No hay resultados para estos filtros'
               : 'Aún no hay jornadas laborales'}
         </h2>
-        <p className="mt-1 max-w-md text-sm leading-6 text-[#748074]">
+        <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
           {hasError
             ? errorMessage
             : hasWorkdays
@@ -946,7 +946,7 @@ export default function WorkdayPage() {
       {actionError && (
         <p
           aria-live="assertive"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-xl border border-destructive/20 bg-destructive-soft px-4 py-3 text-sm text-destructive"
           role="alert"
         >
           {actionError}
@@ -958,16 +958,16 @@ export default function WorkdayPage() {
         onValueChange={setSection}
         value={section}
       >
-        <TabsList className="grid h-auto w-full max-w-[535px] grid-cols-2 rounded-2xl bg-[#e9ede7] p-1">
+        <TabsList className="grid h-auto w-full max-w-[535px] grid-cols-2 rounded-2xl bg-muted p-1">
           <TabsTrigger
-            className="h-10 rounded-xl text-sm text-[#69776d] data-active:bg-[#173d30] data-active:text-white data-active:shadow-none"
+            className="h-10 rounded-xl text-sm text-muted-foreground data-active:bg-primary-hover data-active:text-primary-foreground data-active:shadow-none"
             value="workdays"
           >
             <CalendarDays aria-hidden="true" className="size-4" />
             Jornadas laborales
           </TabsTrigger>
           <TabsTrigger
-            className="h-10 rounded-xl text-sm text-[#69776d] data-active:bg-[#173d30] data-active:text-white data-active:shadow-none"
+            className="h-10 rounded-xl text-sm text-muted-foreground data-active:bg-primary-hover data-active:text-primary-foreground data-active:shadow-none"
             value="harvest"
           >
             <ClipboardList aria-hidden="true" className="size-4" />
@@ -993,7 +993,7 @@ export default function WorkdayPage() {
           {loading ? (
             <p
               aria-live="polite"
-              className="rounded-2xl border border-[#e7ebe4] bg-white px-5 py-10 text-center text-sm text-[#748074]"
+              className="rounded-2xl border border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
               role="status"
             >
               Cargando jornadas laborales…
@@ -1024,7 +1024,7 @@ export default function WorkdayPage() {
           {loading ? (
             <p
               aria-live="polite"
-              className="rounded-2xl border border-[#e7ebe4] bg-white px-5 py-10 text-center text-sm text-[#748074]"
+              className="rounded-2xl border border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
               role="status"
             >
               Cargando registros de recolección…
@@ -1038,19 +1038,19 @@ export default function WorkdayPage() {
               />
             ))
           ) : (
-            <Card className="flex flex-col items-center gap-3 rounded-2xl border-[#e7ebe4] bg-white px-6 py-12 text-center shadow-none">
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-[#edf4eb] text-[#315d3b]">
+            <Card className="flex flex-col items-center gap-3 rounded-2xl border-border bg-card px-6 py-12 text-center shadow-none">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-tint text-primary">
                 <Search aria-hidden="true" className="size-6" />
               </span>
               <div>
-                <h2 className="font-semibold text-[#263b2c]">
+                <h2 className="font-semibold text-foreground">
                   {loadError
                     ? 'No se pudieron cargar los pesajes'
                     : harvestRecords.length
                     ? 'No hay pesajes para estos filtros'
                     : 'Aún no hay registros de recolección'}
                 </h2>
-                <p className="mt-1 max-w-md text-sm leading-6 text-[#748074]">
+                <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
                   {loadError
                     ? loadError
                     : harvestRecords.length

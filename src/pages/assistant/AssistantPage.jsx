@@ -26,7 +26,7 @@ function AssistantAvatar() {
   return (
     <Avatar
       aria-label="CafeSmart"
-      className="size-7 rounded-full bg-[#e8f0e7] text-[#24523a]"
+      className="size-7 rounded-full bg-muted text-primary"
     >
       <AvatarFallback className="rounded-full bg-transparent">
         <Leaf aria-hidden="true" className="size-3.5" />
@@ -137,20 +137,20 @@ function AssistantPage({ usuario }) {
       >
         {messages.length === 0 ? (
           <div className="flex min-h-full flex-col items-center justify-center px-2 pb-8 text-center">
-            <div className="flex size-11 items-center justify-center rounded-full bg-[#eaf1e7] text-[#315d3d]">
+            <div className="flex size-11 items-center justify-center rounded-full bg-tint text-primary">
               <Leaf aria-hidden="true" className="size-5" />
             </div>
-            <h2 className="mt-4 text-balance text-xl font-semibold tracking-tight text-[#29382e] sm:text-2xl">
+            <h2 className="mt-4 text-balance text-3xl text-foreground sm:text-4xl">
               Hola, {nombre}. ¿Qué quieres consultar?
             </h2>
-            <p className="mt-2 max-w-md text-pretty text-sm leading-6 text-[#777e75]">
+            <p className="mt-2 max-w-md text-pretty text-sm leading-6 text-muted-foreground">
               Pregunta por tus cosechas, pagos o finanzas. Te ayudo a encontrar
               la información de tu finca.
             </p>
             <div className="mt-6 flex w-full flex-wrap justify-center gap-2">
               {preguntasSugeridas.map(({ label, icon: Icon }) => (
                 <Button
-                  className="h-9 rounded-full border-[#e5e7df] bg-white px-3 text-xs font-medium text-[#485248] shadow-none hover:border-[#cbd9c8] hover:bg-[#f4f7f1] hover:text-[#244b33]"
+                  className="h-9 rounded-full border-border bg-card px-3 text-xs font-medium text-ink-soft shadow-none hover:border-input hover:bg-muted hover:text-primary"
                   key={label}
                   onClick={() => seleccionarPregunta(label)}
                   type="button"
@@ -158,7 +158,7 @@ function AssistantPage({ usuario }) {
                 >
                   <Icon
                     aria-hidden="true"
-                    className="size-3.5 text-[#52785a]"
+                    className="size-3.5 text-muted-foreground"
                   />
                   {label}
                 </Button>
@@ -176,7 +176,7 @@ function AssistantPage({ usuario }) {
                 >
                   <MessageContent className="max-w-[88%] gap-1 sm:max-w-[76%]">
                     <Bubble align="end" className="max-w-full" variant="secondary">
-                      <BubbleContent className="whitespace-pre-wrap break-words rounded-2xl border-0 bg-[#e9eee7] px-4 py-3 text-[13px] leading-5 text-[#303a31] sm:text-sm">
+                      <BubbleContent className="whitespace-pre-wrap break-words rounded-2xl border-0 bg-muted px-4 py-3 text-[13px] leading-5 text-foreground sm:text-sm">
                         {message.content}
                       </BubbleContent>
                     </Bubble>
@@ -188,11 +188,11 @@ function AssistantPage({ usuario }) {
                     <AssistantAvatar />
                   </MessageAvatar>
                   <MessageContent className="min-w-0 gap-1.5 pt-1">
-                    <span className="text-xs font-medium text-[#69746a]">
+                    <span className="text-xs font-medium text-muted-foreground">
                       CafeSmart
                     </span>
                     <Bubble className="max-w-full" variant="ghost">
-                      <BubbleContent className="whitespace-pre-wrap break-words p-0 text-[13px] leading-6 text-[#343a34] sm:text-sm">
+                      <BubbleContent className="whitespace-pre-wrap break-words p-0 text-[13px] leading-6 text-foreground sm:text-sm">
                         {message.content}
                       </BubbleContent>
                     </Bubble>
@@ -207,11 +207,11 @@ function AssistantPage({ usuario }) {
                   <AssistantAvatar />
                 </MessageAvatar>
                 <MessageContent className="min-w-0 gap-1.5 pt-1">
-                  <span className="text-xs font-medium text-[#69746a]">
+                  <span className="text-xs font-medium text-muted-foreground">
                     CafeSmart
                   </span>
                   <div
-                    className="flex items-center gap-2 py-1 text-sm text-[#777e75]"
+                    className="flex items-center gap-2 py-1 text-sm text-muted-foreground"
                     role="status"
                   >
                     <LoaderCircle
@@ -230,11 +230,11 @@ function AssistantPage({ usuario }) {
 
       <footer className="mx-auto w-full max-w-3xl shrink-0 px-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:px-2 sm:pb-3">
         <form onSubmit={enviarPregunta}>
-          <InputGroup className="min-h-[58px] rounded-3xl border-[#dedfd8] bg-white p-1.5 shadow-[0_3px_14px_-10px_rgba(38,52,42,0.28)] transition-[border-color,box-shadow] focus-within:border-[#a9c2a8] focus-within:ring-2 focus-within:ring-[#e1ebe0]">
+          <InputGroup className="min-h-[58px] rounded-3xl border-input bg-card p-1.5 shadow-[0_3px_14px_-10px_rgba(38,52,42,0.28)] transition-[border-color,box-shadow] focus-within:border-border-strong focus-within:ring-2 focus-within:ring-secondary">
             <InputGroupTextarea
               aria-label="Escribe tu mensaje"
               autoComplete="off"
-              className="min-h-10 max-h-32 px-3 py-2.5 text-[14px] leading-5 placeholder:text-[#92978f] sm:text-sm"
+              className="min-h-10 max-h-32 px-3 py-2.5 text-[14px] leading-5 placeholder:text-muted-foreground sm:text-sm"
               name="prompt"
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={(event) => {
@@ -254,7 +254,7 @@ function AssistantPage({ usuario }) {
             />
             <InputGroupButton
               aria-label="Micrófono, próximamente"
-              className="size-10 shrink-0 rounded-full text-[#737a72] hover:bg-[#f2f4ef] hover:text-[#344a38] disabled:opacity-70"
+              className="size-10 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-ink-soft disabled:opacity-70"
               disabled
               title="Dictado por voz próximamente"
               variant="ghost"
@@ -263,7 +263,7 @@ function AssistantPage({ usuario }) {
             </InputGroupButton>
             <InputGroupButton
               aria-label="Enviar mensaje"
-              className="size-10 shrink-0 rounded-full bg-[#214b32] text-white hover:bg-[#183d29]"
+              className="size-10 shrink-0 rounded-full bg-primary text-primary-foreground hover:bg-primary-hover"
               disabled={isLoading || !prompt.trim()}
               title="Enviar mensaje"
               type="submit"
@@ -273,7 +273,7 @@ function AssistantPage({ usuario }) {
             </InputGroupButton>
           </InputGroup>
         </form>
-        <p className="mt-2 text-center text-[10px] leading-4 text-[#85877e] sm:text-[11px]">
+        <p className="mt-2 text-center text-[10px] leading-4 text-muted-foreground sm:text-[11px]">
           Enter para enviar · Shift + Enter para una nueva línea
         </p>
       </footer>

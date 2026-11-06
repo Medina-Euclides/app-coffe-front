@@ -22,25 +22,25 @@ const periods = [
 ];
 
 const categoryColors = {
-  labor: '#214b32',
-  inputs: '#9a5c36',
-  tools_materials: '#64748b',
-  transport: '#527b82',
-  services: '#8b6a9c',
-  other: '#a1a1aa',
+  labor: 'var(--chart-1)',
+  inputs: 'var(--chart-4)',
+  tools_materials: 'var(--chart-3)',
+  transport: 'var(--chart-2)',
+  services: 'var(--chart-5)',
+  other: 'var(--subtle)',
 };
 
 const productionChartConfig = {
   total_quantity_kg: {
     label: 'Café recolectado',
-    color: '#214b32',
+    color: 'var(--chart-4)',
   },
 };
 
 const lotChartConfig = {
   total_quantity_kg: {
     label: 'Producción',
-    color: '#78bd82',
+    color: 'var(--chart-1)',
   },
 };
 
@@ -95,18 +95,18 @@ function formatPeriodRange(series) {
 function StatCard({ title, value, tone = 'default' }) {
   const toneClass =
     tone === 'positive'
-      ? 'text-[#214b32]'
+      ? 'text-leaf'
       : tone === 'negative'
-        ? 'text-[#a64c38]'
-        : 'text-[#263b2c]';
+        ? 'text-destructive'
+        : 'text-foreground';
 
   return (
-    <Card className="rounded-2xl border-[#e7e5df] bg-white shadow-sm">
+    <Card className="rounded-2xl border-border bg-card shadow-sm">
       <CardHeader className="gap-1 pb-1">
-        <CardDescription className="text-sm text-[#748074]">
+        <CardDescription className="text-sm text-muted-foreground">
           {title}
         </CardDescription>
-        <CardTitle className={`text-xl font-semibold sm:text-2xl ${toneClass}`}>
+        <CardTitle className={`cifra text-3xl sm:text-4xl ${toneClass}`}>
           {currencyFormatter.format(Number(value) || 0)}
         </CardTitle>
       </CardHeader>
@@ -223,23 +223,23 @@ export default function AnalyticPage({ usuario }) {
     <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
       <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#183d2b] sm:text-3xl">
+          <h1 className="text-4xl text-foreground sm:text-5xl">
             Analítica de la finca
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68766b] sm:text-base">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
             Consulta la producción de café y el destino de tus gastos de forma
             clara y sencilla.
           </p>
         </div>
         <div className="w-full lg:w-64">
           <label
-            className="mb-1.5 block text-xs font-medium text-[#68766b]"
+            className="mb-1.5 block text-xs font-medium text-muted-foreground"
             htmlFor="analytics-farm"
           >
             Finca
           </label>
           <select
-            className="h-11 w-full rounded-xl border border-[#dfe5dc] bg-white px-3 text-sm text-[#263b2c] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[#426b48]/30"
+            className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
             disabled={farmsLoading || farms.length === 0}
             id="analytics-farm"
             onChange={(event) => {
@@ -261,7 +261,7 @@ export default function AnalyticPage({ usuario }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div
           aria-label="Período de producción"
-          className="inline-flex w-full rounded-full bg-[#ece9e2] p-1 sm:w-fit"
+          className="inline-flex w-full rounded-full bg-muted p-1 sm:w-fit"
           role="group"
         >
           {periods.map((option) => (
@@ -269,8 +269,8 @@ export default function AnalyticPage({ usuario }) {
               aria-pressed={period === option.value}
               className={`min-h-10 flex-1 rounded-full px-4 text-sm font-medium transition-colors sm:flex-none ${
                 period === option.value
-                  ? 'bg-[#214b32] text-white shadow-sm'
-                  : 'text-[#59645b] hover:text-[#183d2b]'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-ink-soft hover:text-foreground'
               }`}
               key={option.value}
               onClick={() => {
@@ -283,7 +283,7 @@ export default function AnalyticPage({ usuario }) {
             </button>
           ))}
         </div>
-        <p className="text-sm text-[#68766b]" aria-live="polite">
+        <p className="text-sm text-muted-foreground" aria-live="polite">
           {periodLabel}
           {productionSeries ? ` · ${formatPeriodRange(productionSeries)}` : ''}
         </p>
@@ -292,7 +292,7 @@ export default function AnalyticPage({ usuario }) {
       {farmsError && (
         <div
           aria-live="assertive"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-xl border border-destructive/20 bg-destructive-soft px-4 py-3 text-sm text-destructive"
           role="alert"
         >
           {farmsError}
@@ -309,7 +309,7 @@ export default function AnalyticPage({ usuario }) {
       {error && (
         <div
           aria-live="assertive"
-          className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-xl border border-destructive/20 bg-destructive-soft px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
           role="alert"
         >
           <span>{error}</span>
@@ -328,7 +328,7 @@ export default function AnalyticPage({ usuario }) {
       )}
 
       {loading && !activeSummary ? (
-        <p aria-live="polite" className="py-12 text-center text-sm text-[#68766b]" role="status">
+        <p aria-live="polite" className="py-12 text-center text-sm text-muted-foreground" role="status">
           Cargando analíticas…
         </p>
       ) : activeSummary ? (
@@ -359,17 +359,17 @@ export default function AnalyticPage({ usuario }) {
           </section>
 
           <section className="grid gap-5 lg:grid-cols-2">
-            <Card className="rounded-2xl border-[#e7e5df] bg-white shadow-sm">
+            <Card className="rounded-2xl border-border bg-card shadow-sm">
               <CardHeader className="flex-row items-start justify-between gap-3">
                 <div>
-                  <CardTitle className="text-base font-semibold text-[#263b2c]">
+                  <CardTitle className="text-base font-semibold text-foreground">
                     Café recolectado
                   </CardTitle>
                   <CardDescription className="mt-1">
                     Producción de {periodLabel.toLocaleLowerCase()}
                   </CardDescription>
                 </div>
-                <div className="shrink-0 rounded-full border border-[#d8e9dc] bg-[#edf6ef] px-3 py-1.5 text-sm font-semibold text-[#214b32]">
+                <div className="shrink-0 rounded-full border border-border bg-tint px-3 py-1.5 text-sm font-semibold text-primary">
                   {kilogramsFormatter.format(
                     Number(productionSeries?.total_quantity_kg) || 0,
                   )}{' '}
@@ -387,7 +387,7 @@ export default function AnalyticPage({ usuario }) {
                       data={productionData}
                       margin={{ top: 12, right: 8, left: -16, bottom: 0 }}
                     >
-                      <CartesianGrid vertical={false} stroke="#ecefe9" />
+                      <CartesianGrid vertical={false} stroke="var(--border)" />
                       <XAxis
                         axisLine={false}
                         dataKey="label"
@@ -416,7 +416,7 @@ export default function AnalyticPage({ usuario }) {
                             )}
                           />
                         }
-                        cursor={{ fill: '#f3f5f1' }}
+                        cursor={{ fill: 'var(--muted)' }}
                       />
                       <Bar
                         dataKey="total_quantity_kg"
@@ -427,24 +427,24 @@ export default function AnalyticPage({ usuario }) {
                     </BarChart>
                   </ChartContainer>
                 ) : (
-                  <p className="py-16 text-center text-sm text-[#748074]">
+                  <p className="py-16 text-center text-sm text-muted-foreground">
                     No hay producción registrada para este período.
                   </p>
                 )}
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border-[#e7e5df] bg-white shadow-sm">
+            <Card className="rounded-2xl border-border bg-card shadow-sm">
               <CardHeader className="flex-row items-start justify-between gap-3">
                 <div>
-                  <CardTitle className="text-base font-semibold text-[#263b2c]">
+                  <CardTitle className="text-base font-semibold text-foreground">
                     ¿En qué se fue la plata?
                   </CardTitle>
                   <CardDescription className="mt-1">
                     Distribución histórica de egresos por categoría
                   </CardDescription>
                 </div>
-                <div className="shrink-0 rounded-full border border-[#e7e5df] bg-[#faf9f7] px-3 py-1.5 text-sm font-semibold text-[#263b2c]">
+                <div className="shrink-0 rounded-full border border-border bg-muted px-3 py-1.5 text-sm font-semibold text-foreground">
                   {currencyFormatter.format(totalExpenses)}
                 </div>
               </CardHeader>
@@ -457,19 +457,19 @@ export default function AnalyticPage({ usuario }) {
                   return (
                     <div className="space-y-2" key={expense.category}>
                       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                        <span className="text-sm font-medium text-[#36483a]">
+                        <span className="text-sm font-medium text-ink-soft">
                           {expense.label}
                         </span>
-                        <span className="text-sm font-semibold text-[#263b2c]">
+                        <span className="text-sm font-semibold text-foreground">
                           {currencyFormatter.format(amount)}{' '}
-                          <span className="font-normal text-[#899489]">
+                          <span className="font-normal text-muted-foreground">
                             ({Math.round(percentage)}%)
                           </span>
                         </span>
                       </div>
                       <div
                         aria-label={`${expense.label}: ${Math.round(percentage)}%`}
-                        className="h-2.5 overflow-hidden rounded-full bg-[#f0f1ee]"
+                        className="h-2.5 overflow-hidden rounded-full bg-muted"
                         role="progressbar"
                         aria-valuemax={100}
                         aria-valuemin={0}
@@ -479,7 +479,7 @@ export default function AnalyticPage({ usuario }) {
                           className="h-full rounded-full transition-[width]"
                           style={{
                             backgroundColor:
-                              categoryColors[expense.category] || '#64748b',
+                              categoryColors[expense.category] || 'var(--subtle)',
                             width: `${Math.min(percentage, 100)}%`,
                           }}
                         />
@@ -491,9 +491,9 @@ export default function AnalyticPage({ usuario }) {
             </Card>
           </section>
 
-          <Card className="rounded-2xl border-[#e7e5df] bg-white shadow-sm">
+          <Card className="rounded-2xl border-border bg-card shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-[#263b2c]">
+              <CardTitle className="text-base font-semibold text-foreground">
                 Producción por lote
               </CardTitle>
               <CardDescription>
@@ -512,7 +512,7 @@ export default function AnalyticPage({ usuario }) {
                     layout="vertical"
                     margin={{ top: 4, right: 20, left: 8, bottom: 4 }}
                   >
-                    <CartesianGrid horizontal={false} stroke="#ecefe9" />
+                    <CartesianGrid horizontal={false} stroke="var(--border)" />
                     <XAxis
                       axisLine={false}
                       tickFormatter={(value) =>
@@ -543,7 +543,7 @@ export default function AnalyticPage({ usuario }) {
                           )}
                         />
                       }
-                      cursor={{ fill: '#f3f5f1' }}
+                      cursor={{ fill: 'var(--muted)' }}
                     />
                     <Bar
                       dataKey="total_quantity_kg"
@@ -554,7 +554,7 @@ export default function AnalyticPage({ usuario }) {
                   </BarChart>
                 </ChartContainer>
               ) : (
-                <p className="py-10 text-center text-sm text-[#748074]">
+                <p className="py-10 text-center text-sm text-muted-foreground">
                   No hay lotes registrados para mostrar.
                 </p>
               )}
@@ -562,7 +562,7 @@ export default function AnalyticPage({ usuario }) {
           </Card>
         </>
       ) : !error && !farmsError ? (
-        <p className="py-12 text-center text-sm text-[#748074]">
+        <p className="py-12 text-center text-sm text-muted-foreground">
           No hay datos para mostrar.
         </p>
       ) : null}

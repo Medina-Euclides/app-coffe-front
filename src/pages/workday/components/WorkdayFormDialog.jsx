@@ -67,7 +67,7 @@ function FormField({ children, htmlFor, label, required }) {
   return (
     <div className="min-w-0 space-y-2">
       <label
-        className="text-xs font-semibold uppercase tracking-wide text-[#244b38]"
+        className="text-sm font-semibold text-primary"
         htmlFor={htmlFor}
       >
         {label}
@@ -316,9 +316,9 @@ export default function WorkdayFormDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-[#e4e9e1] p-5 sm:max-w-2xl sm:p-7">
-        <DialogHeader className="border-b border-[#e9ede8] pb-4 pr-8">
-          <DialogTitle className="text-lg font-semibold text-[#183d2b] sm:text-xl">
+      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-border p-5 sm:max-w-2xl sm:p-7">
+        <DialogHeader className="border-b border-border/60 pb-4 pr-8">
+          <DialogTitle className="text-2xl text-foreground sm:text-[1.75rem]">
             Registrar Jornada Laboral
           </DialogTitle>
           <DialogDescription className="leading-5">
@@ -329,7 +329,7 @@ export default function WorkdayFormDialog({
         {optionsLoading ? (
           <p
             aria-live="polite"
-            className="flex items-center justify-center gap-2 py-10 text-sm text-[#68766b]"
+            className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"
             role="status"
           >
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -337,7 +337,7 @@ export default function WorkdayFormDialog({
           </p>
         ) : optionsError ? (
           <div className="space-y-4 py-2">
-            <p aria-live="polite" className="text-sm text-red-700" role="alert">
+            <p aria-live="polite" className="text-sm text-destructive" role="alert">
               {optionsError}
             </p>
             <Button
@@ -361,7 +361,7 @@ export default function WorkdayFormDialog({
               !activeLots.length) && (
               <p
                 aria-live="polite"
-                className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-5 text-amber-900"
+                className="rounded-xl border border-warning/30 bg-warning-soft px-3 py-2 text-sm leading-5 text-warning"
                 role="status"
               >
                 {!activeWorkers.length && 'Agrega un trabajador activo. '}
@@ -380,12 +380,12 @@ export default function WorkdayFormDialog({
               >
                 <SelectTrigger
                   aria-label="Finca"
-                  className="h-12 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
+                  className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                   id="workday-farm"
                   name="farm"
                 >
                   <SelectValue
-                    className="truncate font-semibold text-[#173d30]"
+                    className="truncate font-semibold text-foreground"
                     placeholder="Selecciona una finca"
                   >
                     {selectedFarm?.nombre || selectedFarm?.name || undefined}
@@ -394,7 +394,7 @@ export default function WorkdayFormDialog({
                 <SelectContent>
                   {activeFarms.map((farm) => (
                     <SelectItem
-                      className="rounded-lg py-2.5 text-base font-medium text-[#254334] data-highlighted:bg-[#e8f3e8] data-highlighted:text-[#173d30] data-selected:font-semibold"
+                      className="rounded-lg py-2.5 text-base font-medium text-foreground data-highlighted:bg-tint data-highlighted:text-foreground data-selected:font-semibold"
                       key={farm.id}
                       value={String(farm.id)}
                     >
@@ -406,15 +406,15 @@ export default function WorkdayFormDialog({
             </FormField>
 
             <fieldset className="min-w-0 space-y-2">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-[#244b38]">
+              <legend className="text-sm font-semibold text-primary">
                 Trabajadores <span aria-hidden="true">*</span>
-                <span className="ml-1 font-normal normal-case text-[#748074]">
+                <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedWorkers.length} seleccionados)
                 </span>
               </legend>
               <div
                 aria-label="Trabajadores de la jornada"
-                className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-[#d1ddd2] bg-white p-3 sm:grid-cols-2"
+                className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2"
                 id="workday-workers"
                 tabIndex={-1}
               >
@@ -422,12 +422,12 @@ export default function WorkdayFormDialog({
                   const checked = workerIds.includes(String(worker.id));
                   return (
                     <label
-                      className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#254334] hover:bg-[#f4f8f3]"
+                      className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted"
                       key={worker.id}
                     >
                       <input
                         checked={checked}
-                        className="size-4 shrink-0 accent-[#173d30]"
+                        className="size-4 shrink-0 accent-primary"
                         onChange={() =>
                           toggleSelection(workerIds, setWorkerIds, worker.id)
                         }
@@ -454,12 +454,12 @@ export default function WorkdayFormDialog({
                 >
                   <SelectTrigger
                     aria-label="Tipo de actividad"
-                    className="h-12 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
+                    className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                     id="workday-activity"
                     name="activity_type"
                   >
                     <SelectValue
-                      className="truncate font-semibold text-[#173d30]"
+                      className="truncate font-semibold text-foreground"
                       placeholder="Selecciona una actividad"
                     >
                       {selectedActivity?.name || undefined}
@@ -468,7 +468,7 @@ export default function WorkdayFormDialog({
                   <SelectContent>
                     {activities.map((activity) => (
                       <SelectItem
-                        className="rounded-lg py-2.5 text-base font-medium text-[#254334] data-highlighted:bg-[#e8f3e8] data-highlighted:text-[#173d30] data-selected:font-semibold"
+                        className="rounded-lg py-2.5 text-base font-medium text-foreground data-highlighted:bg-tint data-highlighted:text-foreground data-selected:font-semibold"
                         key={activity.id}
                         value={String(activity.id)}
                       >
@@ -487,7 +487,7 @@ export default function WorkdayFormDialog({
               >
                 <Input
                   autoComplete="off"
-                  className="h-12 rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
+                  className="h-12 rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                   id="workday-date"
                   max={todayDate}
                   name="date"
@@ -500,16 +500,16 @@ export default function WorkdayFormDialog({
             </div>
 
             <fieldset className="min-w-0 space-y-2">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-[#244b38]">
+              <legend className="text-sm font-semibold text-primary">
                 Lotes de trabajo <span aria-hidden="true">*</span>
-                <span className="ml-1 font-normal normal-case text-[#748074]">
+                <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedLots.length} seleccionados)
                 </span>
               </legend>
               {activeLots.length ? (
                 <div
                   aria-label="Lotes de la jornada"
-                  className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-[#d1ddd2] bg-white p-3 sm:grid-cols-2"
+                  className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2"
                   id="workday-lots"
                   tabIndex={-1}
                 >
@@ -517,12 +517,12 @@ export default function WorkdayFormDialog({
                     const checked = lotIds.includes(String(lot.id));
                     return (
                       <label
-                        className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#254334] hover:bg-[#f4f8f3]"
+                        className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted"
                         key={lot.id}
                       >
                         <input
                           checked={checked}
-                          className="size-4 shrink-0 accent-[#173d30]"
+                          className="size-4 shrink-0 accent-primary"
                           onChange={() =>
                             toggleSelection(lotIds, setLotIds, lot.id)
                           }
@@ -535,7 +535,7 @@ export default function WorkdayFormDialog({
                   })}
                 </div>
               ) : (
-                <p className="rounded-xl border border-[#d1ddd2] bg-white px-3 py-3 text-sm text-[#748074]">
+                <p className="rounded-xl border border-input bg-card px-3 py-3 text-sm text-muted-foreground">
                   Selecciona una finca con lotes activos.
                 </p>
               )}
@@ -543,11 +543,11 @@ export default function WorkdayFormDialog({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <fieldset className="min-w-0 space-y-2">
-                <legend className="text-xs font-semibold uppercase tracking-wide text-[#244b38]">
+                <legend className="text-sm font-semibold text-primary">
                   Modalidad de pago <span aria-hidden="true">*</span>
                 </legend>
-                <div className="grid h-12 grid-cols-2 rounded-xl border border-[#e1e8e0] bg-[#f7f9f6] p-1">
-                  <label className="flex cursor-pointer items-center justify-center rounded-lg px-2 text-sm font-medium text-[#52655a] transition-colors has-[:checked]:bg-[#173d30] has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#426b48]">
+                <div className="grid h-12 grid-cols-2 rounded-xl border border-border bg-muted p-1">
+                  <label className="flex cursor-pointer items-center justify-center rounded-lg px-2 text-sm font-medium text-ink-soft transition-colors has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
                     <input
                       checked={paymentMode === PAYMENT_MODES.JOURNAL}
                       className="peer sr-only"
@@ -559,11 +559,11 @@ export default function WorkdayFormDialog({
                     <span>Por jornal</span>
                   </label>
                   <label
-                    className={`flex items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#426b48] ${
+                    className={`flex items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${
                       kilogramPaymentAvailable
-                        ? 'cursor-pointer text-[#68766b]'
-                        : 'cursor-not-allowed text-[#a0a9a0]'
-                    } has-[:checked]:bg-[#173d30] has-[:checked]:text-white`}
+                        ? 'cursor-pointer text-muted-foreground'
+                        : 'cursor-not-allowed text-subtle'
+                    } has-[:checked]:bg-primary has-[:checked]:text-primary-foreground`}
                   >
                     <input
                       checked={paymentMode === PAYMENT_MODES.KILOGRAM}
@@ -578,7 +578,7 @@ export default function WorkdayFormDialog({
                   </label>
                 </div>
                 {!kilogramPaymentAvailable && selectedActivity && (
-                  <p className="text-xs leading-5 text-[#748074]">
+                  <p className="text-xs leading-5 text-muted-foreground">
                     El pago por kg está disponible para actividades de recolección.
                   </p>
                 )}
@@ -596,13 +596,13 @@ export default function WorkdayFormDialog({
                 <div className="relative">
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm font-semibold text-[#748074]"
+                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm font-semibold text-muted-foreground"
                   >
                     $
                   </span>
                   <Input
                     autoComplete="off"
-                    className="h-12 rounded-xl border-[#d1ddd2] bg-white pl-9 text-base font-semibold text-[#173d30]"
+                    className="h-12 rounded-xl border-input bg-card pl-9 text-base font-semibold text-foreground"
                     id="workday-rate"
                     min="0.01"
                     name="agreed_rate"
@@ -614,7 +614,7 @@ export default function WorkdayFormDialog({
                     value={rate}
                   />
                 </div>
-                <p className="text-xs leading-5 text-[#748074]">
+                <p className="text-xs leading-5 text-muted-foreground">
                   {paymentMode === PAYMENT_MODES.KILOGRAM
                     ? 'La misma tarifa por kilogramo se aplicará a todos los trabajadores.'
                     : 'El mismo valor de jornal se aplicará a todos los trabajadores.'}
@@ -625,16 +625,16 @@ export default function WorkdayFormDialog({
             {error && (
               <p
                 aria-live="polite"
-                className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm leading-5 text-red-800"
+                className="rounded-xl border border-destructive/20 bg-destructive-soft px-3 py-2 text-sm leading-5 text-destructive"
                 role="alert"
               >
                 {error}
               </p>
             )}
 
-            <DialogFooter className="flex-col-reverse gap-2 border-t border-[#e9ede8] pt-4 sm:flex-row">
+            <DialogFooter className="flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row">
               <Button
-                className="min-h-11 rounded-xl text-[#68766b]"
+                className="min-h-11 rounded-xl text-muted-foreground"
                 disabled={saving}
                 onClick={() => onOpenChange(false)}
                 type="button"
@@ -643,7 +643,7 @@ export default function WorkdayFormDialog({
                 Cancelar
               </Button>
               <Button
-                className="min-h-11 rounded-xl bg-[#1d5140] px-5 text-white hover:bg-[#173d30]"
+                className="min-h-11 rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary-hover"
                 disabled={saving || formDisabled}
                 type="submit"
               >

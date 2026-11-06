@@ -193,7 +193,7 @@ function SelectField({ children, htmlFor, label }) {
   return (
     <div className="min-w-0 space-y-2">
       <label
-        className="text-xs font-semibold uppercase tracking-wide text-[#244b38]"
+        className="text-sm font-semibold text-primary"
         htmlFor={htmlFor}
       >
         {label} <span aria-hidden="true">*</span>
@@ -425,14 +425,14 @@ export default function HarvestRecordFormDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-[#e4e9e1] p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b border-[#e9ede8] bg-[#f7f9f6] px-5 py-5 pr-14 sm:px-7">
+      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-border p-0 sm:max-w-2xl">
+        <DialogHeader className="border-b border-border/60 bg-muted px-5 py-5 pr-14 sm:px-7">
           <div className="flex items-center gap-4">
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#173d30] text-white">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
               <Scale aria-hidden="true" className="size-6" />
             </span>
             <div className="min-w-0">
-              <DialogTitle className="text-lg font-semibold text-[#183d2b] sm:text-xl">
+              <DialogTitle className="text-2xl text-foreground sm:text-[1.75rem]">
                 Registrar Pesaje
               </DialogTitle>
               <DialogDescription className="mt-1 leading-5">
@@ -446,7 +446,7 @@ export default function HarvestRecordFormDialog({
           {loading ? (
             <p
               aria-live="polite"
-              className="flex items-center justify-center gap-2 py-12 text-sm text-[#68766b]"
+              className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground"
               role="status"
             >
               <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -454,7 +454,7 @@ export default function HarvestRecordFormDialog({
             </p>
           ) : loadError ? (
             <div className="space-y-4 py-2">
-              <p aria-live="polite" className="text-sm text-red-700" role="alert">
+              <p aria-live="polite" className="text-sm text-destructive" role="alert">
                 {loadError}
               </p>
               <Button
@@ -471,10 +471,10 @@ export default function HarvestRecordFormDialog({
             </div>
           ) : harvestDetails.length === 0 ? (
             <div className="space-y-2 py-8 text-center">
-              <h3 className="font-semibold text-[#263b2c]">
+              <h3 className="font-semibold text-foreground">
                 No hay jornadas de recolección disponibles
               </h3>
-              <p className="mx-auto max-w-md text-sm leading-6 text-[#748074]">
+              <p className="mx-auto max-w-md text-sm leading-6 text-muted-foreground">
                 Registra primero una jornada con una actividad marcada como
                 recolección. El pesaje se asociará a su lote y fecha.
               </p>
@@ -488,16 +488,16 @@ export default function HarvestRecordFormDialog({
                 >
                   <SelectTrigger
                     aria-label="Jornada de recolección"
-                    className="h-13 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
+                    className="h-13 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                     id="harvest-workday"
                     name="workday"
                   >
                     <CalendarDays
                       aria-hidden="true"
-                      className="size-5 shrink-0 text-[#74877a]"
+                      className="size-5 shrink-0 text-muted-foreground"
                     />
                     <SelectValue
-                      className="min-w-0 flex-1 truncate text-left font-semibold text-[#173d30]"
+                      className="min-w-0 flex-1 truncate text-left font-semibold text-foreground"
                       placeholder="Selecciona una jornada…"
                     >
                       {(value) => {
@@ -513,7 +513,7 @@ export default function HarvestRecordFormDialog({
                   <SelectContent>
                     {harvestWorkdays.map((workday) => (
                       <SelectItem
-                        className="rounded-lg py-2.5 text-base font-medium text-[#254334] data-highlighted:bg-[#e8f3e8] data-highlighted:text-[#173d30] data-selected:font-semibold"
+                        className="rounded-lg py-2.5 text-base font-medium text-foreground data-highlighted:bg-tint data-highlighted:text-foreground data-selected:font-semibold"
                         key={workday.workdayId}
                         value={workday.workdayId}
                       >
@@ -532,16 +532,16 @@ export default function HarvestRecordFormDialog({
                 >
                   <SelectTrigger
                     aria-label="Trabajador de la jornada"
-                    className="h-13 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
+                    className="h-13 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                     id="harvest-worker"
                     name="worker"
                   >
                     <UserRound
                       aria-hidden="true"
-                      className="size-5 shrink-0 text-[#74877a]"
+                      className="size-5 shrink-0 text-muted-foreground"
                     />
                     <SelectValue
-                      className="min-w-0 flex-1 truncate text-left font-semibold text-[#173d30]"
+                      className="min-w-0 flex-1 truncate text-left font-semibold text-foreground"
                       placeholder={
                         workdayId
                           ? 'Selecciona un trabajador…'
@@ -565,7 +565,7 @@ export default function HarvestRecordFormDialog({
                   <SelectContent>
                     {workers.map((worker) => (
                       <SelectItem
-                        className="rounded-lg py-2.5 text-base font-medium text-[#254334] data-highlighted:bg-[#e8f3e8] data-highlighted:text-[#173d30] data-selected:font-semibold"
+                        className="rounded-lg py-2.5 text-base font-medium text-foreground data-highlighted:bg-tint data-highlighted:text-foreground data-selected:font-semibold"
                         key={worker.workerId}
                         value={worker.workerId}
                       >
@@ -578,7 +578,7 @@ export default function HarvestRecordFormDialog({
                   </SelectContent>
                 </Select>
                 {workdayId && workers.length === 0 && (
-                  <p className="text-xs leading-5 text-[#748074]">
+                  <p className="text-xs leading-5 text-muted-foreground">
                     Esta jornada no tiene trabajadores con detalles de recolección disponibles.
                   </p>
                 )}
@@ -595,12 +595,12 @@ export default function HarvestRecordFormDialog({
                 >
                   <SelectTrigger
                     aria-label="Lote de recolección"
-                    className="h-13 w-full rounded-xl border-[#d1ddd2] bg-white px-3 text-base font-semibold text-[#173d30]"
+                    className="h-13 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                     id="harvest-lot"
                     name="lot"
                   >
                     <SelectValue
-                      className="min-w-0 flex-1 truncate text-left font-semibold text-[#173d30]"
+                      className="min-w-0 flex-1 truncate text-left font-semibold text-foreground"
                       placeholder={
                         workerId
                           ? 'Selecciona el lote…'
@@ -620,7 +620,7 @@ export default function HarvestRecordFormDialog({
                   <SelectContent>
                     {availableLots.map((lot) => (
                       <SelectItem
-                        className="rounded-lg py-2.5 text-base font-medium text-[#254334] data-highlighted:bg-[#e8f3e8] data-highlighted:text-[#173d30] data-selected:font-semibold"
+                        className="rounded-lg py-2.5 text-base font-medium text-foreground data-highlighted:bg-tint data-highlighted:text-foreground data-selected:font-semibold"
                         key={lot.id}
                         value={String(lot.id)}
                       >
@@ -630,7 +630,7 @@ export default function HarvestRecordFormDialog({
                   </SelectContent>
                 </Select>
                 {workdayId && selectedWorkday && availableLots.length === 0 && (
-                  <p className="text-xs leading-5 text-[#748074]">
+                  <p className="text-xs leading-5 text-muted-foreground">
                     No hay lotes activos disponibles en la finca de esta jornada.
                   </p>
                 )}
@@ -638,7 +638,7 @@ export default function HarvestRecordFormDialog({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="min-w-0 space-y-2">
                   <label
-                    className="text-xs font-semibold uppercase tracking-wide text-[#244b38]"
+                    className="text-sm font-semibold text-primary"
                     htmlFor="harvest-quantity"
                   >
                     Kilogramos (kg) <span aria-hidden="true">*</span>
@@ -646,11 +646,11 @@ export default function HarvestRecordFormDialog({
                   <div className="relative">
                     <Scale
                       aria-hidden="true"
-                      className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-[#74877a]"
+                      className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground"
                     />
                     <Input
                       autoComplete="off"
-                      className="h-13 rounded-xl border-[#d1ddd2] bg-white pl-11 pr-12 text-base font-semibold text-[#173d30]"
+                      className="h-13 rounded-xl border-input bg-card pl-11 pr-12 text-base font-semibold text-foreground"
                       id="harvest-quantity"
                       inputMode="decimal"
                       max={MAX_KILOGRAMS}
@@ -665,7 +665,7 @@ export default function HarvestRecordFormDialog({
                     />
                     <span
                       aria-hidden="true"
-                      className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold uppercase text-[#74877a]"
+                      className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-muted-foreground"
                     >
                       kg
                     </span>
@@ -674,7 +674,7 @@ export default function HarvestRecordFormDialog({
 
                 <div className="min-w-0 space-y-2">
                   <label
-                    className="text-xs font-semibold uppercase tracking-wide text-[#244b38]"
+                    className="text-sm font-semibold text-primary"
                     htmlFor="harvest-time"
                   >
                     Hora de entrega <span aria-hidden="true">*</span>
@@ -682,11 +682,11 @@ export default function HarvestRecordFormDialog({
                   <div className="relative">
                     <Clock3
                       aria-hidden="true"
-                      className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-[#74877a]"
+                      className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground"
                     />
                     <Input
                       autoComplete="off"
-                      className="h-13 rounded-xl border-[#d1ddd2] bg-white pl-11 text-base font-medium text-[#173d30]"
+                      className="h-13 rounded-xl border-input bg-card pl-11 text-base font-medium text-foreground"
                       id="harvest-time"
                       name="time"
                       onChange={(event) => setTime(event.target.value)}
@@ -701,13 +701,13 @@ export default function HarvestRecordFormDialog({
               {selectedWorker && selectedLot && (
                 <section
                   aria-label="Resumen de la jornada vinculada"
-                  className="space-y-3 rounded-2xl border border-[#e1e9e1] bg-[#f5f8f5] p-4"
+                  className="space-y-3 rounded-2xl border border-border bg-muted p-4"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e0e8e0] pb-3">
-                    <p className="flex min-w-0 items-center gap-2 text-sm text-[#244b38]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                    <p className="flex min-w-0 items-center gap-2 text-sm text-primary">
                       <CalendarDays
                         aria-hidden="true"
-                        className="size-4 shrink-0 text-[#28745b]"
+                        className="size-4 shrink-0 text-leaf"
                       />
                       <span className="truncate">
                         <span className="font-semibold">Jornada vinculada:</span>{' '}
@@ -715,23 +715,23 @@ export default function HarvestRecordFormDialog({
                           selectedWorker.activityName}
                       </span>
                     </p>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#c2ebdc] bg-[#effbf6] px-3 py-1 text-xs font-medium text-[#19805d]">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-leaf/30 bg-leaf-soft px-3 py-1 text-xs font-medium text-leaf">
                       <CalendarDays aria-hidden="true" className="size-3.5" />
                       {formatWorkdayDate(selectedWorker.date)}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                    <p className="flex items-center gap-2 text-[#748074]">
+                    <p className="flex items-center gap-2 text-muted-foreground">
                       <span className="font-medium">Modalidad:</span>
-                      <span className="font-semibold text-[#244b38]">
+                      <span className="font-semibold text-primary">
                         {selectedWorker.paymentMode === 'kg'
                           ? 'Por kilogramo'
                           : 'Por jornal'}
                       </span>
                     </p>
-                    <p className="rounded-lg border border-[#e1e9e1] bg-white px-3 py-1.5 text-xs text-[#748074]">
+                    <p className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
                       Tarifa:{' '}
-                      <span className="font-semibold text-[#244b38]">
+                      <span className="font-semibold text-primary">
                         {currencyFormatter.format(selectedWorker.rate)}
                         {selectedWorker.paymentMode === 'kg'
                           ? ' / kg'
@@ -740,7 +740,7 @@ export default function HarvestRecordFormDialog({
                     </p>
                   </div>
                   {(selectedDetail?.existingRecords.length || 0) > 0 && (
-                    <p className="text-xs text-[#68766b]">
+                    <p className="text-xs text-muted-foreground">
                       Este lote ya tiene {selectedDetail.existingRecords.length}{' '}
                       {selectedDetail.existingRecords.length === 1
                         ? 'pesaje registrado'
@@ -754,16 +754,16 @@ export default function HarvestRecordFormDialog({
               {error && (
                 <p
                   aria-live="polite"
-                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm leading-5 text-red-800"
+                  className="rounded-xl border border-destructive/20 bg-destructive-soft px-3 py-2 text-sm leading-5 text-destructive"
                   role="alert"
                 >
                   {error}
                 </p>
               )}
 
-              <DialogFooter className="flex-col-reverse gap-2 border-t border-[#e9ede8] pt-4 sm:flex-row">
+              <DialogFooter className="flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row">
                 <Button
-                  className="min-h-11 rounded-xl text-[#68766b]"
+                  className="min-h-11 rounded-xl text-muted-foreground"
                   disabled={saving}
                   onClick={() => onOpenChange(false)}
                   type="button"
@@ -772,7 +772,7 @@ export default function HarvestRecordFormDialog({
                   Cancelar
                 </Button>
                 <Button
-                  className="min-h-11 rounded-xl bg-[#1d5140] px-5 text-white hover:bg-[#173d30]"
+                  className="min-h-11 rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary-hover"
                   disabled={saving || !selectedLot}
                   type="submit"
                 >

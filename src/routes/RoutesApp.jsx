@@ -43,7 +43,7 @@ export default function RoutesApp({
   return (
     <Suspense
       fallback={
-        <p aria-live="polite" className="p-6 text-sm text-slate-600" role="status">
+        <p aria-live="polite" className="p-6 text-sm text-muted-foreground" role="status">
           Cargando pantalla…
         </p>
       }

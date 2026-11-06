@@ -131,7 +131,7 @@ export default function ActividadesLaborales({ usuario }) {
         {loading ? (
           <p
             aria-live="polite"
-            className="py-8 text-center text-sm text-[#68766b]"
+            className="py-8 text-center text-sm text-muted-foreground"
             role="status"
           >
             Cargando actividades…
@@ -163,7 +163,7 @@ export default function ActividadesLaborales({ usuario }) {
                   avatar={
                     <span
                       aria-hidden="true"
-                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#edf3e9] text-[#426b48]"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-tint text-primary"
                     >
                       {activity.name?.trim()?.charAt(0)?.toUpperCase() || '?'}
                     </span>
@@ -177,7 +177,7 @@ export default function ActividadesLaborales({ usuario }) {
                   }
                   badge={isHarvest ? 'Recolección' : 'Labor por jornal'}
                   badgeProps={{
-                    className: 'border-[#dce8d9] bg-[#f0f5ed] text-[#426548]',
+                    className: 'border-border bg-muted text-primary',
                   }}
                   actions={[
                     {
@@ -194,7 +194,7 @@ export default function ActividadesLaborales({ usuario }) {
                       label: 'Eliminar',
                       onClick: deleteActivity,
                       item: activity,
-                      className: 'min-h-10 rounded-lg text-red-700 hover:bg-red-50',
+                      className: 'min-h-10 rounded-lg text-destructive hover:bg-destructive-soft',
                     },
                   ]}
                 />
@@ -223,7 +223,7 @@ export default function ActividadesLaborales({ usuario }) {
       >
         <DialogContent className="rounded-2xl p-5 sm:max-w-md sm:p-6">
           <DialogHeader className="pr-8">
-            <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+            <DialogTitle className="text-2xl text-foreground">
               {activityToView?.name}
             </DialogTitle>
             <DialogDescription>
@@ -232,7 +232,7 @@ export default function ActividadesLaborales({ usuario }) {
                 : 'Tipo de labor que se paga por jornal.'}
             </DialogDescription>
           </DialogHeader>
-          <p className="rounded-xl bg-[#f7f8f3] p-4 text-sm leading-6 text-[#58675a]">
+          <p className="rounded-xl bg-muted p-4 text-sm leading-6 text-ink-soft">
             {activityToView?.description ||
               'La jornada laboral registra cuándo y quién ejecutó esta actividad.'}
           </p>

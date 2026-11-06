@@ -12,8 +12,8 @@ export default function NoticeBanner({
       aria-live="polite"
       className={`rounded-lg border px-3 py-2 text-sm ${
         isError
-          ? 'border-red-200 bg-red-50 text-red-800'
-          : 'border-[#dce8d9] bg-[#f0f5ed] text-[#426548]'
+          ? 'border-destructive/20 bg-destructive-soft text-destructive'
+          : 'border-border bg-muted text-primary'
       }`}
       role="status"
     >

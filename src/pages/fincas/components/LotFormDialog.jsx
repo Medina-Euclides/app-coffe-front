@@ -64,7 +64,7 @@ export default function LotFormDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-lg sm:p-6">
         <DialogHeader className="pr-8">
-          <DialogTitle className="text-lg font-semibold text-[#183d2b]">
+          <DialogTitle className="text-2xl text-foreground">
             {lot ? 'Editar lote' : 'Agregar lote'}
           </DialogTitle>
           <DialogDescription className="leading-6">
@@ -74,7 +74,7 @@ export default function LotFormDialog({
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="lot-name"
             >
               Nombre del lote
@@ -94,7 +94,7 @@ export default function LotFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="lot-plant-count"
             >
               Número de plantas de café (opcional)
@@ -113,13 +113,13 @@ export default function LotFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="lot-variety"
             >
               Variedad de café
             </label>
             <select
-              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-base text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48] md:text-sm"
+              className="h-11 w-full rounded-xl border border-input bg-card px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:text-sm"
               id="lot-variety"
               name="variedad"
               onChange={(event) => setVariety(event.target.value)}
@@ -134,7 +134,7 @@ export default function LotFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="lot-hectares"
             >
               Área en hectáreas (opcional)
@@ -153,13 +153,13 @@ export default function LotFormDialog({
           </div>
           <div className="space-y-2">
             <label
-              className="text-sm font-medium text-[#36483a]"
+              className="text-sm font-medium text-ink-soft"
               htmlFor="lot-description"
             >
               Descripción (opcional)
             </label>
             <textarea
-              className="min-h-24 w-full rounded-xl border border-input bg-white px-3 py-2 text-sm text-[#263b2c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48]"
+              className="min-h-24 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               id="lot-description"
               name="description"
               onChange={(event) => setDescription(event.target.value)}
@@ -168,7 +168,7 @@ export default function LotFormDialog({
             />
           </div>
           {error && (
-            <p aria-live="polite" className="text-sm text-red-700" role="alert">
+            <p aria-live="polite" className="text-sm text-destructive" role="alert">
               {error}
             </p>
           )}
@@ -183,7 +183,7 @@ export default function LotFormDialog({
               Cancelar
             </Button>
             <Button
-              className="min-h-11 rounded-xl bg-[#214b32] text-white hover:bg-[#173d2b]"
+              className="min-h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover"
               disabled={saving}
               type="submit"
             >

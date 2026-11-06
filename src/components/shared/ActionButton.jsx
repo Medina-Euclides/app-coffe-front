@@ -8,7 +8,7 @@ export default function ActionButton({ label, onClick, item, ...props }) {
     <Button
       type="button"
       variant="ghost"
-      className="min-h-10 rounded-lg text-[#315d3b] hover:bg-[#edf3e9]"
+      className="min-h-10 rounded-lg text-primary hover:bg-tint"
       onClick={() => onClick(item)}
       {...props}
     >

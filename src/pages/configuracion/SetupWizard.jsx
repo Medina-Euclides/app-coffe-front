@@ -14,6 +14,7 @@ import {
   guardarCacheFincasYLotes,
   guardarFincaActiva,
 } from '#services/farmStorage';
+import MaduracionStripe from '#components/shared/MaduracionStripe';
 
 const variedadesCafe = ['Castillo', 'Caturra', 'Colombia', 'Borbón', 'Geisha'];
 
@@ -131,8 +132,9 @@ export function SetupWizard({ usuario, onComplete }) {
     'Productor';
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-gradient-to-br from-emerald-50 via-stone-50 to-amber-50 px-4 py-10">
-      <Card className="w-full max-w-xl gap-0 rounded-3xl border border-emerald-950/10 bg-white/95 py-0 shadow-xl shadow-emerald-950/10">
+    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
+      <Card className="w-full max-w-xl gap-0 overflow-hidden rounded-2xl border border-border bg-card py-0 shadow-[0_24px_48px_-32px_rgb(21_40_30/0.35)]">
+        <MaduracionStripe />
         <CardHeader className="gap-5 px-6 pt-8 sm:px-9 sm:pt-10">
           <div className="flex items-center gap-4">
             <img
@@ -144,12 +146,12 @@ export function SetupWizard({ usuario, onComplete }) {
             />
             <div className="min-w-0">
               <p
-                className="text-sm font-semibold tracking-wide text-emerald-800"
+                className="text-sm font-semibold text-primary"
                 translate="no"
               >
                 CafeSmart
               </p>
-              <p className="text-xs text-slate-500">Configuración inicial</p>
+              <p className="text-xs text-muted-foreground">Configuración inicial</p>
             </div>
           </div>
 
@@ -162,16 +164,16 @@ export function SetupWizard({ usuario, onComplete }) {
               className="space-y-2"
               role="progressbar"
             >
-              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
                 <span>Finca, lote y actividad</span>
                 <span>{paso - 1} de 3</span>
               </div>
               <div
                 aria-hidden="true"
-                className="h-2 overflow-hidden rounded-full bg-emerald-100"
+                className="h-2 overflow-hidden rounded-full bg-secondary"
               >
                 <div
-                  className={`h-full rounded-full bg-emerald-700 transition-[width] motion-reduce:transition-none ${
+                  className={`h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none ${
                     paso === 2 ? 'w-1/3' : paso === 3 ? 'w-2/3' : 'w-full'
                   }`}
                 />
@@ -180,13 +182,13 @@ export function SetupWizard({ usuario, onComplete }) {
           )}
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="text-4xl text-foreground sm:text-5xl">
               {paso === 1 && '¡Bienvenido a CafeSmart!'}
               {paso === 2 && 'Agrega tu finca'}
               {paso === 3 && 'Crea tu primer lote'}
               {paso === 4 && 'Agrega una actividad'}
             </h1>
-            <CardDescription className="break-words text-pretty leading-relaxed text-slate-600">
+            <CardDescription className="break-words text-pretty leading-relaxed text-muted-foreground">
               {paso === 1 &&
                 `Te damos la bienvenida, ${nombreProductor}. Configuremos los datos básicos para empezar.`}
               {paso === 2 &&
@@ -201,11 +203,11 @@ export function SetupWizard({ usuario, onComplete }) {
 
         {paso === 1 && (
           <CardContent className="space-y-6 px-6 pb-8 pt-7 sm:px-9 sm:pb-10">
-            <div className="rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-5">
-              <h2 className="font-semibold text-emerald-950">
+            <div className="rounded-2xl border border-border bg-tint p-5">
+              <h2 className="font-semibold text-foreground">
                 Lo que vas a configurar
               </h2>
-              <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-relaxed text-slate-700">
+              <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-relaxed text-ink-soft">
                 <li>El nombre y la ubicación de tu finca.</li>
                 <li>El nombre, la variedad y el área de tu primer lote.</li>
                 <li>El número de plantas de café de tu lote (opcional).</li>
@@ -213,7 +215,7 @@ export function SetupWizard({ usuario, onComplete }) {
               </ul>
             </div>
             <Button
-              className="h-12 w-full rounded-xl bg-emerald-800 text-base font-semibold text-white hover:bg-emerald-900"
+              className="h-12 w-full rounded-xl bg-primary text-base font-semibold text-primary-foreground hover:bg-primary-hover"
               onClick={() => setPaso(2)}
               type="button"
             >
@@ -282,7 +284,7 @@ export function SetupWizard({ usuario, onComplete }) {
                   Atrás
                 </Button>
                 <Button
-                  className="h-12 flex-1 rounded-xl bg-emerald-800 font-semibold text-white hover:bg-emerald-900"
+                  className="h-12 flex-1 rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
                   type="submit"
                 >
                   Continuar a la actividad
@@ -346,7 +348,7 @@ export function SetupWizard({ usuario, onComplete }) {
                   Omitir y usar la predeterminada
                 </Button>
                 <Button
-                  className="h-12 flex-1 rounded-xl bg-emerald-800 font-semibold text-white hover:bg-emerald-900"
+                  className="h-12 flex-1 rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
                   disabled={guardando}
                   type="submit"
                 >
@@ -470,7 +472,7 @@ export function SetupWizard({ usuario, onComplete }) {
                   Atrás
                 </Button>
                 <Button
-                  className="h-12 flex-1 rounded-xl bg-emerald-800 font-semibold text-white hover:bg-emerald-900"
+                  className="h-12 flex-1 rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
                   disabled={guardando}
                   type="submit"
                 >

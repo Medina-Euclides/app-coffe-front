@@ -119,14 +119,14 @@ function MovementCard({ movement, expanded, onToggle, onEdit }) {
   const isSale = movement.type === 'sale';
 
   return (
-    <Card className="rounded-2xl border-[#ece9e3] bg-white p-4 shadow-sm sm:p-5">
+    <Card className="rounded-2xl border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Badge
             className={
               isSale
-                ? 'h-auto border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-800'
-                : 'h-auto border-red-100 bg-red-50 px-2.5 py-1 text-red-700'
+                ? 'h-auto border-leaf/20 bg-leaf-soft px-2.5 py-1 text-leaf'
+                : 'h-auto border-destructive/20 bg-destructive-soft px-2.5 py-1 text-destructive'
             }
             variant="outline"
           >
@@ -139,17 +139,17 @@ function MovementCard({ movement, expanded, onToggle, onEdit }) {
           </Badge>
           {movement.isAutomatic && (
             <Badge
-              className="h-auto border-slate-200 bg-slate-50 px-2 py-1 text-slate-600"
+              className="h-auto border-border bg-muted px-2 py-1 text-muted-foreground"
               variant="outline"
             >
               Automático
             </Badge>
           )}
-          <span className="text-xs text-[#8a8b83]">{formatDate(movement.date)}</span>
+          <span className="text-xs text-muted-foreground">{formatDate(movement.date)}</span>
         </div>
         <span
           className={`shrink-0 text-right text-base font-semibold sm:text-lg ${
-            isSale ? 'text-emerald-700' : 'text-red-600'
+            isSale ? 'text-leaf' : 'text-destructive'
           }`}
         >
           {isSale ? '+' : '−'} {currencyFormatter.format(movement.amount)}
@@ -158,23 +158,23 @@ function MovementCard({ movement, expanded, onToggle, onEdit }) {
 
       <div className="mt-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="break-words font-semibold text-[#2d332d]">
+          <h2 className="break-words font-semibold text-foreground">
             {movement.title || 'Movimiento financiero'}
           </h2>
-          <p className="mt-1 text-xs text-[#8a8b83]">{movement.farmName}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{movement.farmName}</p>
         </div>
         {isSale && (
-          <span className="shrink-0 rounded-lg bg-[#f7f6f2] px-2.5 py-1 text-xs font-medium text-[#68766b]">
+          <span className="shrink-0 rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
             {numberFormatter.format(Number(movement.quantity_kg) || 0)} kg
           </span>
         )}
       </div>
 
-      <div className="mt-4 border-t border-[#f0efeb] pt-2">
+      <div className="mt-4 border-t border-border/60 pt-2">
         <div className="flex items-center justify-between">
           <Button
             aria-expanded={expanded}
-            className="h-8 px-1 text-xs text-[#68766b] hover:text-[#214b32]"
+            className="h-8 px-1 text-xs text-muted-foreground hover:text-primary"
             onClick={onToggle}
             type="button"
             variant="ghost"
@@ -184,7 +184,7 @@ function MovementCard({ movement, expanded, onToggle, onEdit }) {
           </Button>
           {!movement.isAutomatic && (
             <Button
-              className="h-8 px-1 text-xs text-[#68766b] hover:text-[#214b32]"
+              className="h-8 px-1 text-xs text-muted-foreground hover:text-primary"
               onClick={onEdit}
               type="button"
               variant="ghost"
@@ -195,25 +195,25 @@ function MovementCard({ movement, expanded, onToggle, onEdit }) {
           )}
         </div>
         {expanded && (
-          <dl className="grid gap-x-4 gap-y-2 border-t border-[#f0efeb] pt-3 text-sm sm:grid-cols-2">
+          <dl className="grid gap-x-4 gap-y-2 border-t border-border/60 pt-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-xs text-[#8a8b83]">Finca</dt>
-              <dd className="mt-0.5 font-medium text-[#36483a]">
+              <dt className="text-xs text-muted-foreground">Finca</dt>
+              <dd className="mt-0.5 font-medium text-ink-soft">
                 {movement.farmName}
               </dd>
             </div>
             {isSale ? (
               <>
                 <div>
-                  <dt className="text-xs text-[#8a8b83]">Precio por kg</dt>
-                  <dd className="mt-0.5 font-medium text-[#36483a]">
+                  <dt className="text-xs text-muted-foreground">Precio por kg</dt>
+                  <dd className="mt-0.5 font-medium text-ink-soft">
                     {currencyFormatter.format(Number(movement.unit_price) || 0)}
                   </dd>
                 </div>
                 {movement.buyer && (
                   <div>
-                    <dt className="text-xs text-[#8a8b83]">Comprador</dt>
-                    <dd className="mt-0.5 font-medium text-[#36483a]">
+                    <dt className="text-xs text-muted-foreground">Comprador</dt>
+                    <dd className="mt-0.5 font-medium text-ink-soft">
                       {movement.buyer}
                     </dd>
                   </div>
@@ -221,8 +221,8 @@ function MovementCard({ movement, expanded, onToggle, onEdit }) {
               </>
             ) : (
               <div>
-                <dt className="text-xs text-[#8a8b83]">Categoría</dt>
-                <dd className="mt-0.5 font-medium text-[#36483a]">
+                <dt className="text-xs text-muted-foreground">Categoría</dt>
+                <dd className="mt-0.5 font-medium text-ink-soft">
                   {movement.categoryLabel}
                   {movement.isAutomatic && ' · registrado desde Pagos laborales'}
                 </dd>
@@ -230,8 +230,8 @@ function MovementCard({ movement, expanded, onToggle, onEdit }) {
             )}
             {isSale && movement.notes && (
               <div className="sm:col-span-2">
-                <dt className="text-xs text-[#8a8b83]">Notas</dt>
-                <dd className="mt-0.5 whitespace-pre-wrap text-[#36483a]">
+                <dt className="text-xs text-muted-foreground">Notas</dt>
+                <dd className="mt-0.5 whitespace-pre-wrap text-ink-soft">
                   {movement.notes}
                 </dd>
               </div>
@@ -383,24 +383,24 @@ export default function FinanceActivityPage({ usuario }) {
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
-      <header className="flex flex-col gap-4 border-b border-[#e9e7e1] pb-5 lg:flex-row lg:items-end lg:justify-between">
+      <header className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#92704f]">
+          <p className="text-xs font-medium text-warning">
             Finanzas · {breadcrumbDate}
-            <span className="mx-2 text-emerald-700" aria-hidden="true">•</span>
+            <span className="mx-2 text-leaf" aria-hidden="true">•</span>
             {selectedFarm?.nombre || 'Todas las fincas'}
           </p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#211f1c] sm:text-3xl">
+          <h1 className="mt-2 text-4xl text-foreground sm:text-5xl">
             Movimientos financieros
           </h1>
-          <p className="mt-1 text-sm leading-6 text-[#77756f] sm:text-base">
+          <p className="mt-1 text-sm leading-6 text-muted-foreground sm:text-base">
             Registro simplificado de ventas de café y gastos operativos de la
             finca.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
-            className="h-11 rounded-xl border-[#e5e2dc] bg-white text-[#4c554d] hover:bg-[#f7f6f2]"
+            className="h-11 rounded-xl border-border bg-card text-ink-soft hover:bg-muted"
             onClick={() => openNewMovement('expense')}
             type="button"
             variant="outline"
@@ -409,7 +409,7 @@ export default function FinanceActivityPage({ usuario }) {
             Registrar gasto
           </Button>
           <Button
-            className="h-11 rounded-xl bg-[#214b32] text-white hover:bg-[#173d2b]"
+            className="h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover"
             onClick={() => openNewMovement('sale')}
             type="button"
           >
@@ -425,7 +425,7 @@ export default function FinanceActivityPage({ usuario }) {
       >
         <div
           aria-label="Tipo de movimiento"
-          className="inline-flex w-full rounded-xl bg-[#f0eee9] p-1 sm:w-fit"
+          className="inline-flex w-full rounded-xl bg-muted p-1 sm:w-fit"
           role="group"
         >
           {filters.map((filter) => (
@@ -433,8 +433,8 @@ export default function FinanceActivityPage({ usuario }) {
               aria-pressed={typeFilter === filter.value}
               className={`min-h-9 flex-1 rounded-lg px-4 text-sm font-medium transition-colors sm:flex-none ${
                 typeFilter === filter.value
-                  ? 'bg-white text-[#262722] shadow-sm'
-                  : 'text-[#65645f] hover:text-[#263b2c]'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-ink-soft hover:text-foreground'
               }`}
               key={filter.value}
               onClick={() => setTypeFilter(filter.value)}
@@ -451,10 +451,10 @@ export default function FinanceActivityPage({ usuario }) {
           </label>
           <Search
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[#96958e]"
+            className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
           />
           <Input
-            className="h-11 rounded-xl border-[#e5e2dc] bg-white pl-10 text-sm shadow-sm placeholder:text-[#a3a198]"
+            className="h-11 rounded-xl border-border bg-card pl-10 text-sm shadow-sm placeholder:text-subtle"
             id="finance-search"
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar por concepto, comprador o categoría…"
@@ -467,7 +467,7 @@ export default function FinanceActivityPage({ usuario }) {
           Filtrar por finca
         </label>
         <select
-          className="h-11 rounded-xl border border-[#e5e2dc] bg-white px-3 text-sm text-[#4c554d] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[#426b48]/30"
+          className="h-11 rounded-xl border border-border bg-card px-3 text-sm text-ink-soft shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
           id="finance-farm"
           onChange={(event) => {
             setSelectedFarmId(event.target.value);
@@ -490,7 +490,7 @@ export default function FinanceActivityPage({ usuario }) {
 
         <div
           aria-label="Período"
-          className="inline-flex rounded-xl bg-[#f0eee9] p-1"
+          className="inline-flex rounded-xl bg-muted p-1"
           role="group"
         >
           {dateFilters.map((filter) => (
@@ -498,8 +498,8 @@ export default function FinanceActivityPage({ usuario }) {
               aria-pressed={dateFilter === filter.value}
               className={`min-h-9 flex-1 rounded-lg px-3 text-xs font-medium transition-colors ${
                 dateFilter === filter.value
-                  ? 'bg-white text-[#262722] shadow-sm'
-                  : 'text-[#65645f] hover:text-[#263b2c]'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-ink-soft hover:text-foreground'
               }`}
               key={filter.value}
               onClick={() => setDateFilter(filter.value)}
@@ -515,15 +515,15 @@ export default function FinanceActivityPage({ usuario }) {
         aria-label={`Resumen ${selectedDateFilter.toLocaleLowerCase()}`}
         className="grid gap-3 sm:grid-cols-2"
       >
-        <Card className="flex flex-row items-center justify-between rounded-2xl border-[#e8eee8] bg-[#f5faf5] px-4 py-3 shadow-none">
-          <span className="text-sm text-[#53665a]">Ventas · {selectedDateFilter.toLocaleLowerCase()}</span>
-          <strong className="text-base text-emerald-700">
+        <Card className="flex flex-row items-center justify-between rounded-2xl border-border/60 bg-muted px-4 py-3 shadow-none">
+          <span className="text-sm text-ink-soft">Ventas · {selectedDateFilter.toLocaleLowerCase()}</span>
+          <strong className="text-base text-leaf">
             {currencyFormatter.format(filteredSales)}
           </strong>
         </Card>
-        <Card className="flex flex-row items-center justify-between rounded-2xl border-[#f1e7e4] bg-[#fff8f6] px-4 py-3 shadow-none">
-          <span className="text-sm text-[#765b55]">Gastos · {selectedDateFilter.toLocaleLowerCase()}</span>
-          <strong className="text-base text-red-600">
+        <Card className="flex flex-row items-center justify-between rounded-2xl border-destructive/20 bg-destructive-soft px-4 py-3 shadow-none">
+          <span className="text-sm text-muted-foreground">Gastos · {selectedDateFilter.toLocaleLowerCase()}</span>
+          <strong className="text-base text-destructive">
             {currencyFormatter.format(filteredExpenses)}
           </strong>
         </Card>
@@ -532,7 +532,7 @@ export default function FinanceActivityPage({ usuario }) {
       {error && (
         <div
           aria-live="assertive"
-          className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-xl border border-destructive/20 bg-destructive-soft px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
           role="alert"
         >
           <span>{error}</span>
@@ -552,15 +552,15 @@ export default function FinanceActivityPage({ usuario }) {
       )}
 
       {loading ? (
-        <p aria-live="polite" className="py-12 text-center text-sm text-[#68766b]" role="status">
+        <p aria-live="polite" className="py-12 text-center text-sm text-muted-foreground" role="status">
           Cargando movimientos…
         </p>
       ) : filteredMovements.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#dcdad3] bg-white px-5 py-14 text-center">
-          <p className="font-medium text-[#36483a]">
+        <div className="rounded-2xl border border-dashed border-input bg-card px-5 py-14 text-center">
+          <p className="font-medium text-ink-soft">
             No hay movimientos para mostrar.
           </p>
-          <p className="mt-1 text-sm text-[#77756f]">
+          <p className="mt-1 text-sm text-muted-foreground">
             Prueba otros filtros o registra una venta o un gasto.
           </p>
         </div>

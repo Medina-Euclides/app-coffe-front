@@ -24,16 +24,16 @@ export default function SidebarNavGroup({ icon: Icon, label, options }) {
       <SidebarMenuButton
         aria-controls={panelId}
         aria-expanded={open}
-        className="h-11 rounded-xl px-3 font-medium text-[#526254] hover:bg-[#eef2e9] hover:text-[#214b32] aria-expanded:bg-[#eef2e9] aria-expanded:text-[#214b32]"
+        className="h-11 rounded-xl px-3 font-medium text-ink-soft hover:bg-tint hover:text-primary aria-expanded:bg-tint aria-expanded:text-primary"
         onClick={() => setOpenOverride(!open)}
         title={label}
         type="button"
       >
-        <Icon aria-hidden="true" className="size-[18px] text-[#627663]" />
+        <Icon aria-hidden="true" className="size-[18px] text-muted-foreground" />
         <span className="min-w-0 flex-1 text-left">{label}</span>
         <ChevronDown
           aria-hidden="true"
-          className={`size-4 shrink-0 text-[#849184] transition-transform motion-reduce:transition-none ${
+          className={`size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none ${
             open ? 'rotate-180' : ''
           }`}
         />
@@ -41,7 +41,7 @@ export default function SidebarNavGroup({ icon: Icon, label, options }) {
 
       <ul
         aria-hidden={!open}
-        className={`ml-5 mt-1 flex flex-col gap-1 overflow-hidden border-l border-[#dfe6dc] pl-3 transition-[max-height,opacity] duration-200 motion-reduce:transition-none ${
+        className={`ml-5 mt-1 flex flex-col gap-1 overflow-hidden border-l border-border pl-3 transition-[max-height,opacity] duration-200 motion-reduce:transition-none ${
           open ? 'max-h-64 opacity-100' : 'pointer-events-none max-h-0 opacity-0'
         } group-data-[collapsible=icon]:hidden`}
         inert={!open}
@@ -55,7 +55,7 @@ export default function SidebarNavGroup({ icon: Icon, label, options }) {
             <li key={optionLabel}>
               {typeof option === 'string' ? (
                 <button
-                  className="h-9 w-full cursor-not-allowed rounded-lg px-3 text-left text-sm text-[#68766b] disabled:opacity-100"
+                  className="h-9 w-full cursor-not-allowed rounded-lg px-3 text-left text-sm text-muted-foreground disabled:opacity-100"
                   disabled
                   title="Disponible próximamente"
                   type="button"
@@ -65,10 +65,10 @@ export default function SidebarNavGroup({ icon: Icon, label, options }) {
               ) : (
                 <NavLink
                   className={({ isActive }) =>
-                    `flex min-h-10 items-center rounded-lg px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#426b48] ${
+                    `flex min-h-10 items-center rounded-lg px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
                       isActive
-                        ? 'bg-[#e7f0e3] font-semibold text-[#214b32]'
-                        : 'text-[#68766b] hover:bg-[#eef2e9] hover:text-[#214b32]'
+                        ? 'bg-secondary font-semibold text-primary'
+                        : 'text-muted-foreground hover:bg-tint hover:text-primary'
                     }`
                   }
                   onClick={() => {
