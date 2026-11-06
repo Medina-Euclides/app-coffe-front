@@ -322,17 +322,17 @@ export default function AnalyticPage({ usuario }) {
             className="grid gap-4 sm:grid-cols-3"
           >
             <StatCard
-              title="Ingresos acumulados por ventas"
+              title={`Ingresos por ventas de ${periodOption.produccion}`}
               value={activeSummary.financial_summary.sales_income}
               tone="positive"
             />
             <StatCard
-              title="Egresos acumulados"
+              title={`Egresos de ${periodOption.produccion}`}
               value={activeSummary.financial_summary.total_expenses}
               tone="negative"
             />
             <StatCard
-              title="Balance neto acumulado"
+              title={`Balance neto de ${periodOption.produccion}`}
               value={activeSummary.financial_summary.net_income}
               tone={
                 Number(activeSummary.financial_summary.net_income) < 0
@@ -425,7 +425,7 @@ export default function AnalyticPage({ usuario }) {
                     ¿En qué se fue la plata?
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    Distribución histórica de egresos por categoría
+                    Egresos de {periodOption.produccion} por categoría
                   </CardDescription>
                 </div>
                 <div className="shrink-0 rounded-full border border-border bg-muted px-3 py-1.5 text-sm font-semibold text-foreground">
@@ -481,7 +481,7 @@ export default function AnalyticPage({ usuario }) {
                 Producción por lote
               </CardTitle>
               <CardDescription>
-                Acumulado histórico · los lotes sin cosecha también aparecen
+                Kilos de {periodOption.produccion}; los lotes sin cosecha también aparecen
               </CardDescription>
             </CardHeader>
             <CardContent>
