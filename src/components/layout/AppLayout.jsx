@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { SidebarApp } from './SidebarApp.jsx';
 import { SidebarProvider, useSidebar } from '../ui/sidebar.jsx';
 import SyncStatus from '../shared/SyncStatus.jsx';
+import AssistantFab from './AssistantFab.jsx';
 
 // Se oculta al bajar y reaparece al subir, sin tener que volver al inicio de la página.
 function useHideOnScrollDown() {
@@ -63,6 +64,8 @@ function MobileTopBar() {
 }
 
 export default function AppLayout({ usuario, onLogout }) {
+  // Deja espacio al final para que el botón flotante del asistente no tape contenido.
+  const showsAssistantFab = !useLocation().pathname.startsWith('/asistente-ia');
   return (
     <SidebarProvider>
       <a
@@ -73,12 +76,13 @@ export default function AppLayout({ usuario, onLogout }) {
       </a>
       <SidebarApp onLogout={onLogout} usuario={usuario} />
       <main
-        className="min-w-0 flex-1 bg-muted p-4 md:p-8"
+        className={`min-w-0 flex-1 bg-muted p-4 md:p-8 ${showsAssistantFab ? 'pb-28 md:pb-28' : ''}`}
         id="contenido-principal"
       >
         <MobileTopBar />
         <Outlet />
       </main>
+      <AssistantFab />
     </SidebarProvider>
   );
 }
