@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "dev:cloud": "BACKEND_URL=https://mysite-cmyl.onrender.com vite --host",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"
