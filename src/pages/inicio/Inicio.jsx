@@ -13,7 +13,6 @@ import IconBadge from '#components/shared/IconBadge';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { useNotice } from '#hooks/useNotice';
 import { api } from '#services/api';
-import { guardarCacheTrabajadores } from '#services/workerStorage';
 import { createWorkdayWithWorkers, toExistingWorkdays } from '#pages/workday/workdayActions.js';
 import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions.js';
 import {
@@ -23,7 +22,6 @@ import {
   groupWorkdayParticipants,
   mapWorkday,
 } from '#pages/workday/utils/workdayMappers.js';
-import { leerLocal } from '#lib/storage';
 import { hoy } from '#lib/formatters';
 import PageTitle from '#components/shared/PageTitle';
 
@@ -137,13 +135,11 @@ const MAX_RECIENTES = 5;
 const enlaceTarjeta =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 
-export default function Inicio({ usuario }) {
-  const userId = usuario?.id || 'default';
+export default function Inicio() {
   const [formulario, setFormulario] = useState('');
   const [jornadasExistentes, setJornadasExistentes] = useState([]);
-  const [trabajadores, setTrabajadores] = useState(() =>
-    leerLocal(`cafesmart_trabajadores_${userId}`, []),
-  );
+  // Los trabajadores vienen de la caché de IndexedDB (api.workers.list), no de localStorage.
+  const [trabajadores, setTrabajadores] = useState([]);
   const { notice, isError, show: mostrarAviso } = useNotice();
   // null mientras carga; la lista viene de la caché local si no hay conexión.
   const [participaciones, setParticipaciones] = useState(null);
@@ -205,7 +201,6 @@ export default function Inicio({ usuario }) {
       const nuevo = await saveWorkerRequest(data);
       const siguientes = [...trabajadores, nuevo];
       setTrabajadores(siguientes);
-      guardarCacheTrabajadores(userId, siguientes);
       mostrarAviso('Trabajador agregado.');
       return '';
     } catch (error) {

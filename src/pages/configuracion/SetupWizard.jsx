@@ -10,27 +10,12 @@ import {
 import { Input } from '#components/ui/input';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { api } from '#services/api';
-import {
-  guardarCacheFincasYLotes,
-  guardarFincaActiva,
-} from '#services/farmStorage';
+import { guardarFincaActiva } from '#services/farmStorage';
 import MaduracionStripe from '#components/shared/MaduracionStripe';
-import { guardarCacheTrabajadores } from '#services/workerStorage';
 import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions';
 
 const variedadesCafe = ['Castillo', 'Caturra', 'Colombia', 'Borbón', 'Geisha'];
 const etapas = ['Finca', 'Lote', 'Actividad', 'Trabajador'];
-
-function leerListaGuardada(clave) {
-  const valorGuardado = localStorage.getItem(clave);
-  if (valorGuardado === null) return [];
-
-  const valor = JSON.parse(valorGuardado);
-  if (!Array.isArray(valor)) {
-    throw new Error(`El contenido guardado en "${clave}" no es válido.`);
-  }
-  return valor;
-}
 
 export function SetupWizard({ usuario, onComplete }) {
   const [paso, setPaso] = useState(1);
@@ -102,10 +87,6 @@ export function SetupWizard({ usuario, onComplete }) {
     setGuardando(true);
     try {
       const userId = usuario.id;
-      const fincasGuardadas = leerListaGuardada(
-        `cafesmart_fincas_${userId}`,
-      );
-      const lotesGuardados = leerListaGuardada(`cafesmart_lotes_${userId}`);
       const finca =
         fincaCreada ||
         (await api.farms.create({
@@ -138,16 +119,7 @@ export function SetupWizard({ usuario, onComplete }) {
           trabajadorCreado ||
           (await saveWorkerRequest(datosTrabajador(), null));
         setTrabajadorCreado(trabajador);
-        guardarCacheTrabajadores(userId, [
-          ...leerListaGuardada(`cafesmart_trabajadores_${userId}`),
-          trabajador,
-        ]);
       }
-      guardarCacheFincasYLotes(
-        userId,
-        [...fincasGuardadas, finca],
-        [...lotesGuardados, lote],
-      );
       guardarFincaActiva(userId, finca.id);
       onComplete();
     } catch (saveError) {

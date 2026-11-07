@@ -13,7 +13,6 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { api } from '#services/api';
-import { guardarCacheTrabajadores } from '#services/workerStorage';
 import { useApiList } from '#hooks/useApiList';
 import { useSearchFilter } from '#hooks/useSearchFilter';
 import { useNotice } from '#hooks/useNotice';
@@ -24,7 +23,7 @@ import {
   validateWorker,
 } from './workerActions.js';
 
-// Normaliza trabajadores del localStorage al esquema actual.
+// Normaliza trabajadores al esquema usado por la UI.
 function normalizarTrabajador(worker) {
   if (worker.first_name && worker.last_name) return worker;
   const [firstName = '', ...lastNames] = String(worker.nombre || '')
@@ -42,12 +41,11 @@ function normalizarTrabajador(worker) {
 
 export default function Trabajadores({ usuario }) {
   const userId = usuario?.id || 'default';
-  const storageKey = `cafesmart_trabajadores_${userId}`;
+  const storageKey = `workers:${userId}`;
 
   const { data: workersRaw, setData, loading } = useApiList(
     storageKey,
     () => api.workers.list(),
-    (key, result) => guardarCacheTrabajadores(userId, result)
   );
 
   // Normaliza los trabajadores al esquema usado por la UI.
@@ -85,7 +83,6 @@ export default function Trabajadores({ usuario }) {
           )
         : [...workers, savedWorker];
       setData(nextWorkers);
-      guardarCacheTrabajadores(userId, nextWorkers);
       setNotice(workerToEdit ? 'Trabajador actualizado.' : 'Trabajador agregado.', false);
       closeDialog();
       return '';
@@ -110,7 +107,6 @@ export default function Trabajadores({ usuario }) {
         String(item.id) === String(updatedWorker.id) ? updatedWorker : item,
       );
       setData(nextWorkers);
-      guardarCacheTrabajadores(userId, nextWorkers);
       setNotice(
         !isActive
           ? `${getWorkerDisplayName(worker)} está activo nuevamente.`

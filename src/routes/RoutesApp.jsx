@@ -13,7 +13,6 @@ const OperationsHome = lazy(() =>
   import('#pages/inicio/Inicio.jsx'),
 );
 
-const Fincas = lazy(() => import('#pages/fincas/Fincas.jsx'));
 const Workers = lazy(() => import('#pages/trabajadores/Trabajadores.jsx'));
 const LaborActivities = lazy(() =>
   import('#pages/actividades/ActividadesLaborales.jsx'),
@@ -112,7 +111,7 @@ export default function RoutesApp({
             path="/gestion/fincas"
           />
           <Route
-            element={<Fincas subSeccion="fincas-lotes" usuario={usuario} />}
+            element={<Navigate replace to="/gestion/fincas" />}
             path="/fincas"
           />
 

@@ -13,7 +13,6 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { api } from '#services/api';
-import { guardarCacheActividades } from '#services/activityStorage';
 import { useApiList } from '#hooks/useApiList';
 import { useSearchFilter } from '#hooks/useSearchFilter';
 import { useNotice } from '#hooks/useNotice';
@@ -21,12 +20,11 @@ import { useDialog } from '#hooks/useDialog';
 
 export default function ActividadesLaborales({ usuario }) {
   const userId = usuario?.id || 'default';
-  const storageKey = `cafesmart_actividades_${userId}`;
+  const storageKey = `activities:${userId}`;
 
   const { data: activities, setData, loading } = useApiList(
     storageKey,
     () => api.activities.list(),
-    (key, result) => guardarCacheActividades(userId, result),
   );
 
   const { search, setSearch, filtered } = useSearchFilter(
@@ -72,7 +70,6 @@ export default function ActividadesLaborales({ usuario }) {
           )
         : [...activities, savedActivity];
       setData(nextActivities);
-      guardarCacheActividades(userId, nextActivities);
       setNotice(activityToEdit ? 'Actividad actualizada.' : 'Actividad agregada.', false);
       closeDialog();
       return '';
@@ -101,7 +98,6 @@ export default function ActividadesLaborales({ usuario }) {
         (item) => String(item.id) !== String(activity.id),
       );
       setData(nextActivities);
-      guardarCacheActividades(userId, nextActivities);
       if (String(activityToView?.id) === String(activity.id)) {
         setActivityToView(null);
       }

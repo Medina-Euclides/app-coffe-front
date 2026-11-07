@@ -13,6 +13,17 @@ function AppRoutes() {
 
   useEffect(() => {
     localStorage.removeItem('cafesmart_usuarios');
+    // Copias antiguas de datos en localStorage: hoy todo vive en IndexedDB (una sola copia).
+    const legacyPrefixes = [
+      'cafesmart_fincas_',
+      'cafesmart_lotes_',
+      'cafesmart_trabajadores_',
+      'cafesmart_actividades_',
+      'cafesmart_jornadas_',
+    ];
+    Object.keys(localStorage)
+      .filter((key) => legacyPrefixes.some((prefix) => key.startsWith(prefix)))
+      .forEach((key) => localStorage.removeItem(key));
     if (!api.auth.hasSession()) {
       localStorage.removeItem('cafesmart_usuario');
     }

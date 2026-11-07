@@ -17,18 +17,15 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { api } from '#services/api';
-import {
-  guardarCacheFincasYLotes,
-  guardarFincaActiva,
-} from '#services/farmStorage';
+import { guardarFincaActiva } from '#services/farmStorage';
 import { useApiList } from '#hooks/useApiList';
 import { useSearchFilter } from '#hooks/useSearchFilter';
 import { useNotice } from '#hooks/useNotice';
 
 export default function FarmsAndLots({ usuario }) {
   const userId = usuario?.id || 'default';
-  const farmsKey = `cafesmart_fincas_${userId}`;
-  const lotsKey = `cafesmart_lotes_${userId}`;
+  const farmsKey = `farms:${userId}`;
+  const lotsKey = `lots:${userId}`;
 
   const {
     data: farmsRaw,
@@ -38,7 +35,6 @@ export default function FarmsAndLots({ usuario }) {
   } = useApiList(
     farmsKey,
     () => api.farms.list(),
-    (key, result) => guardarCacheFincasYLotes(userId, result, []),
   );
 
   const {
@@ -49,7 +45,6 @@ export default function FarmsAndLots({ usuario }) {
   } = useApiList(
     lotsKey,
     () => api.lots.list(),
-    (key, result) => guardarCacheFincasYLotes(userId, [], result),
   );
 
   const [selectedFarmId, setSelectedFarmId] = useState(() =>
@@ -117,7 +112,6 @@ export default function FarmsAndLots({ usuario }) {
           )
         : [...farms, savedFarm];
       setFarmsRaw(nextFarms);
-      guardarCacheFincasYLotes(userId, nextFarms, lots);
       setNotice(farmToEdit ? 'Finca actualizada.' : 'Finca agregada.', false);
       setFarmToEdit(null);
       setFarmDialogOpen(false);
@@ -180,7 +174,6 @@ export default function FarmsAndLots({ usuario }) {
           )
         : [...lots, savedLot];
       setLotsRaw(nextLots);
-      guardarCacheFincasYLotes(userId, farms, nextLots);
       setNotice(lotToEdit ? 'Lote actualizado.' : 'Lote agregado a la finca.', false);
       setLotToEdit(null);
       setLotDialogOpen(false);
@@ -207,7 +200,6 @@ export default function FarmsAndLots({ usuario }) {
         String(item.id) === String(updatedLot.id) ? updatedLot : item,
       );
       setLotsRaw(nextLots);
-      guardarCacheFincasYLotes(userId, farms, nextLots);
       setNotice(isActive ? 'Lote desactivado.' : 'Lote reactivado.', false);
     } catch (error) {
       console.error('Error al cambiar el estado del lote:', error);
