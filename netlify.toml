@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # URL pública del backend en Render (no es secreta)
+  NODE_VERSION = "22"
+
+# React Router: cualquier ruta sirve index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# PWA: el service worker no se cachea, para que las actualizaciones lleguen
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
