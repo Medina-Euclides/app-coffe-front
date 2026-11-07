@@ -6,6 +6,7 @@ import { Card } from '#components/ui/card';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
 import { api } from '#services/api';
+import { DATA_EVENT } from '#services/syncService';
 import WorkdayFilters from '#pages/workday/components/WorkdayFilters.jsx';
 import PaymentCard from './components/PaymentCard.jsx';
 import PaymentDetailDialog from './components/PaymentDetailDialog.jsx';
@@ -69,6 +70,56 @@ function getWorkerName(worker) {
     worker.full_name ||
     [worker.first_name, worker.last_name].filter(Boolean).join(' ')
   );
+}
+
+// Une listas por id: las liquidaciones pagadas traen sus detalles anidados y pueden
+// coincidir con lo que ya está en la caché local (p. ej. un pago hecho sin conexión).
+function mergeById(...lists) {
+  const byId = new Map();
+  for (const item of lists.flat()) {
+    if (item?.id == null) continue;
+    byId.set(String(item.id), { ...byId.get(String(item.id)), ...item });
+  }
+  return [...byId.values()];
+}
+
+// Detalles que se mandan al servidor y los que se usan para mostrar el pago en el
+// dispositivo mientras se sincroniza.
+function buildSettleAndPay(target) {
+  const toAdd = target.items.filter((item) => item.needsAdd);
+  const daily = toAdd.filter((item) => item.type === 'jornal');
+  const harvest = toAdd.filter((item) => item.type !== 'jornal');
+  const existingSettlementId =
+    target.status === 'pendiente' ? undefined : target.id;
+  return {
+    existingSettlementId,
+    data: {
+      worker: target.workerId,
+      farm: target.farmId,
+      start_date: getDateKey(target.startDate),
+      end_date: getDateKey(target.endDate),
+      workday_worker_ids: daily.map((item) => item.sourceId),
+      harvest_record_ids: harvest.map((item) => item.sourceId),
+      date: getLocalDate(),
+      amount_paid: target.total.toFixed(2),
+      // Por ahora todos los pagos se registran en efectivo.
+      payment_method: 'efectivo',
+      notes: '',
+    },
+    preview: {
+      workday_details: daily.map((item) => ({
+        workday_worker: item.sourceId,
+        applied_daily_rate: item.rate.toFixed(2),
+        paid_amount: item.amount.toFixed(2),
+      })),
+      harvest_details: harvest.map((item) => ({
+        harvest_record: item.sourceId,
+        paid_kg: item.kilograms.toFixed(3),
+        applied_kg_rate: item.rate.toFixed(2),
+        paid_amount: item.amount.toFixed(2),
+      })),
+    },
+  };
 }
 
 function mapPaymentData({
@@ -417,9 +468,19 @@ export default function PaymentPage() {
   const [paymentTarget, setPaymentTarget] = useState(null);
   const [payingId, setPayingId] = useState('');
   const [actionError, setActionError] = useState('');
+  const [historyOffline, setHistoryOffline] = useState(false);
+
+  // Recarga cuando la sincronización trae datos nuevos (p. ej. un pago offline ya enviado).
+  useEffect(() => {
+    const reload = () => setRetry((current) => current + 1);
+    window.addEventListener(DATA_EVENT, reload);
+    return () => window.removeEventListener(DATA_EVENT, reload);
+  }, []);
 
   useEffect(() => {
     let active = true;
+    // La caché local solo tiene lo pendiente de pago (y los pagos hechos sin conexión);
+    // el historial de pagados se pide al servidor cuando hay conexión.
     Promise.all([
       api.payroll.settlements.list(),
       api.payroll.settlementWorkdays.list(),
@@ -427,30 +488,38 @@ export default function PaymentPage() {
       api.workdays.list(),
       api.workers.list(),
       api.farms.list(),
-      api.payroll.payments.list(),
+      api.payroll.paidHistory(),
     ])
       .then(
         ([
-          loadedSettlements,
-          workdayDetails,
-          harvestDetails,
+          cachedSettlements,
+          cachedWorkdayDetails,
+          cachedHarvestDetails,
           workdays,
           workers,
           farms,
-          payments,
+          paidHistory,
         ]) => {
           if (!active) return;
+          const allSettlements = mergeById(cachedSettlements, paidHistory.items);
           setSettlements(
             mapPaymentData({
-              settlements: loadedSettlements,
-              workdayDetails,
-              harvestDetails,
+              settlements: allSettlements,
+              workdayDetails: mergeById(
+                cachedWorkdayDetails,
+                allSettlements.flatMap((item) => item.workday_details || []),
+              ),
+              harvestDetails: mergeById(
+                cachedHarvestDetails,
+                allSettlements.flatMap((item) => item.harvest_details || []),
+              ),
               workdays,
               workers,
               farms,
-              payments,
+              payments: [],
             }),
           );
+          setHistoryOffline(paidHistory.offline);
           setErrorMessage('');
         },
       )
@@ -486,62 +555,18 @@ export default function PaymentPage() {
       return;
     }
 
+    if (!Number.isFinite(paymentTarget.total) || paymentTarget.total <= 0) {
+      setActionError('La liquidación no tiene un total válido para pagar.');
+      setPaymentTarget(null);
+      return;
+    }
+
     setPayingId(paymentTarget.id);
     setActionError('');
     try {
-      let settlementId = paymentTarget.id;
-      let settlementToClose = paymentTarget;
-
-      if (paymentTarget.status === 'pendiente') {
-        const createdSettlement = await api.payroll.settlements.create({
-          worker: paymentTarget.workerId,
-          farm: paymentTarget.farmId,
-          start_date: paymentTarget.startDate,
-          end_date: paymentTarget.endDate,
-        });
-        settlementId = String(createdSettlement.id);
-        settlementToClose = createdSettlement;
-      }
-
-      if (
-        paymentTarget.status === 'pendiente' ||
-        paymentTarget.status === 'abierta'
-      ) {
-        for (const item of paymentTarget.items) {
-          if (!item.needsAdd) continue;
-          if (item.type === 'jornal') {
-            await api.payroll.settlements.addWorkday({
-              settlement_id: settlementId,
-              workday_worker_id: item.sourceId,
-            });
-          } else {
-            await api.payroll.settlements.addHarvest({
-              settlement_id: settlementId,
-              harvest_record_id: item.sourceId,
-            });
-          }
-        }
-        settlementToClose = await api.payroll.settlements.close(settlementId);
-      }
-
-      const amount =
-        paymentTarget.status === 'liquidada'
-          ? paymentTarget.total
-          : Number(settlementToClose.total_calculated);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        throw new Error(
-          'El backend no devolvió un total válido para registrar el pago.',
-        );
-      }
-
-      await api.payroll.settlements.pay({
-        settlement_id: settlementId,
-        date: getLocalDate(),
-        amount_paid: amount.toFixed(2),
-        // Por ahora todos los pagos se registran en efectivo.
-        payment_method: 'efectivo',
-        notes: '',
-      });
+      // Una sola operación atómica: crear/completar la liquidación, cerrarla y pagarla.
+      // Sin conexión queda en la cola y se aplica igual al sincronizar.
+      await api.payroll.settleAndPay(buildSettleAndPay(paymentTarget));
 
       setPaymentTarget(null);
       setTab('paid');
@@ -643,6 +668,9 @@ export default function PaymentPage() {
       </header>
 
       <NoticeBanner message={actionError} isError />
+      {tab === 'paid' && historyOffline && (
+        <NoticeBanner message="Sin conexión: solo se muestran los pagos hechos en este dispositivo. El historial completo de pagos necesita conexión." />
+      )}
 
       <Tabs className="w-full gap-4" onValueChange={setTab} value={tab}>
         <TabsList className="grid h-auto w-full max-w-[535px] grid-cols-2 rounded-2xl bg-muted p-1">

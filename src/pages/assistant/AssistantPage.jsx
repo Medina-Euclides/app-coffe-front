@@ -15,6 +15,7 @@ import {
   MessageGroup,
 } from '#components/ui/message';
 import { api } from '#services/api';
+import { useOnlineStatus } from '#hooks/useOnlineStatus';
 
 const preguntasSugeridas = [
   { label: 'Resumen de cosecha', icon: Sprout },
@@ -46,6 +47,8 @@ function AssistantPage({ usuario }) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  // El asistente usa una API externa: sin conexión no se puede preguntar.
+  const isOnline = useOnlineStatus();
   const nombre =
     usuario?.first_name ||
     usuario?.nombre ||
@@ -71,7 +74,7 @@ function AssistantPage({ usuario }) {
   const enviarPregunta = async (event) => {
     event.preventDefault();
     const question = prompt.trim();
-    if (!question || isLoading) return;
+    if (!question || isLoading || !isOnline) return;
 
     setPrompt('');
     setMessages((currentMessages) => [
@@ -264,8 +267,8 @@ function AssistantPage({ usuario }) {
             <InputGroupButton
               aria-label="Enviar mensaje"
               className="size-10 shrink-0 rounded-full bg-primary text-primary-foreground hover:bg-primary-hover"
-              disabled={isLoading || !prompt.trim()}
-              title="Enviar mensaje"
+              disabled={isLoading || !prompt.trim() || !isOnline}
+              title={isOnline ? 'Enviar mensaje' : 'El asistente necesita conexión'}
               type="submit"
               variant="default"
             >
@@ -273,8 +276,13 @@ function AssistantPage({ usuario }) {
             </InputGroupButton>
           </InputGroup>
         </form>
-        <p className="mt-2 text-center text-[10px] leading-4 text-muted-foreground sm:text-[11px]">
-          Enter para enviar · Shift + Enter para una nueva línea
+        <p
+          aria-live="polite"
+          className="mt-2 text-center text-[10px] leading-4 text-muted-foreground sm:text-[11px]"
+        >
+          {isOnline
+            ? 'Enter para enviar · Shift + Enter para una nueva línea'
+            : 'Sin conexión: el asistente necesita internet. El resto de la app sigue funcionando.'}
         </p>
       </footer>
     </section>

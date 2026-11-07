@@ -319,5 +319,79 @@ export const local = {
     async update(key, id, data) {
       return upsertItem(key, { ...data, id, updated_at: nowIso() });
     },
+    async remove(key, id) {
+      await updateCache(key, (items) => items.filter((item) => !same(item.id, id)));
+    },
+  },
+
+  payroll: {
+    // Liquidar + pagar sin conexión: marca como liquidados los registros pagados (así salen
+    // de "pendientes" y no se pueden pagar dos veces) y guarda la liquidación como pagada.
+    // `saved` es la respuesta del servidor cuando el pago se hizo en línea.
+    async settleAndPay(id, data, saved, preview = {}) {
+      const workdayIds = new Set((data.workday_worker_ids || []).map(String));
+      const harvestIds = new Set((data.harvest_record_ids || []).map(String));
+
+      await updateCache('workdays', (items) =>
+        mapParticipants(items, (participant) => {
+          const details = (participant.details || []).map((detail) => ({
+            ...detail,
+            harvest_records: (detail.harvest_records || []).map((record) =>
+              harvestIds.has(String(record.id))
+                ? { ...record, settlement_status: 'liquidado' }
+                : record,
+            ),
+          }));
+          let status = participant.settlement_status;
+          if (workdayIds.has(String(participant.id))) {
+            status = 'liquidado';
+          } else if (status === 'pendiente' && participant.payment_mode === 'kg') {
+            const records = details.flatMap((detail) => detail.harvest_records);
+            const touched = records.some((record) => harvestIds.has(String(record.id)));
+            const stillPending = records.some((record) => record.settlement_status === 'registrado');
+            if (touched && !stillPending) status = 'liquidado';
+          }
+          return { ...participant, settlement_status: status, details };
+        }),
+      );
+
+      const now = nowIso();
+      const settlement =
+        saved && saved.id
+          ? saved
+          : {
+              id,
+              worker: data.worker,
+              farm: data.farm,
+              start_date: data.start_date,
+              end_date: data.end_date,
+              total_calculated: data.amount_paid,
+              status: 'pagada',
+              created_at: now,
+              closed_at: now,
+              paid_at: now,
+              workday_details: (preview.workday_details || []).map((detail) => ({
+                ...detail,
+                id: `${id}:${detail.workday_worker}`,
+                settlement: id,
+              })),
+              harvest_details: (preview.harvest_details || []).map((detail) => ({
+                ...detail,
+                id: `${id}:${detail.harvest_record}`,
+                settlement: id,
+              })),
+              payment: {
+                id: `${id}:payment`,
+                settlement: id,
+                date: data.date,
+                amount_paid: data.amount_paid,
+                payment_method: data.payment_method,
+                notes: data.notes || '',
+                created_at: now,
+              },
+            };
+      // Si ya existía en caché (abierta o liquidada) se conserva lo que el servidor sabía de ella.
+      return upsertItem('settlements', settlement);
+    },
   },
 };

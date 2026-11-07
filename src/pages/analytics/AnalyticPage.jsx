@@ -14,6 +14,7 @@ import {
 } from '#components/ui/card';
 import { Button } from '#components/ui/button';
 import { api } from '#services/api';
+import { DATA_EVENT } from '#services/syncService';
 import PageTitle from '#components/shared/PageTitle';
 import SegmentedControl from '#components/shared/SegmentedControl';
 
@@ -131,6 +132,13 @@ export default function AnalyticPage({ usuario }) {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Al sincronizar, el resumen local se reemplaza por el del servidor.
+  useEffect(() => {
+    const reload = () => setReloadKey((key) => key + 1);
+    window.addEventListener(DATA_EVENT, reload);
+    return () => window.removeEventListener(DATA_EVENT, reload);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -317,6 +325,16 @@ export default function AnalyticPage({ usuario }) {
         </p>
       ) : activeSummary ? (
         <>
+          {activeSummary._local && (
+            <p
+              aria-live="polite"
+              className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-primary"
+              role="status"
+            >
+              Calculado con los datos de este dispositivo (sin conexión o con registros
+              pendientes de sincronizar).
+            </p>
+          )}
           <section
             aria-label="Resumen financiero"
             className="grid gap-4 sm:grid-cols-3"

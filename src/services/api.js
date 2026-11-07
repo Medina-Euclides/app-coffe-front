@@ -2,6 +2,7 @@ import axios from 'axios';
 import { newId } from '#lib/db';
 import { local, readCache, writeCache, clearLocalData } from './offlineStore.js';
 import { agregarAPendientes, contarPendientes } from './syncQueue.js';
+import { computeLocalSummary } from './localAnalytics.js';
 import {
   configureConnectivity,
   isOnline,
@@ -401,21 +402,42 @@ export const api = {
       ).map(normalizeFarm),
     create: async (data) =>
       normalizeFarm(
-        await apiRequest('/farms/', { method: 'POST', data }),
+        await offlineWrite({
+          entity: 'farm',
+          action: 'create',
+          data,
+          apply: (id, item) => local.flat.create('farms', id, item, { lots_count: 0 }),
+        }),
       ),
     update: async (id, data) =>
       normalizeFarm(
-        await apiRequest(`/farms/${id}/`, { method: 'PATCH', data }),
+        await offlineWrite({
+          entity: 'farm',
+          action: 'update',
+          id,
+          data,
+          apply: (itemId, item) => local.flat.update('farms', itemId, item),
+        }),
       ),
   },
   analytics: {
-    summary: ({ farmId, period = 'month' } = {}) =>
-      apiRequest('/analytics/summary/', {
-        params: {
-          ...(farmId ? { farm_id: farmId } : {}),
-          period,
-        },
-      }),
+    // Con conexión y sin cambios pendientes: resumen del servidor. Sin conexión (o con
+    // registros aún sin enviar, que el servidor no conoce): se calcula en el dispositivo.
+    summary: async ({ farmId, period = 'month' } = {}) => {
+      const localSummary = () => computeLocalSummary({ farmId, period });
+      if (!isOnline() || (await contarPendientes()) > 0) return localSummary();
+      try {
+        return await apiRequest('/analytics/summary/', {
+          params: {
+            ...(farmId ? { farm_id: farmId } : {}),
+            period,
+          },
+        });
+      } catch (error) {
+        if (isNetworkError(error)) return localSummary();
+        throw error;
+      }
+    },
   },
   assistant: {
     ask: (question, history = []) =>
@@ -456,11 +478,30 @@ export const api = {
       ).map(normalizeLot),
     create: async (data) =>
       normalizeLot(
-        await apiRequest('/farms/lots/', { method: 'POST', data }),
+        await offlineWrite({
+          entity: 'lot',
+          action: 'create',
+          data,
+          apply: async (id, item) => {
+            const farm = ((await readCache('farms')) || []).find(
+              (current) => String(current.id) === String(item.id_farm),
+            );
+            return local.flat.create('lots', id, item, {
+              is_active: true,
+              farm_name: farm?.name || '',
+            });
+          },
+        }),
       ),
     update: async (id, data) =>
       normalizeLot(
-        await apiRequest(`/farms/lots/${id}/`, { method: 'PATCH', data }),
+        await offlineWrite({
+          entity: 'lot',
+          action: 'update',
+          id,
+          data,
+          apply: (itemId, item) => local.flat.update('lots', itemId, item),
+        }),
       ),
   },
   workers: {
@@ -502,17 +543,31 @@ export const api = {
       ).map(normalizeActivity),
     create: async (data) =>
       normalizeActivity(
-        await apiRequest('/labor/activity-types/', { method: 'POST', data }),
+        await offlineWrite({
+          entity: 'activity_type',
+          action: 'create',
+          data,
+          apply: (id, item) =>
+            local.flat.create('activities', id, item, { description: '', is_harvest: false }),
+        }),
       ),
     update: async (id, data) =>
       normalizeActivity(
-        await apiRequest(`/labor/activity-types/${id}/`, {
-          method: 'PATCH',
+        await offlineWrite({
+          entity: 'activity_type',
+          action: 'update',
+          id,
           data,
+          apply: (itemId, item) => local.flat.update('activities', itemId, item),
         }),
       ),
     delete: (id) =>
-      apiRequest(`/labor/activity-types/${id}/`, { method: 'DELETE' }),
+      offlineWrite({
+        entity: 'activity_type',
+        action: 'delete',
+        id,
+        apply: (itemId) => local.flat.remove('activities', itemId),
+      }),
   },
   production: {
     sales: {
@@ -657,6 +712,31 @@ export const api = {
       }),
   },
   payroll: {
+    // Liquida y paga en una sola operación (en línea o desde la cola offline).
+    // `existingSettlementId` se usa para liquidaciones abiertas/liquidadas; si no, el id se
+    // genera en el dispositivo y así un reenvío nunca crea una segunda liquidación.
+    settleAndPay: ({ existingSettlementId, data, preview }) =>
+      offlineWrite({
+        entity: 'settlement',
+        action: 'settle_and_pay',
+        id: existingSettlementId,
+        data,
+        apply: (id, item, fromServer) =>
+          local.payroll.settleAndPay(id, data, fromServer ? item : null, preview),
+      }),
+    // Historial de pagados: solo con conexión (el snapshot offline trae solo lo pendiente).
+    paidHistory: async () => {
+      if (!isOnline()) return { items: [], offline: true };
+      try {
+        const data = await apiRequest('/payroll/settlements/', {
+          params: { status: 'pagada' },
+        });
+        return { items: normalizeList(data, 'liquidaciones pagadas'), offline: false };
+      } catch (error) {
+        if (isNetworkError(error)) return { items: [], offline: true };
+        throw error;
+      }
+    },
     settlements: {
       list: () =>
         cachedList('settlements', async () =>
