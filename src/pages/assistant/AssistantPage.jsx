@@ -19,10 +19,29 @@ import AnswerText from './components/AnswerText.jsx';
 
 // Preguntas frecuentes como teclas, con el color de su tema en toda la app
 // (recolección = cereza, ingreso = leaf, labor = verde primario).
+// `pregunta` es lo que se escribe en la caja al tocar la tecla.
 const preguntasSugeridas = [
-  { label: 'Resumen de cosecha', detalle: 'Kilos recogidos y pesajes', icon: Cherry, tone: 'harvest' },
-  { label: 'Balance de este mes', detalle: 'Ventas menos gastos', icon: Wallet, tone: 'income' },
-  { label: 'Pagos pendientes', detalle: 'Lo que falta por pagar', icon: Users, tone: 'primary' },
+  {
+    label: '¿En qué se fue la plata?',
+    detalle: 'Gastos por labor y concepto',
+    pregunta: '¿En qué labor se me ha ido más plata este mes?',
+    icon: Wallet,
+    tone: 'income',
+  },
+  {
+    label: 'Pagos pendientes',
+    detalle: 'Cuánto le debes a cada uno',
+    pregunta: '¿Cuánto le debo a cada trabajador?',
+    icon: Users,
+    tone: 'primary',
+  },
+  {
+    label: 'Cosecha por lote',
+    detalle: 'Kilos recogidos este mes',
+    pregunta: '¿Cuántos kilos he recogido por lote este mes?',
+    icon: Cherry,
+    tone: 'harvest',
+  },
 ];
 
 // Círculo pequeño de CafeSmart junto a cada respuesta.
@@ -142,7 +161,7 @@ function AssistantPage({ usuario }) {
       ? 'Habla con calma. Toca el cuadrado para terminar.'
       : !isOnline
         ? 'Sin conexión: el asistente necesita internet. El resto de la app sigue funcionando.'
-        : '');
+        : 'Tus cédulas y teléfonos nunca salen de la app.');
 
   return (
     <section
@@ -166,15 +185,15 @@ function AssistantPage({ usuario }) {
               </h2>
             </div>
             <p className="mt-3 max-w-md text-pretty text-base leading-6 text-ink-soft">
-              Pregúntame por tus cosechas, pagos o finanzas. Puedes escribir o
-              dictar con el micrófono.
+              Pregúntame en qué se te va la plata, cuánto debes o cómo va la
+              cosecha. Puedes escribir o dictar con el micrófono.
             </p>
             <ul className="mt-6 grid gap-3 sm:grid-cols-3">
-              {preguntasSugeridas.map(({ label, detalle, icon, tone }) => (
+              {preguntasSugeridas.map(({ label, detalle, pregunta, icon, tone }) => (
                 <li key={label}>
                   <button
                     className="flex min-h-18 w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-3 py-3 text-left shadow-[0_3px_0_var(--border-strong)] transition-[background-color,box-shadow,translate] duration-100 hover:bg-tint focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-ring active:translate-y-[3px] active:shadow-[0_0_0_var(--border-strong)] motion-reduce:transition-none sm:flex-col sm:items-start"
-                    onClick={() => seleccionarPregunta(label)}
+                    onClick={() => seleccionarPregunta(pregunta)}
                     type="button"
                   >
                     <IconBadge icon={icon} tone={tone} />
