@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { api } from '#services/api';
-import { useApiList } from '#hooks/useApiList';
+import { useCrudList } from '#hooks/useCrudList';
 import { useSearchFilter } from '#hooks/useSearchFilter';
 import { useNotice } from '#hooks/useNotice';
 import { useDialog } from '#hooks/useDialog';
@@ -24,14 +24,15 @@ import {
   validateWorker,
 } from '#lib/domain/workers';
 
+// Busca por nombre, apellido, identificación y teléfono (los datos antiguos traen `nombre`).
+const getWorkerSearchText = (worker) =>
+  [getWorkerDisplayName(worker), worker.identification, worker.phone].filter(Boolean).join(' ');
+
 export default function Trabajadores({ usuario }) {
   const userId = usuario?.id || 'default';
   const storageKey = `workers:${userId}`;
 
-  const { data: workersRaw, setData, loading } = useApiList(
-    storageKey,
-    () => api.workers.list(),
-  );
+  const { data: workersRaw, upsert, loading } = useCrudList(storageKey, api.workers.list);
 
   // Normaliza los trabajadores al esquema usado por la UI.
   const workers = useMemo(
@@ -39,11 +40,7 @@ export default function Trabajadores({ usuario }) {
     [workersRaw],
   );
 
-  const { search, setSearch, filtered } = useSearchFilter(
-    workers,
-    (worker) =>
-      `${worker.nombre || ''} ${worker.identification || ''} ${worker.phone || ''}`
-  );
+  const { search, setSearch, filtered } = useSearchFilter(workers, getWorkerSearchText);
 
   const { notice, isError, show: setNotice } = useNotice();
   const {
@@ -59,15 +56,7 @@ export default function Trabajadores({ usuario }) {
     if (validationError) return validationError;
 
     try {
-      const savedWorker = await saveWorkerRequest(data, workerToEdit?.id);
-      const nextWorkers = workerToEdit
-        ? workers.map((worker) =>
-            String(worker.id) === String(savedWorker.id)
-              ? savedWorker
-              : worker,
-          )
-        : [...workers, savedWorker];
-      setData(nextWorkers);
+      upsert(await saveWorkerRequest(data, workerToEdit?.id));
       setNotice(workerToEdit ? 'Trabajador actualizado.' : 'Trabajador agregado.', false);
       closeDialog();
       return '';
@@ -85,13 +74,7 @@ export default function Trabajadores({ usuario }) {
   const toggleWorkerStatus = async (worker) => {
     const isActive = worker.is_active;
     try {
-      const updatedWorker = await api.workers.update(worker.id, {
-        is_active: !isActive,
-      });
-      const nextWorkers = workers.map((item) =>
-        String(item.id) === String(updatedWorker.id) ? updatedWorker : item,
-      );
-      setData(nextWorkers);
+      upsert(await api.workers.update(worker.id, { is_active: !isActive }));
       setNotice(
         !isActive
           ? `${getWorkerDisplayName(worker)} está activo nuevamente.`
@@ -183,7 +166,7 @@ export default function Trabajadores({ usuario }) {
                   Identificación
                 </dt>
                 <dd className="mt-1 break-all font-medium text-ink-soft">
-                  {workerToView.cedula || 'No registrada'}
+                  {workerToView.identification || 'No registrada'}
                 </dd>
               </div>
               <div>
@@ -199,7 +182,7 @@ export default function Trabajadores({ usuario }) {
                   Estado
                 </dt>
                 <dd className="mt-1 font-medium text-ink-soft">
-                  {workerToView.estado === 'inactivo' ? 'Inactivo' : 'Activo'}
+                  {workerToView.is_active === false ? 'Inactivo' : 'Activo'}
                 </dd>
               </div>
             </dl>

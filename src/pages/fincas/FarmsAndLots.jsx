@@ -1,5 +1,5 @@
 // Listado de fincas y lotes con búsqueda, formularios y tarjetas consistentes.
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import EmptyState from '#components/shared/EmptyState';
 import NoticeBanner from '#components/shared/NoticeBanner';
@@ -20,92 +20,71 @@ import { api } from '#services/api';
 import { borrarFincaActiva, guardarFincaActiva, leerFincaActiva } from '#services/farmStorage';
 import { formatoArea, formatoConteo } from '#lib/formatters';
 import { validateFarm, validateLot } from '#lib/domain/farms';
-import { useApiList } from '#hooks/useApiList';
-import { useSearchFilter } from '#hooks/useSearchFilter';
+import ConfirmDialog from '#components/shared/ConfirmDialog';
+import { useConfirm } from '#hooks/useConfirm';
+import { useCrudList } from '#hooks/useCrudList';
+import { useDialog } from '#hooks/useDialog';
 import { useNotice } from '#hooks/useNotice';
+import { filterBySearch } from '#lib/utils';
+
+const getFarmSearchText = (farm) => `${farm.nombre || ''} ${farm.ubicacion || ''}`;
+const getLotSearchText = (lot) => `${lot.nombre || ''} ${lot.variedad || ''}`;
 
 export default function FarmsAndLots({ usuario }) {
   const userId = usuario?.id || 'default';
   const farmsKey = `farms:${userId}`;
   const lotsKey = `lots:${userId}`;
 
-  const {
-    data: farmsRaw,
-    setData: setFarmsRaw,
-    loading: farmsLoading,
-    error: farmsError,
-  } = useApiList(
-    farmsKey,
-    () => api.farms.list(),
-  );
-
-  const {
-    data: lotsRaw,
-    setData: setLotsRaw,
-    loading: lotsLoading,
-    error: lotsError,
-  } = useApiList(
-    lotsKey,
-    () => api.lots.list(),
-  );
+  const farmsList = useCrudList(farmsKey, api.farms.list);
+  const lotsList = useCrudList(lotsKey, api.lots.list);
+  const farms = farmsList.data;
+  const lots = lotsList.data;
+  const loading = farmsList.loading || lotsList.loading;
+  const loadError = farmsList.error || lotsList.error;
 
   const [selectedFarmId, setSelectedFarmId] = useState(() => leerFincaActiva(userId) || null);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(farmsLoading || lotsLoading);
-  const [farmDialogOpen, setFarmDialogOpen] = useState(false);
-  const [lotDialogOpen, setLotDialogOpen] = useState(false);
-  const [farmToEdit, setFarmToEdit] = useState(null);
-  const [lotToEdit, setLotToEdit] = useState(null);
+  const farmDialog = useDialog();
+  const lotDialog = useDialog();
   const [lotToView, setLotToView] = useState(null);
   const { notice, isError, show: setNotice } = useNotice();
-
-  // Sincroniza loading cuando terminan ambas cargas.
-  useEffect(() => {
-    setLoading(farmsLoading || lotsLoading);
-  }, [farmsLoading, lotsLoading]);
-
-  const farms = useMemo(() => farmsRaw || [], [farmsRaw]);
-  const lots = useMemo(() => lotsRaw || [], [lotsRaw]);
+  const confirmer = useConfirm();
 
   const selectedFarm = farms.find(
     (farm) => String(farm.id) === String(selectedFarmId),
   );
+  const farmToEdit = farmDialog.item;
+  const lotToEdit = lotDialog.item;
 
-  const { filtered: farmsInSearch } = useSearchFilter(
-    farms,
-    (farm) => `${farm.nombre || ''} ${farm.ubicacion || ''}`,
+  const farmsInSearch = useMemo(
+    () => filterBySearch(farms, search, getFarmSearchText),
+    [farms, search],
   );
 
-  const lotsForFarm = useMemo(() => {
-    if (!selectedFarm) return [];
-    const query = search.trim().toLocaleLowerCase();
-    return lots.filter(
-      (lot) =>
-        String(lot.fincaId) === String(selectedFarm.id) &&
-        (!query ||
-          `${lot.nombre || ''} ${lot.variedad || ''}`
-            .toLocaleLowerCase()
-            .includes(query)),
-    );
-  }, [lots, search, selectedFarm]);
+  const lotsOfSelectedFarm = useMemo(
+    () =>
+      selectedFarm
+        ? lots.filter((lot) => String(lot.fincaId) === String(selectedFarm.id))
+        : [],
+    [lots, selectedFarm],
+  );
+  const lotsForFarm = useMemo(
+    () => filterBySearch(lotsOfSelectedFarm, search, getLotSearchText),
+    [lotsOfSelectedFarm, search],
+  );
 
   const saveFarm = async (data) => {
     const validationError = validateFarm(data, farms, farmToEdit?.id);
     if (validationError) return validationError;
 
     try {
-      const savedFarm = farmToEdit
-        ? await api.farms.update(farmToEdit.id, data)
-        : await api.farms.create(data);
-      const nextFarms = farmToEdit
-        ? farms.map((farm) =>
-            String(farm.id) === String(savedFarm.id) ? savedFarm : farm,
-          )
-        : [...farms, savedFarm];
-      setFarmsRaw(nextFarms);
+      farmsList.upsert(
+        farmToEdit
+          ? await api.farms.update(farmToEdit.id, data)
+          : await api.farms.create(data),
+      );
       setNotice(farmToEdit ? 'Finca actualizada.' : 'Finca agregada.', false);
-      setFarmToEdit(null);
-      setFarmDialogOpen(false);
+      farmDialog.close();
       return '';
     } catch (error) {
       console.error('Error al guardar la finca:', error);
@@ -139,18 +118,13 @@ export default function FarmsAndLots({ usuario }) {
       ...(lotToEdit ? {} : { id_farm: selectedFarm.id }),
     };
     try {
-      const savedLot = lotToEdit
-        ? await api.lots.update(lotToEdit.id, data)
-        : await api.lots.create(data);
-      const nextLots = lotToEdit
-        ? lots.map((lot) =>
-            String(lot.id) === String(savedLot.id) ? savedLot : lot,
-          )
-        : [...lots, savedLot];
-      setLotsRaw(nextLots);
+      lotsList.upsert(
+        lotToEdit
+          ? await api.lots.update(lotToEdit.id, data)
+          : await api.lots.create(data),
+      );
       setNotice(lotToEdit ? 'Lote actualizado.' : 'Lote agregado a la finca.', false);
-      setLotToEdit(null);
-      setLotDialogOpen(false);
+      lotDialog.close();
       return '';
     } catch (error) {
       console.error('Error al guardar el lote:', error);
@@ -161,44 +135,24 @@ export default function FarmsAndLots({ usuario }) {
 
   const toggleLotStatus = async (lot) => {
     const isActive = lot.estado !== 'inactivo';
-    const message = isActive
-      ? `¿Desactivar el lote “${lot.nombre}”? Podrás consultarlo y reactivarlo después.`
-      : `¿Reactivar el lote “${lot.nombre}”?`;
-    if (!window.confirm(message)) return;
+    const confirmed = await confirmer.confirm(
+      isActive
+        ? {
+            title: `¿Desactivar el lote “${lot.nombre}”?`,
+            description: 'Podrás consultarlo y reactivarlo después.',
+            confirmLabel: 'Desactivar',
+          }
+        : { title: `¿Reactivar el lote “${lot.nombre}”?`, confirmLabel: 'Reactivar', tone: 'primary' },
+    );
+    if (!confirmed) return;
 
     try {
-      const updatedLot = await api.lots.update(lot.id, {
-        is_active: !isActive,
-      });
-      const nextLots = lots.map((item) =>
-        String(item.id) === String(updatedLot.id) ? updatedLot : item,
-      );
-      setLotsRaw(nextLots);
+      lotsList.upsert(await api.lots.update(lot.id, { is_active: !isActive }));
       setNotice(isActive ? 'Lote desactivado.' : 'Lote reactivado.', false);
     } catch (error) {
       console.error('Error al cambiar el estado del lote:', error);
       setNotice(error.message || 'No se pudo actualizar el estado del lote.', true);
     }
-  };
-
-  const openNewFarmDialog = () => {
-    setFarmToEdit(null);
-    setFarmDialogOpen(true);
-  };
-
-  const openEditFarmDialog = (farm) => {
-    setFarmToEdit(farm);
-    setFarmDialogOpen(true);
-  };
-
-  const openNewLotDialog = () => {
-    setLotToEdit(null);
-    setLotDialogOpen(true);
-  };
-
-  const openEditLotDialog = (lot) => {
-    setLotToEdit(lot);
-    setLotDialogOpen(true);
   };
 
   const handleSelectFarm = (farm) => {
@@ -217,7 +171,7 @@ export default function FarmsAndLots({ usuario }) {
             ? `Consulta y organiza los lotes que pertenecen a ${selectedFarm.nombre}.`
             : 'Administra tus fincas y organiza los lotes que pertenecen a cada una.'
         }
-        onAction={selectedFarm ? openNewLotDialog : openNewFarmDialog}
+        onAction={() => (selectedFarm ? lotDialog.openWith(null) : farmDialog.openWith(null))}
         onSearchChange={setSearch}
         searchLabel={selectedFarm ? 'lotes por nombre o variedad' : 'fincas'}
         searchValue={search}
@@ -254,18 +208,12 @@ export default function FarmsAndLots({ usuario }) {
             {lotsForFarm.length === 0 ? (
               <EmptyState
                 description={
-                  lots.some(
-                    (lot) =>
-                      String(lot.fincaId) === String(selectedFarm.id),
-                  )
+lotsOfSelectedFarm.length
                     ? 'Prueba con otro nombre o variedad.'
                     : `Agrega el primer lote asociado a ${selectedFarm.nombre}.`
                 }
                 title={
-                  lots.some(
-                    (lot) =>
-                      String(lot.fincaId) === String(selectedFarm.id),
-                  )
+lotsOfSelectedFarm.length
                     ? 'No encontramos lotes'
                     : 'Esta finca aún no tiene lotes'
                 }
@@ -276,7 +224,7 @@ export default function FarmsAndLots({ usuario }) {
                   <LotCard
                     key={lot.id}
                     lot={lot}
-                    onEdit={openEditLotDialog}
+                    onEdit={lotDialog.openWith}
                     onToggleStatus={toggleLotStatus}
                     onView={setLotToView}
                   />
@@ -285,7 +233,7 @@ export default function FarmsAndLots({ usuario }) {
             )}
           </div>
         ) : farmsInSearch.length === 0 ? (
-          farmsError || lotsError ? (
+          loadError ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               No se pudieron consultar las fincas y lotes. Intenta de nuevo cuando
               el servidor esté disponible.
@@ -309,7 +257,7 @@ export default function FarmsAndLots({ usuario }) {
                 lots={lots.filter(
                   (lot) => String(lot.fincaId) === String(farm.id),
                 )}
-                onEdit={openEditFarmDialog}
+                onEdit={farmDialog.openWith}
                 onOpenLots={handleSelectFarm}
               />
             ))}
@@ -317,31 +265,30 @@ export default function FarmsAndLots({ usuario }) {
         )}
       </ManagementPage>
 
-      {farmDialogOpen && (
+      {farmDialog.open && (
         <FarmFormDialog
           farm={farmToEdit}
           onOpenChange={(open) => {
-            setFarmDialogOpen(open);
-            if (!open) setFarmToEdit(null);
+            if (!open) farmDialog.close();
           }}
           onSave={saveFarm}
-          open={farmDialogOpen}
+          open={farmDialog.open}
         />
       )}
       {selectedFarm && (
-        lotDialogOpen && (
+        lotDialog.open && (
           <LotFormDialog
             farmName={selectedFarm.nombre}
             lot={lotToEdit}
             onOpenChange={(open) => {
-              setLotDialogOpen(open);
-              if (!open) setLotToEdit(null);
+              if (!open) lotDialog.close();
             }}
             onSave={saveLot}
-            open={lotDialogOpen}
+            open={lotDialog.open}
           />
         )
       )}
+      <ConfirmDialog {...confirmer.dialogProps} />
       <Dialog
         onOpenChange={(open) => {
           if (!open) setLotToView(null);

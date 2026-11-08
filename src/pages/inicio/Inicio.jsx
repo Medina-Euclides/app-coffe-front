@@ -9,14 +9,14 @@ import {
   Scale,
   UserPlus,
 } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DetailDialog from '#components/shared/DetailDialog';
 import IconBadge from '#components/shared/IconBadge';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { useNotice } from '#hooks/useNotice';
 import { api } from '#services/api';
-import { DATA_EVENT } from '#services/syncService';
+import { useApiResource } from '#hooks/useApiResource';
 import { leerFincaActiva } from '#services/farmStorage';
 import { createWorkdayWithWorkers, toExistingWorkdays } from '#lib/domain/workdayActions';
 import { saveWorkerRequest, validateWorker } from '#lib/domain/workers';
@@ -128,6 +128,9 @@ const fuentesRecientes = {
   lotes: () => api.lots.list(),
 };
 
+const cargarParticipaciones = () =>
+  api.workdays.list().then((items) => items.flatMap(mapWorkday));
+
 async function cargarFuentesRecientes() {
   const nombres = Object.keys(fuentesRecientes);
   const resultados = await Promise.allSettled(nombres.map((nombre) => fuentesRecientes[nombre]()));
@@ -186,38 +189,15 @@ export default function Inicio({ usuario }) {
   const [trabajadores, setTrabajadores] = useState([]);
   const { notice, isError, show: mostrarAviso } = useNotice();
   // null mientras carga; la lista viene de la caché local si no hay conexión.
-  const [participaciones, setParticipaciones] = useState(null);
+  // Si falla, el resumen se muestra vacío en lugar de quedarse cargando.
+  const jornadas = useApiResource('inicio:jornadas', cargarParticipaciones);
+  const participaciones = jornadas.loading ? null : (jornadas.data ?? []);
   // Ventas, gastos, trabajadores, fincas y lotes para «Lo más reciente».
-  const [otrosRegistros, setOtrosRegistros] = useState(null);
+  const fuentes = useApiResource('inicio:recientes', cargarFuentesRecientes);
+  const otrosRegistros = fuentes.data;
   const [verTodoAbierto, setVerTodoAbierto] = useState(false);
-
-  const cargarJornadas = useCallback(
-    () =>
-      api.workdays
-        .list()
-        .then((items) => setParticipaciones(items.flatMap(mapWorkday)))
-        .catch((error) => {
-          console.error('Error al cargar el resumen de la semana:', error);
-          setParticipaciones((actual) => actual ?? []);
-        }),
-    [],
-  );
-
-  const cargarOtrosRegistros = useCallback(
-    () => cargarFuentesRecientes().then(setOtrosRegistros),
-    [],
-  );
-
-  useEffect(() => {
-    const cargarTodo = () => {
-      cargarJornadas();
-      cargarOtrosRegistros();
-    };
-    cargarTodo();
-    // Recarga si los datos cambian fuera de Inicio (p. ej. al sincronizar).
-    window.addEventListener(DATA_EVENT, cargarTodo);
-    return () => window.removeEventListener(DATA_EVENT, cargarTodo);
-  }, [cargarJornadas, cargarOtrosRegistros]);
+  const cargarJornadas = () => jornadas.refetch({ background: true });
+  const cargarOtrosRegistros = () => fuentes.refetch({ background: true });
 
   // Abre el formulario sobre Inicio y trae en segundo plano los datos que necesita
   // para validar duplicados.

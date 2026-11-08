@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   CalendarDays,
   Clock3,
@@ -25,11 +25,23 @@ import {
   SelectValue,
 } from '#components/ui/select';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useApiResource } from '#hooks/useApiResource';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { formatoDinero, formatoFechaAnio, hoy } from '#lib/formatters';
 import { getHarvestDetails } from '#lib/domain/workdays';
 
 const MAX_KILOGRAMS = 9_999_999.999;
+
+const EMPTY_OPTIONS = { workdays: [], activities: [], lots: [] };
+
+const fetchHarvestOptions = async () => {
+  const [workdays, activities, lots] = await Promise.all([
+    api.workdays.list(),
+    api.activities.list(),
+    api.lots.list(),
+  ]);
+  return { workdays, activities, lots };
+};
 
 function getLocalTime() {
   const now = new Date();
@@ -55,11 +67,16 @@ export default function HarvestRecordFormDialog({
   onOpenChange,
   onSave,
 }) {
-  const [workdays, setWorkdays] = useState([]);
-  const [activities, setActivities] = useState([]);
-  const [lots, setLots] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const {
+    data: { workdays, activities, lots },
+    setData: setOptions,
+    loading,
+    error: loadError,
+    refetch,
+  } = useApiResource('harvest-form', fetchHarvestOptions, {
+    initialData: EMPTY_OPTIONS,
+    refreshOnSync: false,
+  });
   const [workdayId, setWorkdayId] = useState('');
   const [workerId, setWorkerId] = useState('');
   const [lotId, setLotId] = useState('');
@@ -67,35 +84,7 @@ export default function HarvestRecordFormDialog({
   const [time, setTime] = useState(getLocalTime);
   const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
-  const [retry, setRetry] = useState(0);
   const [today] = useState(hoy);
-
-  useEffect(() => {
-    let active = true;
-    Promise.all([api.workdays.list(), api.activities.list(), api.lots.list()])
-      .then(([loadedWorkdays, loadedActivities, loadedLots]) => {
-        if (!active) return;
-        setWorkdays(loadedWorkdays);
-        setActivities(loadedActivities);
-        setLots(loadedLots);
-        setLoadError('');
-      })
-      .catch((loadError) => {
-        if (!active) return;
-        console.error('Error al cargar jornadas de recolección:', loadError);
-        setLoadError(
-          loadError.message ||
-            'No se pudieron cargar las jornadas, actividades o lotes de recolección.',
-        );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [retry]);
 
   const harvestDetails = useMemo(
     () => getHarvestDetails(workdays, activities, today),
@@ -213,8 +202,9 @@ export default function HarvestRecordFormDialog({
           lot_name: selectedLot.nombre || selectedLot.name || 'Lote',
           harvest_records: [],
         };
-        setWorkdays((currentWorkdays) =>
-          currentWorkdays.map((workday) =>
+        setOptions((current) => ({
+          ...current,
+          workdays: current.workdays.map((workday) =>
             String(workday.id) !== selectedWorkday.workdayId
               ? workday
               : {
@@ -232,7 +222,7 @@ export default function HarvestRecordFormDialog({
                   ),
                 },
           ),
-        );
+        }));
         detailForRecord = {
           ...selectedWorker,
           ...apiDetail,
@@ -300,10 +290,7 @@ export default function HarvestRecordFormDialog({
               </p>
               <Button
                 className="min-h-10 rounded-xl"
-                onClick={() => {
-                  setLoading(true);
-                  setRetry((attempt) => attempt + 1);
-                }}
+                onClick={refetch}
                 type="button"
                 variant="outline"
               >

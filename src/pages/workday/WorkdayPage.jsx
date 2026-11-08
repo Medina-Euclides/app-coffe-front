@@ -1,5 +1,5 @@
 // Página de jornadas laborales: lista, crea, edita y cierra jornadas de trabajadores.
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   CalendarDays,
@@ -31,8 +31,11 @@ import {
 import { belongsToPeriod, PERIOD_LABELS } from '#lib/dates';
 import { isPerKilogram } from '#lib/constants';
 import { formatoDinero, formatoKilos, hoy } from '#lib/formatters';
-import { sumBy } from '#lib/utils';
-import { DATA_EVENT } from '#services/syncService';
+import { matchesSearch, sumBy } from '#lib/utils';
+import ConfirmDialog from '#components/shared/ConfirmDialog';
+import { useApiResource } from '#hooks/useApiResource';
+import { useConfirm } from '#hooks/useConfirm';
+import { useNotice } from '#hooks/useNotice';
 import { notifyDataChanged } from '#hooks/usePendingWorkdays';
 
 function groupHarvestRecords(records) {
@@ -71,6 +74,21 @@ function groupHarvestRecords(records) {
     );
 }
 
+const getWorkdaySearchText = (workday) =>
+  [
+    workday.activityName,
+    workday.lot,
+    ...workday.allParticipants.flatMap((participant) => [
+      participant.workerName,
+      participant.identification,
+    ]),
+  ].join(' ');
+
+const getHarvestSearchText = (record) =>
+  [record.workerName, record.identification, record.lotName, record.farmName, record.activityName].join(' ');
+
+const fetchWorkdays = () => api.workdays.list().then((items) => items.flatMap(mapWorkday));
+
 function WorkdayEmptyState({ hasWorkdays, errorMessage }) {
   const hasError = Boolean(errorMessage);
   return (
@@ -99,9 +117,12 @@ function WorkdayEmptyState({ hasWorkdays, errorMessage }) {
 }
 
 export default function WorkdayPage() {
-  const [workdays, setWorkdays] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const {
+    data: workdays,
+    setData: setWorkdays,
+    loading,
+    error: loadError,
+  } = useApiResource('workdays', fetchWorkdays, { initialData: [] });
   const [search, setSearch] = useState('');
   // Inicio puede abrir esta página en una pestaña y periodo concretos.
   const { state: navState } = useLocation();
@@ -111,40 +132,12 @@ export default function WorkdayPage() {
   const [action, setAction] = useState('');
   const [workdayForAddingWorkers, setWorkdayForAddingWorkers] = useState(null);
   const [workdayForEditing, setWorkdayForEditing] = useState(null);
-  const [notice, setNotice] = useState('');
-  const [actionError, setActionError] = useState('');
+  const { notice, isError, show: showNotice, clear: clearNotice } = useNotice();
+  const confirmer = useConfirm();
   const [busyAction, setBusyAction] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    const load = () =>
-      api.workdays
-        .list()
-        .then((items) => {
-          if (active) setWorkdays(items.flatMap(mapWorkday));
-        })
-        .catch((error) => {
-          if (!active) return;
-          console.error('Error al cargar jornadas laborales:', error);
-          setLoadError(error.message || 'No se pudieron cargar las jornadas.');
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
-
-    load();
-    // Recarga si los datos cambian fuera de esta página (p. ej. al cerrar una
-    // jornada desde la campanita o al sincronizar).
-    window.addEventListener(DATA_EVENT, load);
-    return () => {
-      active = false;
-      window.removeEventListener(DATA_EVENT, load);
-    };
-  }, []);
 
   const [todayKey] = useState(hoy);
   const filteredWorkdays = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
     const matchingParticipants = workdays
       .filter((workday) => belongsToPeriod(workday.dateKey, period, todayKey));
     return groupWorkdayParticipants(matchingParticipants)
@@ -161,21 +154,7 @@ export default function WorkdayPage() {
         }
         return true;
       })
-      .filter((workday) => {
-        if (!query) return true;
-        const searchableValues = [
-          workday.activityName,
-          workday.lot,
-          ...workday.allParticipants.flatMap((participant) => [
-            participant.workerName,
-            participant.identification,
-          ]),
-        ];
-        return searchableValues
-          .join(' ')
-          .toLocaleLowerCase()
-          .includes(query);
-      })
+      .filter((workday) => matchesSearch(getWorkdaySearchText(workday), search))
       .sort((first, second) => second.dateKey.localeCompare(first.dateKey));
   }, [modality, period, search, todayKey, workdays]);
 
@@ -186,7 +165,6 @@ export default function WorkdayPage() {
   );
   const calculatedTotal = sumBy(filteredWorkdays, (workday) => workday.totalAmount);
   const harvestRecords = useMemo(() => getHarvestRecords(workdays), [workdays]);
-  const query = search.trim().toLocaleLowerCase();
   const filteredHarvestRecords = harvestRecords
     .filter((record) =>
       belongsToPeriod(record.dateKey, period, todayKey),
@@ -196,19 +174,7 @@ export default function WorkdayPage() {
       if (modality === 'kilogram') return isPerKilogram(record.paymentMode);
       return true;
     })
-    .filter((record) => {
-      if (!query) return true;
-      return [
-        record.workerName,
-        record.identification,
-        record.lotName,
-        record.farmName,
-        record.activityName,
-      ]
-        .join(' ')
-        .toLocaleLowerCase()
-        .includes(query);
-    })
+    .filter((record) => matchesSearch(getHarvestSearchText(record), search))
     .sort(
       (first, second) =>
         second.dateKey.localeCompare(first.dateKey) ||
@@ -232,21 +198,19 @@ export default function WorkdayPage() {
     setPeriod('all');
     setModality('all');
     setSearch('');
-    setNotice('La jornada laboral se registró correctamente.');
+    showNotice('La jornada laboral se registró correctamente.');
   };
 
   const closeWorkday = async (workday) => {
-    if (
-      !window.confirm(
-        '¿Quieres cerrar esta jornada? Después de cerrarla no se podrán agregar ni modificar registros.',
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirmer.confirm({
+      title: '¿Cerrar esta jornada?',
+      description: 'Después de cerrarla no se podrán agregar ni modificar registros.',
+      confirmLabel: 'Cerrar jornada',
+    });
+    if (!confirmed) return;
 
     setBusyAction(`close:${workday.id}`);
-    setActionError('');
-    setNotice('');
+    clearNotice();
     try {
       await api.workdays.close(workday.id);
       setWorkdays((current) =>
@@ -256,12 +220,12 @@ export default function WorkdayPage() {
             : participant,
         ),
       );
-      setNotice('La jornada se cerró correctamente.');
+      showNotice('La jornada se cerró correctamente.');
       // La campanita de notificaciones baja su contador.
       notifyDataChanged();
     } catch (error) {
       console.error('Error al cerrar la jornada:', error);
-      setActionError(error.message || 'No se pudo cerrar la jornada.');
+      showNotice(error.message || 'No se pudo cerrar la jornada.', true);
     } finally {
       setBusyAction('');
     }
@@ -291,10 +255,9 @@ export default function WorkdayPage() {
         (participant) => !mappedIds.has(String(participant.id)),
       ),
     ]);
-    setNotice(
+    showNotice(
       `${savedParticipants.length} ${savedParticipants.length === 1 ? 'trabajador agregado' : 'trabajadores agregados'} a la jornada.`,
     );
-    setActionError('');
   };
 
   const updateWorkdayLabor = async (workday, data) => {
@@ -312,8 +275,7 @@ export default function WorkdayPage() {
             String(participant.workdayId) !== String(workday.id),
         ),
       ]);
-      setNotice('La jornada y los datos de sus trabajadores se actualizaron.');
-      setActionError('');
+      showNotice('La jornada y los datos de sus trabajadores se actualizaron.');
     } catch (error) {
       console.error('Error al actualizar jornada completa:', error);
       throw error;
@@ -321,17 +283,14 @@ export default function WorkdayPage() {
   };
 
   const cancelParticipation = async (participant) => {
-    if (
-      !window.confirm(
-        `¿Quieres retirar a ${participant.workerName || 'este trabajador'} de la jornada?`,
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirmer.confirm({
+      title: `¿Retirar a ${participant.workerName || 'este trabajador'} de la jornada?`,
+      confirmLabel: 'Retirar',
+    });
+    if (!confirmed) return;
 
     setBusyAction(`cancel:${participant.id}`);
-    setActionError('');
-    setNotice('');
+    clearNotice();
     try {
       await api.workdayWorkers.cancel(participant.id);
       setWorkdays((current) =>
@@ -341,13 +300,14 @@ export default function WorkdayPage() {
             : item,
         ),
       );
-      setNotice(
+      showNotice(
         `${participant.workerName || 'El trabajador'} fue retirado de la jornada.`,
       );
     } catch (error) {
       console.error('Error al retirar al trabajador de la jornada:', error);
-      setActionError(
+      showNotice(
         error.message || 'No se pudo retirar al trabajador de la jornada.',
+        true,
       );
     } finally {
       setBusyAction('');
@@ -399,7 +359,7 @@ export default function WorkdayPage() {
     setPeriod('all');
     setModality('all');
     setSearch('');
-    setNotice('El pesaje de recolección se registró correctamente.');
+    showNotice('El pesaje de recolección se registró correctamente.');
   };
 
   return (
@@ -429,16 +389,8 @@ export default function WorkdayPage() {
         periodLabel={periodLabel}
       />
 
-      <NoticeBanner message={notice} />
-      {actionError && (
-        <p
-          aria-live="assertive"
-          className="rounded-xl border border-destructive/20 bg-destructive-soft px-4 py-3 text-sm text-destructive"
-          role="alert"
-        >
-          {actionError}
-        </p>
-      )}
+      <NoticeBanner isError={isError} message={notice} />
+      <ConfirmDialog {...confirmer.dialogProps} />
 
       <Tabs
         className="w-full gap-4"

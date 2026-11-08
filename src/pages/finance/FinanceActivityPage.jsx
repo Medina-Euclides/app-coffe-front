@@ -1,5 +1,5 @@
 // Página de finanzas: registra ventas y gastos, muestra resumen y movimientos.
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowDownCircle,
   PlusCircle,
@@ -16,6 +16,8 @@ import { expenseCategoryLabels } from '#lib/domain/movements';
 import { belongsToPeriod } from '#lib/dates';
 import { formatoDinero, hoy } from '#lib/formatters';
 import { guardarFincaActiva, leerFincaActiva } from '#services/farmStorage';
+import { useApiResource } from '#hooks/useApiResource';
+import { filterBySearch, sumBy } from '#lib/utils';
 import PageTitle from '#components/shared/PageTitle';
 import SegmentedControl from '#components/shared/SegmentedControl';
 
@@ -70,88 +72,56 @@ function mapMovements(sales, expenses, farms) {
   );
 }
 
+const EMPTY_FINANCE = { farms: [], movements: [] };
+
+const fetchFinanceData = async () => {
+  const [farms, sales, expenses] = await Promise.all([
+    api.farms.list(),
+    api.production.sales.list(),
+    api.finance.expenses.list(),
+  ]);
+  return { farms, movements: mapMovements(sales, expenses, farms) };
+};
+
+const getMovementSearchText = (movement) =>
+  [
+    movement.title,
+    movement.buyer,
+    movement.categoryLabel,
+    ...(movement.type === 'sale' ? [movement.notes] : []),
+  ]
+    .filter(Boolean)
+    .join(' ');
+
 export default function FinanceActivityPage({ usuario }) {
   const userId = usuario?.id || 'default';
-  const [farms, setFarms] = useState([]);
-  const [selectedFarmId, setSelectedFarmId] = useState('');
-  const [movements, setMovements] = useState([]);
-  const [loadedRequestKey, setLoadedRequestKey] = useState('');
+  const {
+    data: { farms, movements },
+    loading,
+    error,
+    refetch,
+  } = useApiResource(`finance:${userId}`, fetchFinanceData, { initialData: EMPTY_FINANCE });
+  // Finca elegida aquí o la última activa; si ya no existe, se muestran todas.
+  const [chosenFarmId, setSelectedFarmId] = useState(() => leerFincaActiva(userId));
+  const selectedFarmId = farms.some((farm) => String(farm.id) === String(chosenFarmId))
+    ? String(chosenFarmId)
+    : '';
   const [typeFilter, setTypeFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('month');
   const [search, setSearch] = useState('');
-  const [error, setError] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
   const [dialogType, setDialogType] = useState(null);
   const [movementToEdit, setMovementToEdit] = useState(null);
   const [movementToView, setMovementToView] = useState(null);
   const [todayKey] = useState(hoy);
-  const requestKey = `${userId}-${refreshKey}`;
-  const loading = loadedRequestKey !== requestKey;
-
-  useEffect(() => {
-    let active = true;
-
-    Promise.all([
-      api.farms.list(),
-      api.production.sales.list(),
-      api.finance.expenses.list(),
-    ])
-      .then(([loadedFarms, sales, expenses]) => {
-        if (!active) return;
-        setError('');
-        setFarms(loadedFarms);
-        const savedFarmId = leerFincaActiva(userId);
-        setSelectedFarmId((current) => {
-          if (current && loadedFarms.some((farm) => String(farm.id) === current)) {
-            return current;
-          }
-          return loadedFarms.some((farm) => String(farm.id) === savedFarmId)
-            ? savedFarmId
-            : '';
-        });
-        setMovements(mapMovements(sales, expenses, loadedFarms));
-      })
-      .catch((loadError) => {
-        if (!active) return;
-        console.error('Error al cargar los movimientos financieros:', loadError);
-        setError(
-          loadError.message || 'No se pudieron cargar los movimientos financieros.',
-        );
-      })
-      .finally(() => {
-        if (active) setLoadedRequestKey(requestKey);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [refreshKey, requestKey, userId]);
 
   const filteredMovements = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return movements.filter((movement) => {
-      if (selectedFarmId && movement.farmId !== String(selectedFarmId)) {
-        return false;
-      }
-      if (typeFilter !== 'all' && movement.type !== typeFilter) return false;
-      if (!belongsToPeriod(String(movement.date || '').slice(0, 10), dateFilter, todayKey)) return false;
-      if (
-        query &&
-        ![
-          movement.title,
-          movement.buyer,
-          movement.categoryLabel,
-          ...(movement.type === 'sale' ? [movement.notes] : []),
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLocaleLowerCase()
-          .includes(query)
-      ) {
-        return false;
-      }
-      return true;
-    });
+    const matching = movements.filter(
+      (movement) =>
+        (!selectedFarmId || movement.farmId === selectedFarmId) &&
+        (typeFilter === 'all' || movement.type === typeFilter) &&
+        belongsToPeriod(String(movement.date || '').slice(0, 10), dateFilter, todayKey),
+    );
+    return filterBySearch(matching, search, getMovementSearchText);
   }, [dateFilter, movements, search, selectedFarmId, todayKey, typeFilter]);
 
   const openNewMovement = (type) => {
@@ -182,7 +152,7 @@ export default function FinanceActivityPage({ usuario }) {
       } else {
         await api.finance.expenses.create(payload);
       }
-      setRefreshKey((key) => key + 1);
+      refetch();
       return '';
     } catch (saveError) {
       console.error('Error al guardar el movimiento financiero:', saveError);
@@ -192,12 +162,14 @@ export default function FinanceActivityPage({ usuario }) {
 
   const selectedDateFilter =
     dateFilters.find((item) => item.value === dateFilter)?.label || 'Este mes';
-  const filteredSales = filteredMovements
-    .filter((movement) => movement.type === 'sale')
-    .reduce((total, movement) => total + movement.amount, 0);
-  const filteredExpenses = filteredMovements
-    .filter((movement) => movement.type === 'expense')
-    .reduce((total, movement) => total + movement.amount, 0);
+  const filteredSales = sumBy(
+    filteredMovements.filter((movement) => movement.type === 'sale'),
+    (movement) => movement.amount,
+  );
+  const filteredExpenses = sumBy(
+    filteredMovements.filter((movement) => movement.type === 'expense'),
+    (movement) => movement.amount,
+  );
 
   return (
     <section className="mx-auto w-full max-w-6xl space-y-5">
@@ -308,11 +280,7 @@ export default function FinanceActivityPage({ usuario }) {
           <span>{error}</span>
           <Button
             className="h-9 rounded-lg"
-            onClick={() => {
-              setError('');
-              setLoadedRequestKey('');
-              setRefreshKey((key) => key + 1);
-            }}
+            onClick={refetch}
             type="button"
             variant="outline"
           >

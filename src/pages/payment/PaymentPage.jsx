@@ -1,20 +1,22 @@
 // Página de pagos laborales: gestiona liquidaciones y registros de pago a trabajadores.
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Search, UserRound } from 'lucide-react';
 import { Button } from '#components/ui/button';
 import { Card } from '#components/ui/card';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
 import { api } from '#services/api';
-import { DATA_EVENT } from '#services/syncService';
 import ListFilters from '#components/shared/ListFilters';
 import PaymentCard from './components/PaymentCard.jsx';
 import PaymentDetailDialog from './components/PaymentDetailDialog.jsx';
-import { buildSettleAndPay, mapPaymentData } from '#lib/domain/payments';
-import { mergeById } from '#lib/domain/entities';
+import { buildSettleAndPay, fetchPaymentData } from '#lib/domain/payments';
+import { useApiResource } from '#hooks/useApiResource';
 import { belongsToPeriod, PERIOD_LABELS } from '#lib/dates';
 import { formatoDinero, hoy } from '#lib/formatters';
+import { matchesSearch, sumBy } from '#lib/utils';
 import PageTitle from '#components/shared/PageTitle';
+
+const EMPTY_PAYMENTS = { settlements: [], historyOffline: false };
 
 function EmptyPayments({ hasSettlements, errorMessage, onRetry }) {
   const hasError = Boolean(errorMessage);
@@ -58,86 +60,20 @@ function EmptyPayments({ hasSettlements, errorMessage, onRetry }) {
 }
 
 export default function PaymentPage() {
-  const [settlements, setSettlements] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
+  const {
+    data: { settlements, historyOffline },
+    loading,
+    error: errorMessage,
+    refetch,
+  } = useApiResource('payments', fetchPaymentData, { initialData: EMPTY_PAYMENTS });
   const [search, setSearch] = useState('');
   const [period, setPeriod] = useState('all');
   const [modality, setModality] = useState('all');
   const [tab, setTab] = useState('pending');
-  const [retry, setRetry] = useState(0);
   const [todayKey] = useState(hoy);
   const [paymentTarget, setPaymentTarget] = useState(null);
   const [payingId, setPayingId] = useState('');
   const [actionError, setActionError] = useState('');
-  const [historyOffline, setHistoryOffline] = useState(false);
-
-  // Recarga cuando la sincronización trae datos nuevos (p. ej. un pago offline ya enviado).
-  useEffect(() => {
-    const reload = () => setRetry((current) => current + 1);
-    window.addEventListener(DATA_EVENT, reload);
-    return () => window.removeEventListener(DATA_EVENT, reload);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    // La caché local solo tiene lo pendiente de pago (y los pagos hechos sin conexión);
-    // el historial de pagados se pide al servidor cuando hay conexión.
-    Promise.all([
-      api.payroll.settlements.list(),
-      api.payroll.settlementWorkdays.list(),
-      api.payroll.settlementHarvests.list(),
-      api.workdays.list(),
-      api.workers.list(),
-      api.farms.list(),
-      api.payroll.paidHistory(),
-    ])
-      .then(
-        ([
-          cachedSettlements,
-          cachedWorkdayDetails,
-          cachedHarvestDetails,
-          workdays,
-          workers,
-          farms,
-          paidHistory,
-        ]) => {
-          if (!active) return;
-          const allSettlements = mergeById(cachedSettlements, paidHistory.items);
-          setSettlements(
-            mapPaymentData({
-              settlements: allSettlements,
-              workdayDetails: mergeById(
-                cachedWorkdayDetails,
-                allSettlements.flatMap((item) => item.workday_details || []),
-              ),
-              harvestDetails: mergeById(
-                cachedHarvestDetails,
-                allSettlements.flatMap((item) => item.harvest_details || []),
-              ),
-              workdays,
-              workers,
-              farms,
-              payments: [],
-            }),
-          );
-          setHistoryOffline(paidHistory.offline);
-          setErrorMessage('');
-        },
-      )
-      .catch((error) => {
-        if (!active) return;
-        console.error('Error al cargar pagos laborales:', error);
-        setErrorMessage(error.message || 'No se pudieron cargar los pagos.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [retry]);
 
   const handlePaySettlement = async () => {
     if (!paymentTarget || payingId) return;
@@ -172,8 +108,7 @@ export default function PaymentPage() {
 
       setPaymentTarget(null);
       setTab('paid');
-      setLoading(true);
-      setRetry((current) => current + 1);
+      refetch();
     } catch (error) {
       console.error('Error al registrar el pago laboral:', error);
       setActionError(
@@ -181,14 +116,12 @@ export default function PaymentPage() {
           'No se pudo completar el pago. Actualiza la lista antes de volver a intentarlo.',
       );
       setPaymentTarget(null);
-      setLoading(true);
-      setRetry((current) => current + 1);
+      refetch();
     } finally {
       setPayingId('');
     }
   };
 
-  const query = search.trim().toLocaleLowerCase();
   const filteredSettlements = useMemo(
     () =>
       settlements
@@ -206,29 +139,21 @@ export default function PaymentPage() {
           if (modality === 'all') return true;
           return settlement.items.some((item) => item.type === modality);
         })
-        .filter((settlement) => {
-          if (!query) return true;
-          return [
-            settlement.workerName,
-            settlement.identification,
-            settlement.farmName,
-          ]
-            .join(' ')
-            .toLocaleLowerCase()
-            .includes(query);
-        })
+        .filter((settlement) =>
+          matchesSearch(
+            [settlement.workerName, settlement.identification, settlement.farmName].join(' '),
+            search,
+          ),
+        )
         .sort(
           (first, second) =>
             second.dateKey.localeCompare(first.dateKey) ||
             first.workerName.localeCompare(second.workerName, 'es'),
         ),
-    [modality, period, query, settlements, tab, todayKey],
+    [modality, period, search, settlements, tab, todayKey],
   );
 
-  const total = filteredSettlements.reduce(
-    (sum, settlement) => sum + settlement.total,
-    0,
-  );
+  const total = sumBy(filteredSettlements, (settlement) => settlement.total);
   const periodLabel = PERIOD_LABELS[period];
   const tabSettlements = settlements.filter((settlement) =>
     tab === 'paid'
@@ -314,10 +239,7 @@ export default function PaymentPage() {
               <EmptyPayments
                 errorMessage={errorMessage}
                 hasSettlements={tabSettlements.length > 0}
-                onRetry={() => {
-                  setLoading(true);
-                  setRetry((current) => current + 1);
-                }}
+                onRetry={refetch}
               />
             )}
           </TabsContent>

@@ -2,7 +2,8 @@
 // jornadas, pesajes y liquidaciones de la API, y el pedido de "liquidar y pagar".
 import { toDateKey } from '#lib/dates';
 import { hoy } from '#lib/formatters';
-import { getFarmId, getId, getWorkerId, getWorkerName } from './entities.js';
+import { api } from '#services/api';
+import { getFarmId, getId, getWorkerId, getWorkerName, mergeById } from './entities.js';
 
 export function getPaymentMethodLabel(method) {
   return {
@@ -343,3 +344,45 @@ export function mapPaymentData({
   ];
 }
 
+
+// Carga todo lo que necesita la página de pagos. La caché local solo tiene lo pendiente
+// de pago (y los pagos hechos sin conexión); el historial de pagados se pide al servidor
+// cuando hay conexión.
+export async function fetchPaymentData() {
+  const [
+    cachedSettlements,
+    cachedWorkdayDetails,
+    cachedHarvestDetails,
+    workdays,
+    workers,
+    farms,
+    paidHistory,
+  ] = await Promise.all([
+    api.payroll.settlements.list(),
+    api.payroll.settlementWorkdays.list(),
+    api.payroll.settlementHarvests.list(),
+    api.workdays.list(),
+    api.workers.list(),
+    api.farms.list(),
+    api.payroll.paidHistory(),
+  ]);
+  const allSettlements = mergeById(cachedSettlements, paidHistory.items);
+  return {
+    settlements: mapPaymentData({
+      settlements: allSettlements,
+      workdayDetails: mergeById(
+        cachedWorkdayDetails,
+        allSettlements.flatMap((item) => item.workday_details || []),
+      ),
+      harvestDetails: mergeById(
+        cachedHarvestDetails,
+        allSettlements.flatMap((item) => item.harvest_details || []),
+      ),
+      workdays,
+      workers,
+      farms,
+      payments: [],
+    }),
+    historyOffline: paidHistory.offline,
+  };
+}

@@ -1,5 +1,5 @@
 // Página de analíticas: muestra producción de café, gastos y balance por finca.
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   ChartContainer,
@@ -14,7 +14,8 @@ import {
 } from '#components/ui/card';
 import { Button } from '#components/ui/button';
 import { api } from '#services/api';
-import { DATA_EVENT } from '#services/syncService';
+import { useApiList } from '#hooks/useApiList';
+import { useApiResource } from '#hooks/useApiResource';
 import PageTitle from '#components/shared/PageTitle';
 import SegmentedControl from '#components/shared/SegmentedControl';
 import { parseLocalDate } from '#lib/dates';
@@ -109,74 +110,27 @@ function StatCard({ title, value, tone = 'default' }) {
 
 export default function AnalyticPage({ usuario }) {
   const userId = usuario?.id || 'default';
-  const [farms, setFarms] = useState([]);
   const [selectedFarmId, setSelectedFarmId] = useState('');
   const [period, setPeriod] = useState('month');
-  const [farmsLoading, setFarmsLoading] = useState(true);
-  const [farmsError, setFarmsError] = useState('');
-  const [summary, setSummary] = useState(null);
-  const [error, setError] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
-
+  // Abre con «Todas las fincas» para cuadrar con el resumen de Inicio.
+  const {
+    data: farms,
+    loading: farmsLoading,
+    error: farmsError,
+    refetch: refetchFarms,
+  } = useApiList(`farms:${userId}`, api.farms.list);
   // Al sincronizar, el resumen local se reemplaza por el del servidor.
-  useEffect(() => {
-    const reload = () => setReloadKey((key) => key + 1);
-    window.addEventListener(DATA_EVENT, reload);
-    return () => window.removeEventListener(DATA_EVENT, reload);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    api.farms
-      .list()
-      .then((loadedFarms) => {
-        if (!active) return;
-        // Abre con «Todas las fincas» para cuadrar con el resumen de Inicio.
-        setFarms(loadedFarms);
-      })
-      .catch((loadError) => {
-        if (!active) return;
-        console.error('Error al cargar fincas para analíticas:', loadError);
-        setFarmsError(
-          loadError.message || 'No se pudieron cargar las fincas.',
-        );
-      })
-      .finally(() => {
-        if (active) setFarmsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [userId]);
-
-  useEffect(() => {
-    if (farmsLoading || farmsError) return undefined;
-    let active = true;
-
-    api.analytics
-      .summary({
-        farmId: selectedFarmId || undefined,
-        period,
-      })
-      .then((data) => {
-        if (active) {
-          setSummary(data);
-          setError('');
-        }
-      })
-      .catch((loadError) => {
-        if (!active) return;
-        console.error('Error al cargar analíticas:', loadError);
-        setSummary(null);
-        setError(loadError.message || 'No se pudieron cargar las analíticas.');
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [farmsError, farmsLoading, period, reloadKey, selectedFarmId]);
+  const fetchSummary = useCallback(
+    () => api.analytics.summary({ farmId: selectedFarmId || undefined, period }),
+    [period, selectedFarmId],
+  );
+  const {
+    data: summary,
+    error,
+    refetch: refetchSummary,
+  } = useApiResource(`analytics:${selectedFarmId}:${period}`, fetchSummary, {
+    enabled: !farmsLoading && !farmsError,
+  });
 
   const activeSummary =
     summary &&
@@ -275,7 +229,7 @@ export default function AnalyticPage({ usuario }) {
           {farmsError}
           <Button
             className="ml-3 h-8"
-            onClick={() => window.location.reload()}
+            onClick={refetchFarms}
             type="button"
             variant="outline"
           >
@@ -292,10 +246,7 @@ export default function AnalyticPage({ usuario }) {
           <span>{error}</span>
           <Button
             className="h-9 rounded-lg"
-            onClick={() => {
-              setError('');
-              setReloadKey((key) => key + 1);
-            }}
+            onClick={refetchSummary}
             type="button"
             variant="outline"
           >

@@ -12,25 +12,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#components/ui/dialog';
+import ConfirmDialog from '#components/shared/ConfirmDialog';
 import { api } from '#services/api';
-import { useApiList } from '#hooks/useApiList';
+import { useConfirm } from '#hooks/useConfirm';
+import { useCrudList } from '#hooks/useCrudList';
+import { isDuplicate } from '#lib/validation';
 import { useSearchFilter } from '#hooks/useSearchFilter';
 import { useNotice } from '#hooks/useNotice';
 import { useDialog } from '#hooks/useDialog';
+
+const getActivitySearchText = (activity) => `${activity.name} ${activity.description || ''}`;
 
 export default function ActividadesLaborales({ usuario }) {
   const userId = usuario?.id || 'default';
   const storageKey = `activities:${userId}`;
 
-  const { data: activities, setData, loading } = useApiList(
+  const { data: activities, upsert, remove, loading } = useCrudList(
     storageKey,
-    () => api.activities.list(),
+    api.activities.list,
   );
+  const confirmer = useConfirm();
 
-  const { search, setSearch, filtered } = useSearchFilter(
-    activities,
-    (activity) => `${activity.name} ${activity.description}`,
-  );
+  const { search, setSearch, filtered } = useSearchFilter(activities, getActivitySearchText);
 
   const { notice, isError, show: setNotice } = useNotice();
   const {
@@ -43,14 +46,7 @@ export default function ActividadesLaborales({ usuario }) {
 
   const saveActivity = async (data) => {
     if (data.name.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
-    if (
-      activities.some(
-        (activity) =>
-          String(activity.id) !== String(activityToEdit?.id) &&
-          activity.name.trim().toLocaleLowerCase() ===
-            data.name.toLocaleLowerCase(),
-      )
-    ) {
+    if (isDuplicate(activities, (activity) => activity.name, data.name, activityToEdit?.id)) {
       return 'Ya existe una actividad con ese nombre.';
     }
 
@@ -59,17 +55,11 @@ export default function ActividadesLaborales({ usuario }) {
     }
 
     try {
-      const savedActivity = activityToEdit
-        ? await api.activities.update(activityToEdit.id, data)
-        : await api.activities.create(data);
-      const nextActivities = activityToEdit
-        ? activities.map((activity) =>
-            String(activity.id) === String(savedActivity.id)
-              ? savedActivity
-              : activity,
-          )
-        : [...activities, savedActivity];
-      setData(nextActivities);
+      upsert(
+        activityToEdit
+          ? await api.activities.update(activityToEdit.id, data)
+          : await api.activities.create(data),
+      );
       setNotice(activityToEdit ? 'Actividad actualizada.' : 'Actividad agregada.', false);
       closeDialog();
       return '';
@@ -84,20 +74,16 @@ export default function ActividadesLaborales({ usuario }) {
       setNotice('Esta actividad solo existe en la caché local. No se puede borrar del servidor.', true);
       return;
     }
-    if (
-      !window.confirm(
-        `¿Eliminar la actividad “${activity.name}”? Si ya está asociada a jornadas, el servidor impedirá eliminarla.`,
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirmer.confirm({
+      title: `¿Eliminar la actividad “${activity.name}”?`,
+      description: 'Si ya está asociada a jornadas, el servidor impedirá eliminarla.',
+      confirmLabel: 'Eliminar',
+    });
+    if (!confirmed) return;
 
     try {
       await api.activities.delete(activity.id);
-      const nextActivities = activities.filter(
-        (item) => String(item.id) !== String(activity.id),
-      );
-      setData(nextActivities);
+      remove(activity.id);
       if (String(activityToView?.id) === String(activity.id)) {
         setActivityToView(null);
       }
@@ -174,6 +160,8 @@ export default function ActividadesLaborales({ usuario }) {
           open={dialogOpen}
         />
       )}
+
+      <ConfirmDialog {...confirmer.dialogProps} />
 
       <Dialog
         onOpenChange={(open) => {

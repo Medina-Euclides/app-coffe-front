@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { LoaderCircle, Save } from 'lucide-react';
 import { api } from '#services/api';
 import { Button } from '#components/ui/button';
@@ -19,8 +19,20 @@ import {
   SelectValue,
 } from '#components/ui/select';
 import { FieldError, FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useApiResource } from '#hooks/useApiResource';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { getParticipantDetails, getReferenceId, getWorkerLabel } from '#lib/domain/entities';
+
+const EMPTY_OPTIONS = { workers: [], activities: [], lots: [] };
+
+const fetchWorkerOptions = async () => {
+  const [workers, activities, lots] = await Promise.all([
+    api.workers.list(),
+    api.activities.list(),
+    api.lots.list(),
+  ]);
+  return { workers, activities, lots };
+};
 
 export default function AddWorkdayWorkersDialog({
   workday,
@@ -28,19 +40,63 @@ export default function AddWorkdayWorkersDialog({
   onOpenChange,
   onSave,
 }) {
-  const [workers, setWorkers] = useState([]);
-  const [activities, setActivities] = useState([]);
-  const [lots, setLots] = useState([]);
   const [selectedWorkerIds, setSelectedWorkerIds] = useState([]);
   const [activityId, setActivityId] = useState('');
   const [lotIds, setLotIds] = useState([]);
   const [paymentMode, setPaymentMode] = useState('jornal');
   const [rate, setRate] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
   const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
-  const [retry, setRetry] = useState(0);
+
+  // Al abrir, propone la actividad, modalidad, tarifa y lotes del primer trabajador.
+  const applyDefaults = ({ activities: loadedActivities }) => {
+    const currentParticipants = (
+      workday.allParticipants || workday.participants || []
+    );
+    const firstParticipant =
+      currentParticipants.find(
+        (participant) => participant.settlementStatus !== 'anulado',
+      ) || currentParticipants[0];
+    const firstDetail = getParticipantDetails(firstParticipant)[0];
+    const defaultActivityId = String(
+      getReferenceId(firstDetail?.activity_type) ||
+        loadedActivities[0]?.id ||
+        '',
+    );
+    const defaultPaymentMode =
+      firstParticipant?.paymentMode ||
+      firstParticipant?.payment_mode ||
+      'jornal';
+    const defaultRate =
+      firstParticipant?.rate ??
+      firstParticipant?.agreed_rate ??
+      '';
+    const selectedLotIds = [
+      ...new Set(
+        getParticipantDetails(firstParticipant)
+          .map((detail) => getReferenceId(detail.lot))
+          .filter(Boolean)
+          .map(String),
+      ),
+    ];
+
+    setActivityId(defaultActivityId);
+    setPaymentMode(defaultPaymentMode);
+    setRate(String(defaultRate));
+    setLotIds(selectedLotIds);
+    setSelectedWorkerIds([]);
+  };
+  const {
+    data: { workers, activities, lots },
+    loading,
+    error: loadError,
+    refetch,
+  } = useApiResource(`add-workers:${workday?.id}`, fetchWorkerOptions, {
+    initialData: EMPTY_OPTIONS,
+    enabled: Boolean(open && workday),
+    refreshOnSync: false,
+    onSuccess: applyDefaults,
+  });
 
   const participants = workday?.allParticipants || workday?.participants || [];
   const canceledParticipationByWorker = new Map(
@@ -84,70 +140,6 @@ export default function AddWorkdayWorkersDialog({
   const selectedLots = activeLots.filter((lot) =>
     lotIds.includes(String(lot.id)),
   );
-
-  useEffect(() => {
-    if (!open || !workday) return undefined;
-    let active = true;
-
-    Promise.all([api.workers.list(), api.activities.list(), api.lots.list()])
-      .then(([loadedWorkers, loadedActivities, loadedLots]) => {
-        if (!active) return;
-        setWorkers(loadedWorkers);
-        setActivities(loadedActivities);
-        setLots(loadedLots);
-
-        const currentParticipants = (
-          workday.allParticipants || workday.participants || []
-        );
-        const firstParticipant =
-          currentParticipants.find(
-            (participant) => participant.settlementStatus !== 'anulado',
-          ) || currentParticipants[0];
-        const firstDetail = getParticipantDetails(firstParticipant)[0];
-        const defaultActivityId = String(
-          getReferenceId(firstDetail?.activity_type) ||
-            loadedActivities[0]?.id ||
-            '',
-        );
-        const defaultPaymentMode =
-          firstParticipant?.paymentMode ||
-          firstParticipant?.payment_mode ||
-          'jornal';
-        const defaultRate =
-          firstParticipant?.rate ??
-          firstParticipant?.agreed_rate ??
-          '';
-        const selectedLotIds = [
-          ...new Set(
-            getParticipantDetails(firstParticipant)
-              .map((detail) => getReferenceId(detail.lot))
-              .filter(Boolean)
-              .map(String),
-          ),
-        ];
-
-        setActivityId(defaultActivityId);
-        setPaymentMode(defaultPaymentMode);
-        setRate(String(defaultRate));
-        setLotIds(selectedLotIds);
-        setSelectedWorkerIds([]);
-      })
-      .catch((requestError) => {
-        if (!active) return;
-        console.error('Error al cargar opciones para agregar trabajadores:', requestError);
-        setLoadError(
-          requestError.message ||
-            'No se pudieron cargar trabajadores, actividades y lotes.',
-        );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [open, retry, workday]);
 
   const kilogramPaymentAvailable = Boolean(activity?.is_harvest);
   const formDisabled =
@@ -254,11 +246,7 @@ export default function AddWorkdayWorkersDialog({
             </p>
             <Button
               className="min-h-10 rounded-xl"
-              onClick={() => {
-                setLoading(true);
-                setLoadError('');
-                setRetry((current) => current + 1);
-              }}
+              onClick={refetch}
               type="button"
               variant="outline"
             >

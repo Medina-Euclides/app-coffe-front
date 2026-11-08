@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { LoaderCircle, Save } from 'lucide-react';
 import { api } from '#services/api';
 import { Button } from '#components/ui/button';
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '#components/ui/select';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useApiList } from '#hooks/useApiList';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { getParticipantDetails, getReferenceId } from '#lib/domain/entities';
 
@@ -28,15 +29,11 @@ export default function EditWorkdayLaborDialog({
   onOpenChange,
   onSave,
 }) {
-  const [activities, setActivities] = useState([]);
   const [activityId, setActivityId] = useState('');
   const [paymentMode, setPaymentMode] = useState('jornal');
   const [rate, setRate] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
   const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
-  const [retry, setRetry] = useState(0);
 
   const currentParticipants = (workday?.participants || []).filter(
     (participant) => participant.settlementStatus !== 'anulado',
@@ -45,9 +42,6 @@ export default function EditWorkdayLaborDialog({
     currentParticipants.find(
       (participant) => participant.settlementStatus === 'pendiente',
     ) || currentParticipants[0];
-  const activity = activities.find(
-    (item) => String(item.id) === activityId,
-  );
   const hasHarvestRecords = currentParticipants.some((participant) =>
     getParticipantDetails(participant).some(
       (detail) =>
@@ -56,51 +50,28 @@ export default function EditWorkdayLaborDialog({
     ),
   );
 
-  useEffect(() => {
-    if (!open || !workday) return undefined;
-    let active = true;
-
-    api.activities
-      .list()
-      .then((loadedActivities) => {
-        if (!active) return;
-        setActivities(loadedActivities);
-        const firstDetail = getParticipantDetails(currentParticipant)[0];
-        setActivityId(
-          String(
-            getReferenceId(firstDetail?.activity_type) ||
-              loadedActivities[0]?.id ||
-              '',
-          ),
-        );
-        setPaymentMode(
-          currentParticipant?.paymentMode ||
-            currentParticipant?.payment_mode ||
-            'jornal',
-        );
-        setRate(
-          String(
-            currentParticipant?.rate ??
-              currentParticipant?.agreed_rate ??
-              '',
-          ),
-        );
-      })
-      .catch((requestError) => {
-        if (!active) return;
-        console.error('Error al cargar actividades para editar jornada:', requestError);
-        setLoadError(
-          requestError.message || 'No se pudieron cargar las actividades.',
-        );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [currentParticipant, open, retry, workday]);
+  // Al abrir, propone la actividad, modalidad y tarifa actuales de la jornada.
+  const applyDefaults = (loadedActivities) => {
+    const firstDetail = getParticipantDetails(currentParticipant)[0];
+    setActivityId(
+      String(getReferenceId(firstDetail?.activity_type) || loadedActivities[0]?.id || ''),
+    );
+    setPaymentMode(
+      currentParticipant?.paymentMode || currentParticipant?.payment_mode || 'jornal',
+    );
+    setRate(String(currentParticipant?.rate ?? currentParticipant?.agreed_rate ?? ''));
+  };
+  const {
+    data: activities,
+    loading,
+    error: loadError,
+    refetch,
+  } = useApiList(`edit-labor:${workday?.id}`, api.activities.list, {
+    enabled: Boolean(open && workday),
+    refreshOnSync: false,
+    onSuccess: applyDefaults,
+  });
+  const activity = activities.find((item) => String(item.id) === activityId);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -191,11 +162,7 @@ export default function EditWorkdayLaborDialog({
             </p>
             <Button
               className="min-h-10 rounded-xl"
-              onClick={() => {
-                setLoading(true);
-                setLoadError('');
-                setRetry((current) => current + 1);
-              }}
+              onClick={refetch}
               type="button"
               variant="outline"
             >

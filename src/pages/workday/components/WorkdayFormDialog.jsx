@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { LoaderCircle, Save } from 'lucide-react';
 import { api } from '#services/api';
 import { Button } from '#components/ui/button';
@@ -20,11 +20,35 @@ import {
   SelectValue,
 } from '#components/ui/select';
 import { FieldError, FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useApiResource } from '#hooks/useApiResource';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { PAYMENT_MODES } from '#lib/constants';
 import { hoy } from '#lib/formatters';
 import { getLotLabel, getWorkerLabel } from '#lib/domain/entities';
 
+
+const EMPTY_OPTIONS = { workers: [], activities: [], lots: [], farms: [] };
+
+// Opciones del formulario; cada lote lleva el nombre de su finca para la lista.
+const fetchWorkdayOptions = async () => {
+  const [workers, activities, lots, farms] = await Promise.all([
+    api.workers.list(),
+    api.activities.list(),
+    api.lots.list(),
+    api.farms.list(),
+  ]);
+  const farmNames = new Map(farms.map((farm) => [String(farm.id), farm.nombre || farm.name]));
+  return {
+    workers,
+    activities,
+    farms,
+    lots: lots.map((lot) => ({
+      ...lot,
+      farmName:
+        lot.farm?.name || lot.farm_name || farmNames.get(String(lot.fincaId ?? lot.id_farm)) || '',
+    })),
+  };
+};
 
 export default function WorkdayFormDialog({
   existingWorkdays,
@@ -32,12 +56,6 @@ export default function WorkdayFormDialog({
   onOpenChange,
   onSave,
 }) {
-  const [workers, setWorkers] = useState([]);
-  const [activities, setActivities] = useState([]);
-  const [lots, setLots] = useState([]);
-  const [farms, setFarms] = useState([]);
-  const [optionsLoading, setOptionsLoading] = useState(true);
-  const [optionsError, setOptionsError] = useState('');
   const [workerIds, setWorkerIds] = useState([]);
   const [activityId, setActivityId] = useState('');
   const [farmId, setFarmId] = useState('');
@@ -48,7 +66,54 @@ export default function WorkdayFormDialog({
   const [rate, setRate] = useState('');
   const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
-  const [reloadOptions, setReloadOptions] = useState(0);
+
+  // Propone el primer trabajador, actividad, finca y lote activos.
+  const applyDefaults = ({
+    workers: loadedWorkers,
+    activities: loadedActivities,
+    farms: loadedFarms,
+    lots: lotsWithFarm,
+  }) => {
+    setWorkerIds((current) =>
+      current.length
+        ? current
+        : loadedWorkers
+            .filter((worker) => worker.is_active !== false)
+            .slice(0, 1)
+            .map((worker) => String(worker.id)),
+    );
+    setActivityId((current) => current || String(loadedActivities[0]?.id || ''));
+    const firstFarm =
+      loadedFarms.find((farm) => farm.is_active !== false) || loadedFarms[0];
+    const defaultFarmId = String(firstFarm?.id || '');
+    setFarmId(defaultFarmId);
+    const lotsForInitialFarm = lotsWithFarm.filter(
+      (lot) =>
+        String(lot.fincaId ?? lot.id_farm ?? lot.farm?.id) ===
+          defaultFarmId &&
+        lot.is_active !== false &&
+        lot.estado !== 'inactivo',
+    );
+    setLotIds((current) =>
+      current.some((id) =>
+        lotsForInitialFarm.some((lot) => String(lot.id) === id),
+      )
+        ? current.filter((id) =>
+            lotsForInitialFarm.some((lot) => String(lot.id) === id),
+          )
+        : lotsForInitialFarm.slice(0, 1).map((lot) => String(lot.id)),
+    );
+  };
+  const {
+    data: { workers, activities, lots, farms },
+    loading: optionsLoading,
+    error: optionsError,
+    refetch: reloadOptions,
+  } = useApiResource('workday-form', fetchWorkdayOptions, {
+    initialData: EMPTY_OPTIONS,
+    refreshOnSync: false,
+    onSuccess: applyDefaults,
+  });
 
   const activeWorkers = workers.filter((worker) => worker.is_active !== false);
   const activeFarms = farms.filter((farm) => farm.is_active !== false);
@@ -77,82 +142,6 @@ export default function WorkdayFormDialog({
     !activeFarms.length ||
     !activities.length ||
     !activeLots.length;
-
-  useEffect(() => {
-    let active = true;
-
-    Promise.all([
-      api.workers.list(),
-      api.activities.list(),
-      api.lots.list(),
-      api.farms.list(),
-    ])
-      .then(([loadedWorkers, loadedActivities, loadedLots, loadedFarms]) => {
-        if (!active) return;
-        const farmNames = new Map(
-          loadedFarms.map((farm) => [
-            String(farm.id),
-            farm.nombre || farm.name,
-          ]),
-        );
-        const lotsWithFarm = loadedLots.map((lot) => ({
-          ...lot,
-          farmName:
-            lot.farm?.name ||
-            lot.farm_name ||
-            farmNames.get(String(lot.fincaId ?? lot.id_farm)) ||
-            '',
-        }));
-        setWorkers(loadedWorkers);
-        setActivities(loadedActivities);
-        setFarms(loadedFarms);
-        setLots(lotsWithFarm);
-        setWorkerIds((current) =>
-          current.length
-            ? current
-            : loadedWorkers
-                .filter((worker) => worker.is_active !== false)
-                .slice(0, 1)
-                .map((worker) => String(worker.id)),
-        );
-        setActivityId((current) => current || String(loadedActivities[0]?.id || ''));
-        const firstFarm =
-          loadedFarms.find((farm) => farm.is_active !== false) || loadedFarms[0];
-        const defaultFarmId = String(firstFarm?.id || '');
-        setFarmId(defaultFarmId);
-        const lotsForInitialFarm = lotsWithFarm.filter(
-          (lot) =>
-            String(lot.fincaId ?? lot.id_farm ?? lot.farm?.id) ===
-              defaultFarmId &&
-            lot.is_active !== false &&
-            lot.estado !== 'inactivo',
-        );
-        setLotIds((current) =>
-          current.some((id) =>
-            lotsForInitialFarm.some((lot) => String(lot.id) === id),
-          )
-            ? current.filter((id) =>
-                lotsForInitialFarm.some((lot) => String(lot.id) === id),
-              )
-            : lotsForInitialFarm.slice(0, 1).map((lot) => String(lot.id)),
-        );
-      })
-      .catch((loadError) => {
-        if (!active) return;
-        console.error('Error al cargar opciones de jornada:', loadError);
-        setOptionsError(
-          loadError.message ||
-            'No se pudieron cargar trabajadores, actividades y lotes.',
-        );
-      })
-      .finally(() => {
-        if (active) setOptionsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [reloadOptions]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -282,11 +271,7 @@ export default function WorkdayFormDialog({
             </p>
             <Button
               className="min-h-10 rounded-xl"
-              onClick={() => {
-                setOptionsLoading(true);
-                setOptionsError('');
-                setReloadOptions((attempt) => attempt + 1);
-              }}
+              onClick={reloadOptions}
               type="button"
               variant="outline"
             >
