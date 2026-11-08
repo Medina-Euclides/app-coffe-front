@@ -5,8 +5,10 @@ import IconBadge from '#components/shared/IconBadge';
 import {
   currencyFormatter,
   getMovementIcon,
+  kgToArrobas,
   movementLongDate,
   numberFormatter,
+  pricePerKgToArroba,
 } from '../movementFormat.js';
 
 export default function MovementDetailDialog({ movement, onOpenChange, onEdit }) {
@@ -47,7 +49,11 @@ export default function MovementDetailDialog({ movement, onOpenChange, onEdit })
         {isSale ? (
           <>
             <InfoField label="Café vendido">
-              {numberFormatter.format(Number(movement.quantity_kg) || 0)} kg
+              {numberFormatter.format(Number(movement.quantity_kg) || 0)} kg (
+              {numberFormatter.format(kgToArrobas(movement.quantity_kg || 0))} @)
+            </InfoField>
+            <InfoField label="Precio por arroba">
+              {currencyFormatter.format(pricePerKgToArroba(movement.unit_price || 0))}
             </InfoField>
             <InfoField label="Precio por kg">
               {currencyFormatter.format(Number(movement.unit_price) || 0)}

@@ -49,3 +49,13 @@ export function movementLongDate(value) {
   const date = parse(value);
   return date ? longDate.format(date) : 'Fecha sin registrar';
 }
+
+// Una arroba de café son 12,5 kg. El backend guarda siempre kilos y precio por kilo.
+export const KG_PER_ARROBA = 12.5;
+
+const round2 = (value) => Math.round(value * 100) / 100;
+
+export const kgToArrobas = (kg) => round2(Number(kg) / KG_PER_ARROBA);
+export const arrobasToKg = (arrobas) => round2(Number(arrobas) * KG_PER_ARROBA);
+export const pricePerKgToArroba = (price) => round2(Number(price) * KG_PER_ARROBA);
+export const pricePerArrobaToKg = (price) => round2(Number(price) / KG_PER_ARROBA);

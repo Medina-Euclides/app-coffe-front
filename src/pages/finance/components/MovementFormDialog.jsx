@@ -12,6 +12,50 @@ import MoneyInput from '#components/shared/MoneyInput';
 import { Button } from '#components/ui/button';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
 import { useFormFeedback } from '#hooks/useFormFeedback';
+import SegmentedControl from '#components/shared/SegmentedControl';
+import {
+  KG_PER_ARROBA,
+  arrobasToKg,
+  currencyFormatter,
+  kgToArrobas,
+  numberFormatter,
+  pricePerArrobaToKg,
+  pricePerKgToArroba,
+} from '../movementFormat.js';
+
+const UNIT_STORAGE_KEY = 'cafesmart:sale-unit';
+
+const unitOptions = [
+  { value: 'arroba', label: 'Arrobas' },
+  { value: 'kg', label: 'Kilos' },
+];
+
+function readSavedUnit() {
+  try {
+    return localStorage.getItem(UNIT_STORAGE_KEY) === 'kg' ? 'kg' : 'arroba';
+  } catch {
+    return 'arroba';
+  }
+}
+
+function saveUnit(unit) {
+  try {
+    localStorage.setItem(UNIT_STORAGE_KEY, unit);
+  } catch {
+    // Sin almacenamiento disponible: se usará Arrobas la próxima vez.
+  }
+}
+
+// Unidad con la que se abre el formulario. Una venta existente se abre en arrobas
+// solo si sus kilos dan arrobas enteras o medias (25 kg → 2 @); si no (37 kg), en kilos.
+function initialUnit(movement) {
+  if (!movement) return readSavedUnit();
+  const kg = Number(movement.quantity_kg);
+  if (!(kg > 0)) return readSavedUnit();
+  return Number.isInteger((kg / KG_PER_ARROBA) * 2) ? 'arroba' : 'kg';
+}
+
+const toFieldValue = (number) => (Number.isFinite(number) && number > 0 ? String(number) : '');
 
 const expenseCategories = [
   { value: 'inputs', label: 'Insumos agrícolas' },
@@ -45,14 +89,59 @@ export default function MovementFormDialog({
   const [concept, setConcept] = useState(
     type === 'sale' ? movement?.coffee_type || 'pergamino' : movement?.concept || '',
   );
-  const [quantity, setQuantity] = useState(movement?.quantity_kg || '');
-  const [unitPrice, setUnitPrice] = useState(movement?.unit_price || '');
+  const [unit, setUnit] = useState(() => initialUnit(movement));
+  // Cantidad y precio se guardan en la unidad que se muestra; al enviar se pasan a kg.
+  const [quantity, setQuantity] = useState(() => {
+    if (!movement?.quantity_kg) return '';
+    return unit === 'arroba'
+      ? toFieldValue(kgToArrobas(movement.quantity_kg))
+      : String(movement.quantity_kg);
+  });
+  const [unitPrice, setUnitPrice] = useState(() => {
+    if (!movement?.unit_price) return '';
+    return unit === 'arroba'
+      ? toFieldValue(pricePerKgToArroba(movement.unit_price))
+      : String(movement.unit_price);
+  });
   const [amount, setAmount] = useState(movement?.amount || '');
   const [buyer, setBuyer] = useState(movement?.buyer || '');
   const [category, setCategory] = useState(movement?.category || 'inputs');
   const [notes, setNotes] = useState(movement?.notes || '');
   const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
+  const isArroba = unit === 'arroba';
+
+  // Cambia la unidad convirtiendo lo ya escrito, para que no se pierda ni quede mal.
+  const handleUnitChange = (nextUnit) => {
+    if (nextUnit === unit) return;
+    const toArroba = nextUnit === 'arroba';
+    if (Number(quantity) > 0) {
+      setQuantity(toFieldValue(toArroba ? kgToArrobas(quantity) : arrobasToKg(quantity)));
+    }
+    if (Number(unitPrice) > 0) {
+      setUnitPrice(
+        toFieldValue(toArroba ? pricePerKgToArroba(unitPrice) : pricePerArrobaToKg(unitPrice)),
+      );
+    }
+    setUnit(nextUnit);
+    saveUnit(nextUnit);
+  };
+
+  const quantityNumber = Number(quantity);
+  const priceNumber = Number(unitPrice);
+  const quantityKg = isArroba ? arrobasToKg(quantityNumber) : quantityNumber;
+  const saleTotal = quantityNumber > 0 && priceNumber > 0 ? quantityNumber * priceNumber : 0;
+  const saleSummary =
+    quantityNumber > 0
+      ? [
+          isArroba
+            ? `${numberFormatter.format(quantityNumber)} @ = ${numberFormatter.format(quantityKg)} kg`
+            : `${numberFormatter.format(quantityNumber)} kg = ${numberFormatter.format(kgToArrobas(quantityNumber))} @`,
+          saleTotal > 0 ? `Total ${currencyFormatter.format(saleTotal)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : '';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -74,8 +163,8 @@ export default function MovementFormDialog({
               farm: farmId,
               sale_date: date,
               coffee_type: concept,
-              quantity_kg: Number(quantity),
-              unit_price: Number(unitPrice),
+              quantity_kg: quantityKg,
+              unit_price: isArroba ? pricePerArrobaToKg(priceNumber) : priceNumber,
               buyer: buyer.trim(),
               notes: notes.trim(),
             }
@@ -182,38 +271,56 @@ export default function MovementFormDialog({
                   <option value="pasilla">Pasilla</option>
                 </select>
               </FormField>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  {...feedback.field('sale-quantity')}
-                  htmlFor="sale-quantity"
-                  label="Cantidad (kg)"
-                >
-                  <Input
-                    className="h-11 rounded-xl"
-                    data-required-message="Escribe cuántos kilos vendiste."
-                    id="sale-quantity"
-                    min="0.01"
-                    onChange={(event) => setQuantity(event.target.value)}
-                    required
-                    step="0.01"
-                    type="number"
-                    value={quantity}
-                  />
-                </FormField>
-                <FormField
-                  {...feedback.field('sale-unit-price')}
-                  htmlFor="sale-unit-price"
-                  label="Precio por kg (COP)"
-                >
-                  <MoneyInput
-                    className="h-11 rounded-xl"
-                    data-required-message="Escribe el precio por kilo."
-                    id="sale-unit-price"
-                    onValueChange={setUnitPrice}
-                    required
-                    value={unitPrice}
-                  />
-                </FormField>
+              <div className="space-y-2">
+                <SegmentedControl
+                  label="Unidad de venta"
+                  onChange={handleUnitChange}
+                  options={unitOptions}
+                  value={unit}
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    {...feedback.field('sale-quantity')}
+                    htmlFor="sale-quantity"
+                    label={isArroba ? 'Cantidad (@)' : 'Cantidad (kg)'}
+                  >
+                    <Input
+                      className="h-11 rounded-xl"
+                      data-required-message={
+                        isArroba ? 'Escribe cuántas arrobas vendiste.' : 'Escribe cuántos kilos vendiste.'
+                      }
+                      id="sale-quantity"
+                      inputMode="decimal"
+                      min="0.01"
+                      onChange={(event) => setQuantity(event.target.value)}
+                      required
+                      step="0.01"
+                      type="number"
+                      value={quantity}
+                    />
+                  </FormField>
+                  <FormField
+                    {...feedback.field('sale-unit-price')}
+                    htmlFor="sale-unit-price"
+                    label={isArroba ? 'Precio por arroba (COP)' : 'Precio por kg (COP)'}
+                  >
+                    <MoneyInput
+                      className="h-11 rounded-xl"
+                      data-required-message={
+                        isArroba ? 'Escribe el precio por arroba.' : 'Escribe el precio por kilo.'
+                      }
+                      id="sale-unit-price"
+                      onValueChange={setUnitPrice}
+                      required
+                      value={unitPrice}
+                    />
+                  </FormField>
+                </div>
+                {saleSummary && (
+                  <p aria-live="polite" className="text-sm font-medium text-ink-soft">
+                    {saleSummary}
+                  </p>
+                )}
               </div>
               <FormField
                 {...feedback.field('sale-buyer')}
