@@ -9,16 +9,11 @@ import LotFormDialog from './components/LotFormDialog.jsx';
 import FarmCard from './components/FarmCard.jsx';
 import LotCard from './components/LotCard.jsx';
 import { Button } from '#components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '#components/ui/dialog';
+import ErrorBanner from '#components/shared/ErrorBanner';
+import LoadingState from '#components/shared/LoadingState';
+import LotDetailDialog from './components/LotDetailDialog.jsx';
 import { api } from '#services/api';
 import { borrarFincaActiva, guardarFincaActiva, leerFincaActiva } from '#services/farmStorage';
-import { formatoArea, formatoConteo } from '#lib/formatters';
 import { validateFarm, validateLot } from '#lib/domain/farms';
 import ConfirmDialog from '#components/shared/ConfirmDialog';
 import { useConfirm } from '#hooks/useConfirm';
@@ -179,9 +174,7 @@ export default function FarmsAndLots({ usuario }) {
       >
         <NoticeBanner message={notice} isError={isError} />
         {loading ? (
-          <p aria-live="polite" className="py-8 text-center text-sm text-muted-foreground" role="status">
-            Cargando fincas y lotes…
-          </p>
+          <LoadingState>Cargando fincas y lotes…</LoadingState>
         ) : selectedFarm ? (
           <div className="space-y-5">
             <Button
@@ -234,10 +227,13 @@ lotsOfSelectedFarm.length
           </div>
         ) : farmsInSearch.length === 0 ? (
           loadError ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No se pudieron consultar las fincas y lotes. Intenta de nuevo cuando
-              el servidor esté disponible.
-            </p>
+            <ErrorBanner
+              message="No se pudieron consultar las fincas y lotes."
+              onRetry={() => {
+                farmsList.refetch();
+                lotsList.refetch();
+              }}
+            />
           ) : (
             <EmptyState
               description={
@@ -289,64 +285,11 @@ lotsOfSelectedFarm.length
         )
       )}
       <ConfirmDialog {...confirmer.dialogProps} />
-      <Dialog
-        onOpenChange={(open) => {
-          if (!open) setLotToView(null);
-        }}
-        open={Boolean(lotToView)}
-      >
-        <DialogContent className="rounded-2xl p-5 sm:max-w-md sm:p-6">
-          <DialogHeader className="pr-8">
-            <DialogTitle className="text-2xl text-foreground">
-              {lotToView?.nombre}
-            </DialogTitle>
-            <DialogDescription>
-              Lote de {selectedFarm?.nombre}
-            </DialogDescription>
-          </DialogHeader>
-          {lotToView && (
-            <dl className="space-y-3 rounded-xl bg-muted p-4">
-              <div>
-                <dt className="text-sm text-muted-foreground">
-                  Variedad
-                </dt>
-                <dd className="mt-1 font-medium text-ink-soft">
-                  {lotToView.variedad || 'No especificada'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">
-                  Área
-                </dt>
-                <dd className="mt-1 font-medium text-ink-soft">
-                  {lotToView.hectareas
-                    ? formatoArea(Number(lotToView.hectareas))
-                    : 'No especificada'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">
-                    Plantas de café
-                </dt>
-                <dd className="mt-1 font-medium text-ink-soft">
-                    {lotToView.plant_count === null ||
-                    lotToView.plant_count === undefined
-                      ? 'No especificadas'
-                      : formatoConteo(lotToView.plant_count)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">
-                    Estado
-                </dt>
-                <dd className="mt-1 font-medium text-ink-soft">
-                  {lotToView.estado === 'inactivo' ? 'Inactivo' : 'Activo'}
-                </dd>
-              </div>
-            </dl>
-          )}
-        </DialogContent>
-      </Dialog>
+      <LotDetailDialog
+        farmName={selectedFarm?.nombre}
+        lot={lotToView}
+        onOpenChange={() => setLotToView(null)}
+      />
     </>
   );
 }

@@ -5,13 +5,9 @@ import ManagementPage from '#components/shared/ManagementPage';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import WorkerFormDialog from './components/WorkerFormDialog.jsx';
 import WorkerCard from './components/WorkerCard.jsx';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '#components/ui/dialog';
+import DetailDialog, { InfoField, InfoGrid } from '#components/shared/DetailDialog';
+import IconBadge from '#components/shared/IconBadge';
+import LoadingState from '#components/shared/LoadingState';
 import { api } from '#services/api';
 import { useCrudList } from '#hooks/useCrudList';
 import { useSearchFilter } from '#hooks/useSearchFilter';
@@ -100,9 +96,7 @@ export default function Trabajadores({ usuario }) {
       >
         <NoticeBanner message={notice} isError={isError} />
         {loading ? (
-          <p aria-live="polite" className="py-8 text-center text-sm text-muted-foreground" role="status">
-            Cargando trabajadores…
-          </p>
+          <LoadingState>Cargando trabajadores…</LoadingState>
         ) : filtered.length === 0 ? (
           <EmptyState
             description={
@@ -144,51 +138,30 @@ export default function Trabajadores({ usuario }) {
         />
       )}
 
-      <Dialog
-        onOpenChange={(open) => {
-          if (!open) setWorkerToView(null);
-        }}
+      <DetailDialog
+        badge={
+          workerToView && (
+            <IconBadge
+              name={getWorkerDisplayName(workerToView)}
+              tone={workerToView.is_active === false ? 'muted' : 'primary'}
+            />
+          )
+        }
+        description="Información del trabajador"
+        onOpenChange={() => setWorkerToView(null)}
         open={Boolean(workerToView)}
+        title={workerToView ? getWorkerDisplayName(workerToView) : ''}
       >
-        <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl p-5 sm:max-w-md sm:p-6">
-          <DialogHeader className="pr-8">
-            <DialogTitle className="text-2xl text-foreground">
-              {workerToView ? getWorkerDisplayName(workerToView) : ''}
-            </DialogTitle>
-            <DialogDescription>
-              Información del trabajador
-            </DialogDescription>
-          </DialogHeader>
-          {workerToView && (
-            <dl className="space-y-3 rounded-xl bg-muted p-4">
-              <div>
-                <dt className="text-sm text-muted-foreground">
-                  Identificación
-                </dt>
-                <dd className="mt-1 break-all font-medium text-ink-soft">
-                  {workerToView.identification || 'No registrada'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">
-                  Teléfono
-                </dt>
-                <dd className="mt-1 break-all font-medium text-ink-soft">
-                  {workerToView.phone || 'No registrado'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">
-                  Estado
-                </dt>
-                <dd className="mt-1 font-medium text-ink-soft">
-                  {workerToView.is_active === false ? 'Inactivo' : 'Activo'}
-                </dd>
-              </div>
-            </dl>
-          )}
-        </DialogContent>
-      </Dialog>
+        {workerToView && (
+          <InfoGrid>
+            <InfoField label="Cédula">{workerToView.identification || 'No registrada'}</InfoField>
+            <InfoField label="Estado">{workerToView.is_active === false ? 'Inactivo' : 'Activo'}</InfoField>
+            <InfoField label="Teléfono" wide>
+              {workerToView.phone || 'No registrado'}
+            </InfoField>
+          </InfoGrid>
+        )}
+      </DetailDialog>
     </>
   );
 }

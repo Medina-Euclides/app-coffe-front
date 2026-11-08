@@ -12,11 +12,14 @@ import {
   CardHeader,
   CardTitle,
 } from '#components/ui/card';
-import { Button } from '#components/ui/button';
 import { api } from '#services/api';
 import { useApiList } from '#hooks/useApiList';
 import { useApiResource } from '#hooks/useApiResource';
+import ErrorBanner from '#components/shared/ErrorBanner';
+import FarmSelect from '#components/shared/FarmSelect';
+import LoadingState from '#components/shared/LoadingState';
 import PageTitle from '#components/shared/PageTitle';
+import StatCard from '#components/shared/StatCard';
 import SegmentedControl from '#components/shared/SegmentedControl';
 import { parseLocalDate } from '#lib/dates';
 import {
@@ -86,27 +89,6 @@ function formatPeriodRange(series) {
   return `${formatoFechaCorta(series.start_date, '')} – ${formatoFechaAnio(series.end_date, '')}`;
 }
 
-function StatCard({ title, value, tone = 'default' }) {
-  const toneClass =
-    tone === 'positive'
-      ? 'text-leaf'
-      : tone === 'negative'
-        ? 'text-destructive'
-        : 'text-foreground';
-
-  return (
-    <Card className="rounded-2xl border-border bg-card shadow-sm">
-      <CardHeader className="gap-1 pb-1">
-        <CardDescription className="text-sm text-muted-foreground">
-          {title}
-        </CardDescription>
-        <CardTitle className={`cifra text-3xl sm:text-4xl ${toneClass}`}>
-          {formatoDinero(Number(value) || 0)}
-        </CardTitle>
-      </CardHeader>
-    </Card>
-  );
-}
 
 export default function AnalyticPage({ usuario }) {
   const userId = usuario?.id || 'default';
@@ -178,40 +160,21 @@ export default function AnalyticPage({ usuario }) {
             clara y sencilla.
           </p>
         </div>
-        <div className="w-full lg:w-64">
-          <label
-            className="mb-1.5 block text-xs font-medium text-muted-foreground"
-            htmlFor="analytics-farm"
-          >
-            Finca
-          </label>
-          <select
-            className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-            disabled={farmsLoading || farms.length === 0}
-            id="analytics-farm"
-            onChange={(event) => {
-              setError('');
-              setSelectedFarmId(event.target.value);
-            }}
-            value={selectedFarmId}
-          >
-            <option value="">Todas las fincas</option>
-            {farms.map((farm) => (
-              <option key={farm.id} value={farm.id}>
-                {farm.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FarmSelect
+          className="w-full lg:w-64"
+          disabled={farmsLoading || farms.length === 0}
+          farms={farms}
+          id="analytics-farm"
+          onChange={setSelectedFarmId}
+          showLabel
+          value={selectedFarmId}
+        />
       </header>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SegmentedControl
           label="Período de producción"
-          onChange={(value) => {
-            setError('');
-            setPeriod(value);
-          }}
+          onChange={setPeriod}
           options={periods}
           value={period}
         />
@@ -220,45 +183,11 @@ export default function AnalyticPage({ usuario }) {
         </p>
       </div>
 
-      {farmsError && (
-        <div
-          aria-live="assertive"
-          className="rounded-xl border border-destructive/20 bg-destructive-soft px-4 py-3 text-sm text-destructive"
-          role="alert"
-        >
-          {farmsError}
-          <Button
-            className="ml-3 h-8"
-            onClick={refetchFarms}
-            type="button"
-            variant="outline"
-          >
-            Recargar
-          </Button>
-        </div>
-      )}
-      {error && (
-        <div
-          aria-live="assertive"
-          className="flex flex-col gap-3 rounded-xl border border-destructive/20 bg-destructive-soft px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
-          role="alert"
-        >
-          <span>{error}</span>
-          <Button
-            className="h-9 rounded-lg"
-            onClick={refetchSummary}
-            type="button"
-            variant="outline"
-          >
-            Reintentar
-          </Button>
-        </div>
-      )}
+      <ErrorBanner message={farmsError} onRetry={refetchFarms} retryLabel="Recargar" />
+      <ErrorBanner message={error} onRetry={refetchSummary} />
 
       {loading && !activeSummary ? (
-        <p aria-live="polite" className="py-12 text-center text-sm text-muted-foreground" role="status">
-          Cargando analíticas…
-        </p>
+        <LoadingState className="py-12">Cargando analíticas…</LoadingState>
       ) : activeSummary ? (
         <>
           {activeSummary._local && (
@@ -277,17 +206,17 @@ export default function AnalyticPage({ usuario }) {
           >
             <StatCard
               title={`Ingresos por ventas de ${periodOption.produccion}`}
-              value={activeSummary.financial_summary.sales_income}
+              value={formatoDinero(Number(activeSummary.financial_summary.sales_income) || 0)}
               tone="positive"
             />
             <StatCard
               title={`Egresos de ${periodOption.produccion}`}
-              value={activeSummary.financial_summary.total_expenses}
+              value={formatoDinero(Number(activeSummary.financial_summary.total_expenses) || 0)}
               tone="negative"
             />
             <StatCard
               title={`Balance neto de ${periodOption.produccion}`}
-              value={activeSummary.financial_summary.net_income}
+              value={formatoDinero(Number(activeSummary.financial_summary.net_income) || 0)}
               tone={
                 Number(activeSummary.financial_summary.net_income) < 0
                   ? 'negative'

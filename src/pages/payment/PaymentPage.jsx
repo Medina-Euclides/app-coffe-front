@@ -2,7 +2,8 @@
 import { useMemo, useState } from 'react';
 import { Search, UserRound } from 'lucide-react';
 import { Button } from '#components/ui/button';
-import { Card } from '#components/ui/card';
+import EmptyState from '#components/shared/EmptyState';
+import LoadingState from '#components/shared/LoadingState';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
 import { api } from '#services/api';
@@ -21,41 +22,35 @@ const EMPTY_PAYMENTS = { settlements: [], historyOffline: false };
 function EmptyPayments({ hasSettlements, errorMessage, onRetry }) {
   const hasError = Boolean(errorMessage);
   return (
-    <Card className="flex flex-col items-center gap-3 rounded-2xl border-border bg-card px-6 py-12 text-center shadow-none">
-      <span className="flex size-12 items-center justify-center rounded-2xl bg-tint text-primary">
-        {hasError ? (
-          <Search aria-hidden="true" className="size-6" />
-        ) : (
-          <UserRound aria-hidden="true" className="size-6" />
-        )}
-      </span>
-      <div>
-        <h2 className="font-semibold text-foreground">
-          {hasError
-            ? 'No se pudieron cargar los pagos'
-            : hasSettlements
-              ? 'No hay resultados para estos filtros'
-              : 'No hay pagos en esta pestaña'}
-        </h2>
-        <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
-          {hasError
-            ? errorMessage
-            : hasSettlements
-              ? 'Cambia la búsqueda, el periodo o la modalidad para ver otros registros.'
-              : 'Para que una jornada aparezca como pendiente de pago, debe estar cerrada. Los pesajes y participaciones de pago por jornal de jornadas cerradas aparecerán aquí si aún no fueron incluidos en una liquidación.'}
-        </p>
-      </div>
-      {hasError && (
-        <Button
-          className="rounded-xl border-border text-primary"
-          onClick={onRetry}
-          type="button"
-          variant="outline"
-        >
-          Intentar de nuevo
-        </Button>
-      )}
-    </Card>
+    <EmptyState
+      action={
+        hasError && (
+          <Button
+            className="h-11 rounded-xl border-border text-primary"
+            onClick={() => onRetry()}
+            type="button"
+            variant="outline"
+          >
+            Intentar de nuevo
+          </Button>
+        )
+      }
+      description={
+        hasError
+          ? errorMessage
+          : hasSettlements
+            ? 'Cambia la búsqueda, el periodo o la modalidad para ver otros registros.'
+            : 'Para que una jornada aparezca como pendiente de pago, debe estar cerrada. Los pesajes y participaciones de pago por jornal de jornadas cerradas aparecerán aquí si aún no fueron incluidos en una liquidación.'
+      }
+      icon={hasError ? Search : UserRound}
+      title={
+        hasError
+          ? 'No se pudieron cargar los pagos'
+          : hasSettlements
+            ? 'No hay resultados para estos filtros'
+            : 'No hay pagos en esta pestaña'
+      }
+    />
   );
 }
 
@@ -215,13 +210,7 @@ export default function PaymentPage() {
         {(['pending', 'paid']).map((tabValue) => (
           <TabsContent className="space-y-3" key={tabValue} value={tabValue}>
             {loading ? (
-              <p
-                aria-live="polite"
-                className="rounded-2xl border border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
-                role="status"
-              >
-                Cargando pagos laborales…
-              </p>
+              <LoadingState boxed>Cargando pagos laborales…</LoadingState>
             ) : filteredSettlements.length ? (
               <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredSettlements.map((settlement) => (

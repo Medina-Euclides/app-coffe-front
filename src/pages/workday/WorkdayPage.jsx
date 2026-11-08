@@ -6,7 +6,8 @@ import {
   ClipboardList,
   Search,
 } from 'lucide-react';
-import { Card } from '#components/ui/card';
+import EmptyState from '#components/shared/EmptyState';
+import LoadingState from '#components/shared/LoadingState';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
 import { api } from '#services/api';
@@ -89,32 +90,6 @@ const getHarvestSearchText = (record) =>
 
 const fetchWorkdays = () => api.workdays.list().then((items) => items.flatMap(mapWorkday));
 
-function WorkdayEmptyState({ hasWorkdays, errorMessage }) {
-  const hasError = Boolean(errorMessage);
-  return (
-    <Card className="flex flex-col items-center gap-3 rounded-2xl border-border bg-card px-6 py-12 text-center shadow-none">
-      <span className="flex size-12 items-center justify-center rounded-2xl bg-tint text-primary">
-        <ClipboardList aria-hidden="true" className="size-6" />
-      </span>
-      <div>
-        <h2 className="font-semibold text-foreground">
-          {hasError
-            ? 'No se pudieron cargar las jornadas'
-            : hasWorkdays
-              ? 'No hay resultados para estos filtros'
-              : 'Aún no hay jornadas laborales'}
-        </h2>
-        <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
-          {hasError
-            ? errorMessage
-            : hasWorkdays
-              ? 'Cambia la búsqueda, el periodo o la modalidad para ver otros registros.'
-              : 'Cuando registres una jornada, aquí podrás consultar su actividad, tarifa y valor estimado.'}
-        </p>
-      </div>
-    </Card>
-  );
-}
 
 export default function WorkdayPage() {
   const {
@@ -430,13 +405,7 @@ export default function WorkdayPage() {
 
         <TabsContent className="space-y-4" value="workdays">
           {loading ? (
-            <p
-              aria-live="polite"
-              className="rounded-2xl border border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
-              role="status"
-            >
-              Cargando jornadas laborales…
-            </p>
+            <LoadingState boxed>Cargando jornadas laborales…</LoadingState>
           ) : filteredWorkdays.length ? (
             <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {filteredWorkdays.map((workday) => (
@@ -452,22 +421,28 @@ export default function WorkdayPage() {
               ))}
             </div>
           ) : (
-            <WorkdayEmptyState
-              errorMessage={loadError}
-              hasWorkdays={workdays.length > 0}
+            <EmptyState
+              description={
+                loadError ||
+                (workdays.length
+                  ? 'Cambia la búsqueda, el periodo o la modalidad para ver otros registros.'
+                  : 'Cuando registres una jornada, aquí podrás consultar su actividad, tarifa y valor estimado.')
+              }
+              icon={ClipboardList}
+              title={
+                loadError
+                  ? 'No se pudieron cargar las jornadas'
+                  : workdays.length
+                    ? 'No hay resultados para estos filtros'
+                    : 'Aún no hay jornadas laborales'
+              }
             />
           )}
         </TabsContent>
 
         <TabsContent className="space-y-3" value="harvest">
           {loading ? (
-            <p
-              aria-live="polite"
-              className="rounded-2xl border border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
-              role="status"
-            >
-              Cargando registros de recolección…
-            </p>
+            <LoadingState boxed>Cargando registros de recolección…</LoadingState>
           ) : filteredHarvestRecords.length ? (
             <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {groupHarvestRecords(filteredHarvestRecords).map((worker) => (
@@ -479,27 +454,22 @@ export default function WorkdayPage() {
               ))}
             </div>
           ) : (
-            <Card className="flex flex-col items-center gap-3 rounded-2xl border-border bg-card px-6 py-12 text-center shadow-none">
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-tint text-primary">
-                <Search aria-hidden="true" className="size-6" />
-              </span>
-              <div>
-                <h2 className="font-semibold text-foreground">
-                  {loadError
-                    ? 'No se pudieron cargar los pesajes'
-                    : harvestRecords.length
+            <EmptyState
+              description={
+                loadError ||
+                (harvestRecords.length
+                  ? 'Cambia la búsqueda, el periodo o la modalidad para ver otros registros.'
+                  : 'Los pesajes registrados aparecerán aquí con su trabajador, lote, fecha y hora.')
+              }
+              icon={Search}
+              title={
+                loadError
+                  ? 'No se pudieron cargar los pesajes'
+                  : harvestRecords.length
                     ? 'No hay pesajes para estos filtros'
-                    : 'Aún no hay registros de recolección'}
-                </h2>
-                <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
-                  {loadError
-                    ? loadError
-                    : harvestRecords.length
-                    ? 'Cambia la búsqueda, el periodo o la modalidad para ver otros registros.'
-                    : 'Los pesajes registrados aparecerán aquí con su trabajador, lote, fecha y hora.'}
-                </p>
-              </div>
-            </Card>
+                    : 'Aún no hay registros de recolección'
+              }
+            />
           )}
         </TabsContent>
       </Tabs>

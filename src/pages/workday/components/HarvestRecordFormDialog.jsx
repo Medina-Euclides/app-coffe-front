@@ -26,6 +26,8 @@ import {
 } from '#components/ui/select';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
 import { useApiResource } from '#hooks/useApiResource';
+import ErrorBanner from '#components/shared/ErrorBanner';
+import LoadingState from '#components/shared/LoadingState';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { formatoDinero, formatoFechaAnio, hoy } from '#lib/formatters';
 import { getHarvestDetails } from '#lib/domain/workdays';
@@ -275,28 +277,11 @@ export default function HarvestRecordFormDialog({
 
         <div className="px-5 py-5 sm:px-7 sm:py-6">
           {loading ? (
-            <p
-              aria-live="polite"
-              className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground"
-              role="status"
-            >
-              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+            <LoadingState className="py-12" spinner>
               Cargando jornadas de recolección…
-            </p>
+            </LoadingState>
           ) : loadError ? (
-            <div className="space-y-4 py-2">
-              <p aria-live="polite" className="text-sm text-destructive" role="alert">
-                {loadError}
-              </p>
-              <Button
-                className="min-h-10 rounded-xl"
-                onClick={refetch}
-                type="button"
-                variant="outline"
-              >
-                Intentar de nuevo
-              </Button>
-            </div>
+            <ErrorBanner message={loadError} onRetry={refetch} retryLabel="Intentar de nuevo" />
           ) : harvestDetails.length === 0 ? (
             <div className="space-y-2 py-8 text-center">
               <h3 className="font-semibold text-foreground">

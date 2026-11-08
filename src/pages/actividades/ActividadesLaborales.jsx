@@ -5,13 +5,10 @@ import ActivityFormDialog from './components/ActivityFormDialog.jsx';
 import ActivityCard from './components/ActivityCard.jsx';
 import EmptyState from '#components/shared/EmptyState';
 import ManagementPage from '#components/shared/ManagementPage';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '#components/ui/dialog';
+import DetailDialog from '#components/shared/DetailDialog';
+import IconBadge from '#components/shared/IconBadge';
+import LoadingState from '#components/shared/LoadingState';
+import { getActivityIcon } from '#lib/domain/activities';
 import ConfirmDialog from '#components/shared/ConfirmDialog';
 import { api } from '#services/api';
 import { useConfirm } from '#hooks/useConfirm';
@@ -111,13 +108,7 @@ export default function ActividadesLaborales({ usuario }) {
       >
         <NoticeBanner message={notice} isError={isError} />
         {loading ? (
-          <p
-            aria-live="polite"
-            className="py-8 text-center text-sm text-muted-foreground"
-            role="status"
-          >
-            Cargando actividades…
-          </p>
+          <LoadingState>Cargando actividades…</LoadingState>
         ) : filtered.length === 0 ? (
           <EmptyState
             description={
@@ -163,29 +154,29 @@ export default function ActividadesLaborales({ usuario }) {
 
       <ConfirmDialog {...confirmer.dialogProps} />
 
-      <Dialog
-        onOpenChange={(open) => {
-          if (!open) setActivityToView(null);
-        }}
+      <DetailDialog
+        badge={
+          activityToView && (
+            <IconBadge
+              icon={getActivityIcon(activityToView)}
+              tone={activityToView.is_harvest ? 'harvest' : 'primary'}
+            />
+          )
+        }
+        description={
+          activityToView?.is_harvest
+            ? 'Recolección de café; puede liquidarse por kilogramo.'
+            : 'Tipo de labor que se paga por jornal.'
+        }
+        onOpenChange={() => setActivityToView(null)}
         open={Boolean(activityToView)}
+        title={activityToView?.name}
       >
-        <DialogContent className="rounded-2xl p-5 sm:max-w-md sm:p-6">
-          <DialogHeader className="pr-8">
-            <DialogTitle className="text-2xl text-foreground">
-              {activityToView?.name}
-            </DialogTitle>
-            <DialogDescription>
-              {activityToView?.is_harvest
-                ? 'Recolección de café; puede liquidarse por kilogramo.'
-                : 'Tipo de labor que se paga por jornal.'}
-            </DialogDescription>
-          </DialogHeader>
-          <p className="rounded-xl bg-muted p-4 text-sm leading-6 text-ink-soft">
-            {activityToView?.description ||
-              'La jornada laboral registra cuándo y quién ejecutó esta actividad.'}
-          </p>
-        </DialogContent>
-      </Dialog>
+        <p className="rounded-xl bg-muted p-4 text-sm leading-6 text-ink-soft">
+          {activityToView?.description ||
+            'La jornada laboral registra cuándo y quién ejecutó esta actividad.'}
+        </p>
+      </DetailDialog>
     </>
   );
 }

@@ -1,17 +1,12 @@
 import { useState } from 'react';
-import { LoaderCircle, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { api } from '#services/api';
-import { Button } from '#components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '#components/ui/dialog';
+import FormDialog from '#components/shared/FormDialog';
 import { Input } from '#components/ui/input';
-import MoneyInput from '#components/shared/MoneyInput';
+import { toggleId } from '#lib/utils';
+import CheckboxListField from './fields/CheckboxListField.jsx';
+import PaymentModeField from './fields/PaymentModeField.jsx';
+import RateField from './fields/RateField.jsx';
 import {
   Select,
   SelectContent,
@@ -19,8 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#components/ui/select';
-import { FieldError, FormAlert, FormField } from '#components/shared/FormFeedback';
+import { FormField } from '#components/shared/FormFeedback';
 import { useApiResource } from '#hooks/useApiResource';
+import ErrorBanner from '#components/shared/ErrorBanner';
+import LoadingState from '#components/shared/LoadingState';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { PAYMENT_MODES } from '#lib/constants';
 import { hoy } from '#lib/formatters';
@@ -65,7 +62,6 @@ export default function WorkdayFormDialog({
   const [paymentMode, setPaymentMode] = useState(PAYMENT_MODES.JOURNAL);
   const [rate, setRate] = useState('');
   const feedback = useFormFeedback();
-  const [saving, setSaving] = useState(false);
 
   // Propone el primer trabajador, actividad, finca y lote activos.
   const applyDefaults = ({
@@ -143,9 +139,7 @@ export default function WorkdayFormDialog({
     !activities.length ||
     !activeLots.length;
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    feedback.clearFormError();
+  const handleSubmit = async () => {
 
     // Se marcan todos los campos que faltan; el primero recibe el foco.
     const missing = [
@@ -163,7 +157,7 @@ export default function WorkdayFormDialog({
     ].filter(Boolean);
     if (missing.length) {
       missing.forEach(([key, message]) => feedback.setFieldError(key, message));
-      return;
+      return false;
     }
 
     const duplicateWorkday = existingWorkdays.some(
@@ -175,36 +169,26 @@ export default function WorkdayFormDialog({
         'Ya registraste una jornada en esta finca para esa fecha. Cambia la fecha o edita la jornada que ya existe.',
       );
       feedback.setFieldError('workday-date', 'Ya hay una jornada en esta fecha.');
-      return;
+      return false;
     }
 
     const agreedRate = Number(rate);
 
-    setSaving(true);
-    try {
-      const payload = {
-        farm: selectedFarm.id,
-        date,
-      };
-      await onSave(payload, {
-        workers: selectedWorkers,
-        activity: selectedActivity,
-        farm: selectedFarm,
-        lots: selectedLots,
-        paymentMode,
-        agreedRate,
-      });
-      onOpenChange(false);
-    } catch (saveError) {
-      console.error('Error al guardar la jornada laboral:', saveError);
-      feedback.setFormError(
-        saveError.message ||
-          'No se pudo guardar la jornada. Revisa tu conexión e inténtalo de nuevo.',
-      );
-    } finally {
-      setSaving(false);
-    }
+    const payload = {
+      farm: selectedFarm.id,
+      date,
+    };
+    await onSave(payload, {
+      workers: selectedWorkers,
+      activity: selectedActivity,
+      farm: selectedFarm,
+      lots: selectedLots,
+      paymentMode,
+      agreedRate,
+    });
+    return '';
   };
+
 
   const handleActivityChange = (nextActivityId) => {
     feedback.clearField('workday-activity');
@@ -217,14 +201,6 @@ export default function WorkdayFormDialog({
     }
   };
 
-  const toggleSelection = (selectedIds, setSelectedIds, id) => {
-    const value = String(id);
-    setSelectedIds((current) =>
-      current.includes(value)
-        ? current.filter((item) => item !== value)
-        : [...current, value],
-    );
-  };
 
   const handleFarmChange = (nextFarmId) => {
     feedback.clearField('workday-farm');
@@ -244,367 +220,191 @@ export default function WorkdayFormDialog({
   };
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-h-[min(90dvh,48rem)] overflow-y-auto overscroll-contain rounded-2xl border-border p-5 sm:max-w-2xl sm:p-7">
-        <DialogHeader className="border-b border-border/60 pb-4 pr-8">
-          <DialogTitle className="text-2xl text-foreground sm:text-[1.75rem]">
-            Registrar Jornada Laboral
-          </DialogTitle>
-          <DialogDescription className="leading-5">
-            Anota el trabajo del día.
-          </DialogDescription>
-        </DialogHeader>
-
-        {optionsLoading ? (
-          <p
-            aria-live="polite"
-            className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"
-            role="status"
-          >
-            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+    <FormDialog
+      description="Anota el trabajo del día."
+      disabled={formDisabled}
+      errorFallback="No se pudo guardar la jornada. Revisa tu conexión e inténtalo de nuevo."
+      feedback={feedback}
+      onOpenChange={onOpenChange}
+      onSubmit={handleSubmit}
+      open={open}
+      size="lg"
+      status={
+        optionsLoading ? (
+          <LoadingState className="py-10" spinner>
             Cargando trabajadores, actividades y lotes…
-          </p>
+          </LoadingState>
         ) : optionsError ? (
-          <div className="space-y-4 py-2">
-            <p aria-live="polite" className="text-sm text-destructive" role="alert">
-              {optionsError}
-            </p>
-            <Button
-              className="min-h-10 rounded-xl"
-              onClick={reloadOptions}
-              type="button"
-              variant="outline"
-            >
-              Intentar de nuevo
-            </Button>
-          </div>
-        ) : (
-          <form
-            className="space-y-4"
-            {...feedback.formProps}
-            onSubmit={handleSubmit}
+          <ErrorBanner message={optionsError} onRetry={reloadOptions} retryLabel="Intentar de nuevo" />
+        ) : null
+      }
+      submitIcon={Save}
+      submitLabel="Guardar jornada"
+      title="Registrar Jornada Laboral"
+    >
+      {(!activeWorkers.length ||
+        !activeFarms.length ||
+        !activities.length ||
+        !activeLots.length) && (
+        <p
+          aria-live="polite"
+          className="rounded-xl border border-warning/30 bg-warning-soft px-3 py-2 text-sm leading-5 text-warning"
+          role="status"
+        >
+          {!activeWorkers.length && 'Agrega un trabajador activo. '}
+          {!activeFarms.length && 'Agrega una finca. '}
+          {!activities.length && 'Agrega una actividad laboral. '}
+          {!activeLots.length && 'Agrega un lote activo en la finca seleccionada. '}
+          Luego podrás registrar la jornada.
+        </p>
+      )}
+
+      <FormField
+        {...feedback.field('workday-farm')}
+        htmlFor="workday-farm"
+        label="¿En qué finca?"
+        labelClassName="font-semibold text-primary"
+        required
+      >
+        <Select
+          onValueChange={handleFarmChange}
+          value={farmId}
+          disabled={!activeFarms.length}
+        >
+          <SelectTrigger
+            aria-describedby="workday-farm-error"
+            aria-invalid={feedback.field('workday-farm').invalid || undefined}
+            aria-label="¿En qué finca?"
+            className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
+            id="workday-farm"
+            name="farm"
           >
-            {(!activeWorkers.length ||
-              !activeFarms.length ||
-              !activities.length ||
-              !activeLots.length) && (
-              <p
-                aria-live="polite"
-                className="rounded-xl border border-warning/30 bg-warning-soft px-3 py-2 text-sm leading-5 text-warning"
-                role="status"
-              >
-                {!activeWorkers.length && 'Agrega un trabajador activo. '}
-                {!activeFarms.length && 'Agrega una finca. '}
-                {!activities.length && 'Agrega una actividad laboral. '}
-                {!activeLots.length && 'Agrega un lote activo en la finca seleccionada. '}
-                Luego podrás registrar la jornada.
-              </p>
-            )}
-
-            <FormField
-              {...feedback.field('workday-farm')}
-              htmlFor="workday-farm"
-              label="¿En qué finca?"
-              labelClassName="font-semibold text-primary"
-              required
+            <SelectValue
+              className="truncate font-semibold text-foreground"
+              placeholder="Selecciona una finca"
             >
-              <Select
-                onValueChange={handleFarmChange}
-                value={farmId}
-                disabled={!activeFarms.length}
+              {selectedFarm?.nombre || selectedFarm?.name || undefined}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {activeFarms.map((farm) => (
+              <SelectItem
+                className="rounded-lg py-2.5 text-base font-medium text-foreground data-highlighted:bg-tint data-highlighted:text-foreground data-selected:font-semibold"
+                key={farm.id}
+                value={String(farm.id)}
               >
-                <SelectTrigger
-                  aria-describedby="workday-farm-error"
-                  aria-invalid={feedback.field('workday-farm').invalid || undefined}
-                  aria-label="¿En qué finca?"
-                  className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
-                  id="workday-farm"
-                  name="farm"
+                {farm.nombre || farm.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FormField>
+
+      <CheckboxListField
+        ariaLabel="Trabajadores de la jornada"
+        feedback={feedback}
+        getLabel={getWorkerLabel}
+        id="workday-workers"
+        items={activeWorkers}
+        legend="¿Quiénes trabajan?"
+        onToggle={(id) => setWorkerIds((current) => toggleId(current, id))}
+        selectedIds={workerIds}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField
+          {...feedback.field('workday-activity')}
+          htmlFor="workday-activity"
+          label="¿Qué harán hoy?"
+          labelClassName="font-semibold text-primary"
+          required
+        >
+          <Select
+            onValueChange={handleActivityChange}
+            value={activityId}
+            disabled={!activities.length}
+          >
+            <SelectTrigger
+              aria-describedby="workday-activity-error"
+              aria-invalid={feedback.field('workday-activity').invalid || undefined}
+              aria-label="¿Qué harán hoy?"
+              className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
+              id="workday-activity"
+              name="activity_type"
+            >
+              <SelectValue
+                className="truncate font-semibold text-foreground"
+                placeholder="Elige la labor"
+              >
+                {selectedActivity?.name || undefined}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {activities.map((activity) => (
+                <SelectItem
+                  className="rounded-lg py-2.5 text-base font-medium text-foreground data-highlighted:bg-tint data-highlighted:text-foreground data-selected:font-semibold"
+                  key={activity.id}
+                  value={String(activity.id)}
                 >
-                  <SelectValue
-                    className="truncate font-semibold text-foreground"
-                    placeholder="Selecciona una finca"
-                  >
-                    {selectedFarm?.nombre || selectedFarm?.name || undefined}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {activeFarms.map((farm) => (
-                    <SelectItem
-                      className="rounded-lg py-2.5 text-base font-medium text-foreground data-highlighted:bg-tint data-highlighted:text-foreground data-selected:font-semibold"
-                      key={farm.id}
-                      value={String(farm.id)}
-                    >
-                      {farm.nombre || farm.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
+                  {activity.name}
+                  {activity.is_harvest ? ' · Recolección' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
 
-            <fieldset className="min-w-0 space-y-2">
-              <legend className="text-sm font-semibold text-primary">
-                ¿Quiénes trabajan? <span aria-hidden="true" className="text-destructive">*</span>
-                <span className="ml-1 font-normal normal-case text-muted-foreground">
-                  ({selectedWorkers.length} seleccionados)
-                </span>
-              </legend>
-              <div
-                aria-describedby="workday-workers-error"
-                aria-invalid={feedback.field('workday-workers').invalid || undefined}
-                aria-label="Trabajadores de la jornada"
-                className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2"
-                data-field-box
-                id="workday-workers"
-                tabIndex={-1}
-              >
-                {activeWorkers.map((worker) => {
-                  const checked = workerIds.includes(String(worker.id));
-                  return (
-                    <label
-                      className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted"
-                      key={worker.id}
-                    >
-                      <input
-                        checked={checked}
-                        className="size-4 shrink-0 accent-primary"
-                        onChange={() =>
-                          toggleSelection(workerIds, setWorkerIds, worker.id)
-                        }
-                        type="checkbox"
-                        value={String(worker.id)}
-                      />
-                      <span className="truncate">{getWorkerLabel(worker)}</span>
-                    </label>
-                  );
-                })}
-              </div>
-              <FieldError
-                id="workday-workers-error"
-                message={feedback.field('workday-workers').error}
-              />
-            </fieldset>
+        <FormField
+          {...feedback.field('workday-date')}
+          htmlFor="workday-date"
+          label="¿Qué día?"
+          labelClassName="font-semibold text-primary"
+        >
+          <Input
+            autoComplete="off"
+            className="h-12 rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
+            id="workday-date"
+            max={todayDate}
+            name="date"
+            onChange={(event) => setDate(event.target.value)}
+            required
+            type="date"
+            value={date}
+          />
+        </FormField>
+      </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                {...feedback.field('workday-activity')}
-                htmlFor="workday-activity"
-                label="¿Qué harán hoy?"
-                labelClassName="font-semibold text-primary"
-                required
-              >
-                <Select
-                  onValueChange={handleActivityChange}
-                  value={activityId}
-                  disabled={!activities.length}
-                >
-                  <SelectTrigger
-                    aria-describedby="workday-activity-error"
-                    aria-invalid={feedback.field('workday-activity').invalid || undefined}
-                    aria-label="¿Qué harán hoy?"
-                    className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
-                    id="workday-activity"
-                    name="activity_type"
-                  >
-                    <SelectValue
-                      className="truncate font-semibold text-foreground"
-                      placeholder="Elige la labor"
-                    >
-                      {selectedActivity?.name || undefined}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activities.map((activity) => (
-                      <SelectItem
-                        className="rounded-lg py-2.5 text-base font-medium text-foreground data-highlighted:bg-tint data-highlighted:text-foreground data-selected:font-semibold"
-                        key={activity.id}
-                        value={String(activity.id)}
-                      >
-                        {activity.name}
-                        {activity.is_harvest ? ' · Recolección' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
+      <CheckboxListField
+        ariaLabel="Lotes de la jornada"
+        emptyMessage="Selecciona una finca con lotes activos."
+        feedback={feedback}
+        getLabel={getLotLabel}
+        id="workday-lots"
+        items={activeLots}
+        legend="¿En qué lotes?"
+        onToggle={(id) => setLotIds((current) => toggleId(current, id))}
+        selectedIds={lotIds}
+      />
 
-              <FormField
-                {...feedback.field('workday-date')}
-                htmlFor="workday-date"
-                label="¿Qué día?"
-                labelClassName="font-semibold text-primary"
-              >
-                <Input
-                  autoComplete="off"
-                  className="h-12 rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
-                  id="workday-date"
-                  max={todayDate}
-                  name="date"
-                  onChange={(event) => setDate(event.target.value)}
-                  required
-                  type="date"
-                  value={date}
-                />
-              </FormField>
-            </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <PaymentModeField
+          kilogramAvailable={kilogramPaymentAvailable}
+          name="payment_mode"
+          onChange={setPaymentMode}
+          showKilogramHint={Boolean(selectedActivity)}
+          value={paymentMode}
+        />
 
-            <fieldset className="min-w-0 space-y-2">
-              <legend className="text-sm font-semibold text-primary">
-                ¿En qué lotes? <span aria-hidden="true" className="text-destructive">*</span>
-                <span className="ml-1 font-normal normal-case text-muted-foreground">
-                  ({selectedLots.length} seleccionados)
-                </span>
-              </legend>
-              {activeLots.length ? (
-                <div
-                  aria-describedby="workday-lots-error"
-                  aria-invalid={feedback.field('workday-lots').invalid || undefined}
-                  aria-label="Lotes de la jornada"
-                  className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2"
-                  data-field-box
-                  id="workday-lots"
-                  tabIndex={-1}
-                >
-                  {activeLots.map((lot) => {
-                    const checked = lotIds.includes(String(lot.id));
-                    return (
-                      <label
-                        className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted"
-                        key={lot.id}
-                      >
-                        <input
-                          checked={checked}
-                          className="size-4 shrink-0 accent-primary"
-                          onChange={() =>
-                            toggleSelection(lotIds, setLotIds, lot.id)
-                          }
-                          type="checkbox"
-                          value={String(lot.id)}
-                        />
-                        <span className="truncate">{getLotLabel(lot)}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="rounded-xl border border-input bg-card px-3 py-3 text-sm text-muted-foreground">
-                  Selecciona una finca con lotes activos.
-                </p>
-              )}
-              <FieldError
-                id="workday-lots-error"
-                message={feedback.field('workday-lots').error}
-              />
-            </fieldset>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <fieldset className="min-w-0 space-y-2">
-                <legend className="text-sm font-semibold text-primary">
-                  Modalidad de pago <span aria-hidden="true">*</span>
-                </legend>
-                <div className="grid h-12 grid-cols-2 rounded-xl border border-border bg-muted p-1">
-                  <label className="flex cursor-pointer items-center justify-center rounded-lg px-2 text-sm font-medium text-ink-soft transition-colors has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
-                    <input
-                      checked={paymentMode === PAYMENT_MODES.JOURNAL}
-                      className="peer sr-only"
-                      name="payment_mode"
-                      onChange={() => setPaymentMode(PAYMENT_MODES.JOURNAL)}
-                      type="radio"
-                      value={PAYMENT_MODES.JOURNAL}
-                    />
-                    <span>Por jornal</span>
-                  </label>
-                  <label
-                    className={`flex items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${
-                      kilogramPaymentAvailable
-                        ? 'cursor-pointer text-muted-foreground'
-                        : 'cursor-not-allowed text-subtle'
-                    } has-[:checked]:bg-primary has-[:checked]:text-primary-foreground`}
-                  >
-                    <input
-                      checked={paymentMode === PAYMENT_MODES.KILOGRAM}
-                      className="peer sr-only"
-                      disabled={!kilogramPaymentAvailable}
-                      name="payment_mode"
-                      onChange={() => setPaymentMode(PAYMENT_MODES.KILOGRAM)}
-                      type="radio"
-                      value={PAYMENT_MODES.KILOGRAM}
-                    />
-                    <span>Pago por kg</span>
-                  </label>
-                </div>
-                {!kilogramPaymentAvailable && selectedActivity && (
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    El pago por kg está disponible para actividades de recolección.
-                  </p>
-                )}
-              </fieldset>
-
-              <FormField
-                {...feedback.field('workday-rate')}
-                htmlFor="workday-rate"
-                label={
-                  paymentMode === PAYMENT_MODES.KILOGRAM
-                    ? '¿Cuánto se paga por kilo?'
-                    : '¿Cuánto vale el jornal?'
-                }
-                hint="Igual para todos."
-                labelClassName="font-semibold text-primary"
-                required
-              >
-                <div className="relative">
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm font-semibold text-muted-foreground"
-                  >
-                    $
-                  </span>
-                  <MoneyInput
-                    aria-describedby="workday-rate-error"
-                    aria-invalid={feedback.field('workday-rate').invalid || undefined}
-                    className="h-12 rounded-xl border-input bg-card pl-9 text-base font-semibold text-foreground"
-                    id="workday-rate"
-                    name="agreed_rate"
-                    onValueChange={setRate}
-                    placeholder="Ej. 50.000…"
-                    required
-                    value={rate}
-                  />
-                </div>
-              </FormField>
-            </div>
-
-            <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
-
-            <DialogFooter className="flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row">
-              <Button
-                className="min-h-11 rounded-xl text-muted-foreground"
-                disabled={saving}
-                onClick={() => onOpenChange(false)}
-                type="button"
-                variant="ghost"
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="min-h-11 rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary-hover"
-                disabled={saving || formDisabled}
-                type="submit"
-              >
-                {saving ? (
-                  <LoaderCircle
-                    aria-hidden="true"
-                    className="size-4 animate-spin"
-                  />
-                ) : (
-                  <Save aria-hidden="true" className="size-4" />
-                )}
-                {saving ? 'Guardando…' : 'Guardar jornada'}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+        <RateField
+          feedback={feedback}
+          hint="Igual para todos."
+          id="workday-rate"
+          name="agreed_rate"
+          onChange={setRate}
+          paymentMode={paymentMode}
+          value={rate}
+        />
+      </div>
+    </FormDialog>
   );
 }

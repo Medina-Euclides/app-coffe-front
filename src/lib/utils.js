@@ -21,3 +21,9 @@ export function filterBySearch(items, query, getSearchText) {
   if (!String(query || '').trim()) return items;
   return items.filter((item) => matchesSearch(getSearchText(item), query));
 }
+
+// Agrega o quita un id (como texto) de una lista de seleccionados.
+export function toggleId(list, id) {
+  const value = String(id);
+  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+}

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import {
   ArrowDownCircle,
   PlusCircle,
+  ReceiptText,
   Search,
 } from 'lucide-react';
 import { Button } from '#components/ui/button';
@@ -18,6 +19,10 @@ import { formatoDinero, hoy } from '#lib/formatters';
 import { guardarFincaActiva, leerFincaActiva } from '#services/farmStorage';
 import { useApiResource } from '#hooks/useApiResource';
 import { filterBySearch, sumBy } from '#lib/utils';
+import EmptyState from '#components/shared/EmptyState';
+import ErrorBanner from '#components/shared/ErrorBanner';
+import FarmSelect from '#components/shared/FarmSelect';
+import LoadingState from '#components/shared/LoadingState';
 import PageTitle from '#components/shared/PageTitle';
 import SegmentedControl from '#components/shared/SegmentedControl';
 
@@ -228,27 +233,16 @@ export default function FinanceActivityPage({ usuario }) {
           />
         </div>
 
-        <label className="sr-only" htmlFor="finance-farm">
-          Filtrar por finca
-        </label>
-        <select
-          className="h-12 rounded-xl border border-border bg-card px-3 text-base text-ink-soft shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+        <FarmSelect
+          farms={farms}
           id="finance-farm"
-          onChange={(event) => {
-            setSelectedFarmId(event.target.value);
-            if (event.target.value) {
-              guardarFincaActiva(userId, event.target.value);
-            }
+          label="Filtrar por finca"
+          onChange={(farmId) => {
+            setSelectedFarmId(farmId);
+            if (farmId) guardarFincaActiva(userId, farmId);
           }}
           value={selectedFarmId}
-        >
-          <option value="">Todas las fincas</option>
-          {farms.map((farm) => (
-            <option key={farm.id} value={farm.id}>
-              {farm.nombre}
-            </option>
-          ))}
-        </select>
+        />
 
         <SegmentedControl label="Período" onChange={setDateFilter} options={dateFilters} value={dateFilter} />
       </section>
@@ -271,37 +265,16 @@ export default function FinanceActivityPage({ usuario }) {
         </Card>
       </section>
 
-      {error && (
-        <div
-          aria-live="assertive"
-          className="flex flex-col gap-3 rounded-xl border border-destructive/20 bg-destructive-soft px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
-          role="alert"
-        >
-          <span>{error}</span>
-          <Button
-            className="h-9 rounded-lg"
-            onClick={refetch}
-            type="button"
-            variant="outline"
-          >
-            Reintentar
-          </Button>
-        </div>
-      )}
+      <ErrorBanner message={error} onRetry={refetch} />
 
       {loading ? (
-        <p aria-live="polite" className="py-12 text-center text-sm text-muted-foreground" role="status">
-          Cargando movimientos…
-        </p>
+        <LoadingState className="py-12">Cargando movimientos…</LoadingState>
       ) : filteredMovements.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-input bg-card px-5 py-14 text-center">
-          <p className="font-medium text-ink-soft">
-            No hay movimientos para mostrar.
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Prueba otros filtros o registra una venta o un gasto.
-          </p>
-        </div>
+        <EmptyState
+          description="Prueba otros filtros o registra una venta o un gasto."
+          icon={ReceiptText}
+          title="No hay movimientos para mostrar"
+        />
       ) : (
         <section
           aria-label="Movimientos financieros"
