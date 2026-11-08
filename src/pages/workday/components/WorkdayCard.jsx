@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import {
   CalendarDays,
-  Check,
   LoaderCircle,
+  LockKeyhole,
   Pencil,
   UserPlus,
   UserRoundX,
@@ -103,15 +103,16 @@ export default function WorkdayCard({
                 onClick: () => onEdit(workday),
                 disabled: Boolean(busyAction) || workday.editableParticipantCount === 0,
               },
-              {
-                label: 'Cerrar',
-                icon: Check,
-                onClick: () => onClose(workday),
-                tone: 'solid',
-                disabled: Boolean(busyAction),
-                loading: busyAction === `close:${workday.id}`,
-              },
             ]}
+            primaryAction={{
+              label: 'Cerrar jornada',
+              loadingLabel: 'Cerrando…',
+              ariaLabel: `Cerrar la jornada del ${dateLabel}`,
+              icon: LockKeyhole,
+              onClick: () => onClose(workday),
+              disabled: Boolean(busyAction),
+              loading: busyAction === `close:${workday.id}`,
+            }}
             subject="la jornada"
           />
         )

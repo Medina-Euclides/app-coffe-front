@@ -17,6 +17,13 @@ const periods = [
   { value: 'all', label: 'Todo' },
 ];
 
+const modalities = [
+  { value: 'all', label: 'Todas las modalidades' },
+  { value: 'jornal', label: 'Por jornal' },
+  { value: 'kilogram', label: 'Por kilogramo' },
+];
+const modalityLabel = Object.fromEntries(modalities.map(({ value, label }) => [value, label]));
+
 export default function WorkdayFilters({
   search,
   onSearchChange,
@@ -54,13 +61,18 @@ export default function WorkdayFilters({
           aria-label="Filtrar por modalidad de pago"
           className="h-12 w-full rounded-xl border-border bg-muted px-3 text-base text-ink-soft sm:w-[190px]"
         >
-          <SelectValue placeholder="Todas las modalidades" />
+          {/* Sin esto, el Select muestra el valor interno («all») en vez del texto. */}
+          <SelectValue placeholder="Todas las modalidades">
+            {(value) => modalityLabel[value]}
+          </SelectValue>
           <SlidersHorizontal aria-hidden="true" className="size-4 text-muted-foreground" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Todas las modalidades</SelectItem>
-          <SelectItem value="jornal">Por jornal</SelectItem>
-          <SelectItem value="kilogram">Por kilogramo</SelectItem>
+          {modalities.map(({ value, label }) => (
+            <SelectItem key={value} value={value}>
+              {label}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
