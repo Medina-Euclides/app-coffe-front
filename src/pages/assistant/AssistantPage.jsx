@@ -1,8 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUp, Leaf, LoaderCircle, Mic, Sprout, Square, Wallet, Users } from 'lucide-react';
-import { Avatar, AvatarFallback } from '#components/ui/avatar';
-import { Button } from '#components/ui/button';
-import { Bubble, BubbleContent } from '#components/ui/bubble';
+import { ArrowUp, Cherry, Leaf, LoaderCircle, Mic, Square, Users, Wallet } from 'lucide-react';
 import {
   InputGroup,
   InputGroupButton,
@@ -16,24 +13,27 @@ import {
 } from '#components/ui/message';
 import { api } from '#services/api';
 import { useOnlineStatus } from '#hooks/useOnlineStatus';
+import IconBadge from '#components/shared/IconBadge';
 import { useSpeechDictation } from './hooks/useSpeechDictation.js';
+import AnswerText from './components/AnswerText.jsx';
 
+// Preguntas frecuentes como teclas, con el color de su tema en toda la app
+// (recolección = cereza, ingreso = leaf, labor = verde primario).
 const preguntasSugeridas = [
-  { label: 'Resumen de cosecha', icon: Sprout },
-  { label: 'Balance de este mes', icon: Wallet },
-  { label: 'Pagos pendientes', icon: Users },
+  { label: 'Resumen de cosecha', detalle: 'Kilos recogidos y pesajes', icon: Cherry, tone: 'harvest' },
+  { label: 'Balance de este mes', detalle: 'Ventas menos gastos', icon: Wallet, tone: 'income' },
+  { label: 'Pagos pendientes', detalle: 'Lo que falta por pagar', icon: Users, tone: 'primary' },
 ];
 
-function AssistantAvatar() {
+// Círculo pequeño de CafeSmart junto a cada respuesta.
+function AssistantMark() {
   return (
-    <Avatar
-      aria-label="CafeSmart"
-      className="size-7 rounded-full bg-muted text-primary"
+    <span
+      aria-hidden="true"
+      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-primary"
     >
-      <AvatarFallback className="rounded-full bg-transparent">
-        <Leaf aria-hidden="true" className="size-3.5" />
-      </AvatarFallback>
-    </Avatar>
+      <Leaf className="size-[18px]" strokeWidth={2} />
+    </span>
   );
 }
 
@@ -54,7 +54,7 @@ function AssistantPage({ usuario }) {
     usuario?.first_name ||
     usuario?.nombre ||
     usuario?.full_name?.split(' ')[0] ||
-    'Euclides';
+    '';
   const nextMessageId = useRef(0);
   const conversationRef = useRef(null);
   const conversationEndRef = useRef(null);
@@ -135,101 +135,100 @@ function AssistantPage({ usuario }) {
     promptRef.current?.focus();
   };
 
+  const puedeEnviar = Boolean(prompt.trim()) && !isLoading && isOnline;
+  const ayuda =
+    dictation.error ||
+    (dictation.listening
+      ? 'Habla con calma. Toca el cuadrado para terminar.'
+      : !isOnline
+        ? 'Sin conexión: el asistente necesita internet. El resto de la app sigue funcionando.'
+        : '');
+
   return (
     <section
       aria-label="Asistente CafeSmart"
-      className="mx-auto flex min-h-0 w-full max-w-4xl flex-col overflow-hidden"
+      className="mx-auto flex min-h-0 w-full max-w-3xl flex-col overflow-hidden"
       style={{ height: 'calc(100dvh - 8rem)' }}
     >
       <div
         aria-label="Conversación con CafeSmart"
         aria-live="polite"
-        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1 py-5 sm:px-2 sm:py-8"
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1 py-4 sm:px-2 sm:py-8"
         ref={conversationRef}
         role="log"
       >
         {messages.length === 0 ? (
-          <div className="flex min-h-full flex-col items-center justify-center px-2 pb-8 text-center">
-            <div className="flex size-11 items-center justify-center rounded-full bg-tint text-primary">
-              <Leaf aria-hidden="true" className="size-5" />
+          <div className="flex min-h-full flex-col justify-center pb-4">
+            <div className="flex items-center gap-3">
+              <IconBadge icon={Leaf} />
+              <h2 className="text-balance text-3xl leading-tight text-foreground sm:text-4xl">
+                {nombre ? `Hola, ${nombre}` : 'Hola'}
+              </h2>
             </div>
-            <h2 className="mt-4 text-balance text-3xl text-foreground sm:text-4xl">
-              Hola, {nombre}. ¿Qué quieres consultar?
-            </h2>
-            <p className="mt-2 max-w-md text-pretty text-sm leading-6 text-muted-foreground">
-              Pregunta por tus cosechas, pagos o finanzas. Te ayudo a encontrar
-              la información de tu finca.
+            <p className="mt-3 max-w-md text-pretty text-base leading-6 text-ink-soft">
+              Pregúntame por tus cosechas, pagos o finanzas. Puedes escribir o
+              dictar con el micrófono.
             </p>
-            <div className="mt-6 flex w-full flex-wrap justify-center gap-2">
-              {preguntasSugeridas.map(({ label, icon: Icon }) => (
-                <Button
-                  className="h-9 rounded-full border-border bg-card px-3 text-xs font-medium text-ink-soft shadow-none hover:border-input hover:bg-muted hover:text-primary"
-                  key={label}
-                  onClick={() => seleccionarPregunta(label)}
-                  type="button"
-                  variant="outline"
-                >
-                  <Icon
-                    aria-hidden="true"
-                    className="size-3.5 text-muted-foreground"
-                  />
-                  {label}
-                </Button>
+            <ul className="mt-6 grid gap-3 sm:grid-cols-3">
+              {preguntasSugeridas.map(({ label, detalle, icon, tone }) => (
+                <li key={label}>
+                  <button
+                    className="flex min-h-18 w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-3 py-3 text-left shadow-[0_3px_0_var(--border-strong)] transition-[background-color,box-shadow,translate] duration-100 hover:bg-tint focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-ring active:translate-y-[3px] active:shadow-[0_0_0_var(--border-strong)] motion-reduce:transition-none sm:flex-col sm:items-start"
+                    onClick={() => seleccionarPregunta(label)}
+                    type="button"
+                  >
+                    <IconBadge icon={icon} tone={tone} />
+                    <span className="min-w-0">
+                      <span className="block font-heading text-lg font-semibold leading-tight text-foreground">
+                        {label}
+                      </span>
+                      <span className="mt-0.5 block text-sm text-muted-foreground">{detalle}</span>
+                    </span>
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         ) : (
-          <MessageGroup className="mx-auto max-w-3xl gap-6 sm:gap-8">
+          <MessageGroup className="gap-6">
             {messages.map((message) =>
               message.role === 'user' ? (
-                <Message
-                  align="end"
-                  className="gap-2.5"
-                  key={message.id}
-                >
-                  <MessageContent className="max-w-[88%] gap-1 sm:max-w-[76%]">
-                    <Bubble align="end" className="max-w-full" variant="secondary">
-                      <BubbleContent className="whitespace-pre-wrap break-words rounded-2xl border-0 bg-muted px-4 py-3 text-[13px] leading-5 text-foreground sm:text-sm">
-                        {message.content}
-                      </BubbleContent>
-                    </Bubble>
+                <Message align="end" className="gap-2.5" key={message.id}>
+                  <MessageContent className="max-w-[85%] items-end gap-1 sm:max-w-[75%]">
+                    <p className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-4 py-3 text-base leading-6 text-primary-foreground">
+                      {message.content}
+                    </p>
+                    <span className="text-sm text-muted-foreground">{message.time}</span>
                   </MessageContent>
                 </Message>
               ) : (
-                <Message className="gap-2.5" key={message.id}>
+                <Message className="gap-3" key={message.id}>
                   <MessageAvatar className="self-start">
-                    <AssistantAvatar />
+                    <AssistantMark />
                   </MessageAvatar>
-                  <MessageContent className="min-w-0 gap-1.5 pt-1">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      CafeSmart
-                    </span>
-                    <Bubble className="max-w-full" variant="ghost">
-                      <BubbleContent className="whitespace-pre-wrap break-words p-0 text-[13px] leading-6 text-foreground sm:text-sm">
-                        {message.content}
-                      </BubbleContent>
-                    </Bubble>
+                  <MessageContent className="min-w-0 max-w-[90%] gap-1">
+                    <div className="break-words rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 text-base leading-6 text-foreground">
+                      <AnswerText text={message.content} />
+                    </div>
+                    <span className="text-sm text-muted-foreground">CafeSmart · {message.time}</span>
                   </MessageContent>
                 </Message>
               ),
             )}
 
             {isLoading && (
-              <Message className="gap-2.5">
+              <Message className="gap-3">
                 <MessageAvatar className="self-start">
-                  <AssistantAvatar />
+                  <AssistantMark />
                 </MessageAvatar>
-                <MessageContent className="min-w-0 gap-1.5 pt-1">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    CafeSmart
-                  </span>
+                <MessageContent className="min-w-0">
                   <div
-                    className="flex items-center gap-2 py-1 text-sm text-muted-foreground"
+                    className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 text-base text-muted-foreground"
                     role="status"
                   >
                     <LoaderCircle
                       aria-hidden="true"
-                      className="size-4 animate-spin motion-reduce:animate-none"
+                      className="size-4 text-primary motion-safe:animate-spin"
                     />
                     Pensando…
                   </div>
@@ -241,13 +240,15 @@ function AssistantPage({ usuario }) {
         <div aria-hidden="true" ref={conversationEndRef} />
       </div>
 
-      <footer className="mx-auto w-full max-w-3xl shrink-0 px-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:px-2 sm:pb-3">
+      <footer className="w-full shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:px-2 sm:pb-3">
         <form onSubmit={enviarPregunta}>
-          <InputGroup className="min-h-[58px] rounded-3xl border-input bg-card p-1.5 shadow-[0_3px_14px_-10px_rgba(38,52,42,0.28)] transition-[border-color,box-shadow] focus-within:border-border-strong focus-within:ring-2 focus-within:ring-secondary">
+          {/* has-disabled:* anula el gris y la transparencia que InputGroup pone a todo
+              el bloque cuando un botón está desactivado (p. ej. Enviar sin texto). */}
+          <InputGroup className="min-h-16 items-end rounded-3xl border-border-strong bg-card p-2 shadow-[0_3px_0_var(--border-strong)] transition-[border-color,box-shadow] focus-within:border-primary/60 focus-within:ring-3 focus-within:ring-primary/15 has-disabled:bg-card has-disabled:opacity-100 dark:bg-card">
             <InputGroupTextarea
-              aria-label="Escribe tu mensaje"
+              aria-label="Escribe tu pregunta"
               autoComplete="off"
-              className="min-h-10 max-h-32 px-3 py-2.5 text-[14px] leading-5 placeholder:text-muted-foreground sm:text-sm"
+              className="min-h-11 max-h-36 px-3 py-2.5 text-base leading-6 text-foreground placeholder:text-muted-foreground"
               name="prompt"
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={(event) => {
@@ -270,11 +271,11 @@ function AssistantPage({ usuario }) {
               <InputGroupButton
                 aria-label={dictation.listening ? 'Detener dictado' : 'Dictar pregunta'}
                 aria-pressed={dictation.listening}
-                className={`size-10 shrink-0 rounded-full ${
+                className={`size-11 shrink-0 rounded-full ${
                   dictation.listening
                     ? 'bg-destructive text-white ring-4 ring-destructive/25 hover:bg-destructive motion-safe:animate-pulse'
-                    : 'text-muted-foreground hover:bg-muted hover:text-ink-soft'
-                }`}
+                    : 'bg-muted text-primary hover:bg-secondary'
+                } disabled:bg-muted disabled:text-subtle disabled:opacity-100`}
                 disabled={!isOnline || isLoading}
                 onClick={() =>
                   dictation.listening ? dictation.stop() : dictation.start(prompt)
@@ -292,34 +293,33 @@ function AssistantPage({ usuario }) {
                 {dictation.listening ? (
                   <Square aria-hidden="true" className="size-4 fill-white text-white" />
                 ) : (
-                  <Mic aria-hidden="true" className="size-[18px]" />
+                  <Mic aria-hidden="true" className="size-5" />
                 )}
               </InputGroupButton>
             )}
             <InputGroupButton
-              aria-label="Enviar mensaje"
-              className="size-10 shrink-0 rounded-full bg-primary text-primary-foreground hover:bg-primary-hover"
-              disabled={isLoading || !prompt.trim() || !isOnline}
-              title={isOnline ? 'Enviar mensaje' : 'El asistente necesita conexión'}
+              aria-label="Enviar pregunta"
+              className={`size-11 shrink-0 rounded-full disabled:opacity-100 ${
+                puedeEnviar
+                  ? 'bg-primary text-primary-foreground shadow-[0_3px_0_var(--relieve)] [--relieve:color-mix(in_oklab,var(--primary),black_45%)] hover:bg-primary-hover active:translate-y-[2px] active:shadow-none'
+                  : 'bg-muted text-subtle'
+              }`}
+              disabled={!puedeEnviar}
+              title={isOnline ? 'Enviar pregunta' : 'El asistente necesita conexión'}
               type="submit"
               variant="default"
             >
-              <ArrowUp aria-hidden="true" className="size-[18px]" />
+              <ArrowUp aria-hidden="true" className="size-5" strokeWidth={2.5} />
             </InputGroupButton>
           </InputGroup>
         </form>
         <p
           aria-live="polite"
-          className={`mt-2 text-center text-[10px] leading-4 sm:text-[11px] ${
+          className={`mt-2 min-h-5 px-2 text-center text-sm leading-5 ${
             dictation.error ? 'font-semibold text-destructive' : 'text-muted-foreground'
           }`}
         >
-          {dictation.error ||
-            (dictation.listening
-              ? 'Habla con calma. Toca el cuadrado para terminar.'
-              : isOnline
-                ? 'Enter para enviar · Shift + Enter para una nueva línea'
-                : 'Sin conexión: el asistente necesita internet. El resto de la app sigue funcionando.')}
+          {ayuda}
         </p>
       </footer>
     </section>
