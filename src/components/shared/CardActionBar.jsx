@@ -26,7 +26,7 @@ function ActionIcon({ icon, loading, className }) {
   );
 }
 
-function PrimaryAction({ label, loadingLabel, ariaLabel, icon, onClick, disabled = false, loading = false }) {
+export function PrimaryAction({ label, loadingLabel, ariaLabel, icon, onClick, disabled = false, loading = false }) {
   return (
     <button
       aria-label={ariaLabel}

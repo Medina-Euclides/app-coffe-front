@@ -27,6 +27,8 @@ import {
   mapParticipant,
   mapWorkday,
 } from './utils/workdayMappers.js';
+import { DATA_EVENT } from '#services/syncService';
+import { notifyDataChanged } from '#hooks/usePendingWorkdays';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -132,22 +134,28 @@ export default function WorkdayPage() {
 
   useEffect(() => {
     let active = true;
-    api.workdays
-      .list()
-      .then((items) => {
-        if (active) setWorkdays(items.flatMap(mapWorkday));
-      })
-      .catch((error) => {
-        if (!active) return;
-        console.error('Error al cargar jornadas laborales:', error);
-        setLoadError(error.message || 'No se pudieron cargar las jornadas.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    const load = () =>
+      api.workdays
+        .list()
+        .then((items) => {
+          if (active) setWorkdays(items.flatMap(mapWorkday));
+        })
+        .catch((error) => {
+          if (!active) return;
+          console.error('Error al cargar jornadas laborales:', error);
+          setLoadError(error.message || 'No se pudieron cargar las jornadas.');
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
 
+    load();
+    // Recarga si los datos cambian fuera de esta página (p. ej. al cerrar una
+    // jornada desde la campanita o al sincronizar).
+    window.addEventListener(DATA_EVENT, load);
     return () => {
       active = false;
+      window.removeEventListener(DATA_EVENT, load);
     };
   }, []);
 
@@ -279,6 +287,8 @@ export default function WorkdayPage() {
         ),
       );
       setNotice('La jornada se cerró correctamente.');
+      // La campanita de notificaciones baja su contador.
+      notifyDataChanged();
     } catch (error) {
       console.error('Error al cerrar la jornada:', error);
       setActionError(error.message || 'No se pudo cerrar la jornada.');

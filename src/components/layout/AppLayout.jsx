@@ -5,6 +5,8 @@ import { SidebarApp } from './SidebarApp.jsx';
 import { SidebarProvider, useSidebar } from '../ui/sidebar.jsx';
 import SyncStatus from '../shared/SyncStatus.jsx';
 import AssistantFab from './AssistantFab.jsx';
+import NotificationBell from '../shared/NotificationBell.jsx';
+import { usePendingWorkdays } from '#hooks/usePendingWorkdays';
 
 // Se oculta al bajar y reaparece al subir, sin tener que volver al inicio de la página.
 function useHideOnScrollDown() {
@@ -38,8 +40,8 @@ function useHideOnScrollDown() {
   return [hidden, setHidden];
 }
 
-// Barra superior del móvil con el menú y el estado de conexión.
-function MobileTopBar() {
+// Barra superior del móvil con el menú, el estado de conexión y la campanita.
+function MobileTopBar({ pendingWorkdays }) {
   const { toggleSidebar } = useSidebar();
   const [hidden, setHidden] = useHideOnScrollDown();
 
@@ -58,6 +60,10 @@ function MobileTopBar() {
           <Menu aria-hidden="true" className="size-5" strokeWidth={2.25} />
         </button>
         <SyncStatus />
+        <NotificationBell
+          onClose={pendingWorkdays.close}
+          pending={pendingWorkdays.pending}
+        />
       </div>
     </header>
   );
@@ -66,6 +72,8 @@ function MobileTopBar() {
 export default function AppLayout({ usuario, onLogout }) {
   // Deja espacio al final para que el botón flotante del asistente no tape contenido.
   const showsAssistantFab = !useLocation().pathname.startsWith('/asistente-ia');
+  // Una sola consulta para las dos campanitas (barra móvil y menú lateral).
+  const pendingWorkdays = usePendingWorkdays();
   return (
     <SidebarProvider>
       <a
@@ -74,12 +82,12 @@ export default function AppLayout({ usuario, onLogout }) {
       >
         Saltar al contenido principal
       </a>
-      <SidebarApp onLogout={onLogout} usuario={usuario} />
+      <SidebarApp onLogout={onLogout} pendingWorkdays={pendingWorkdays} usuario={usuario} />
       <main
         className={`min-w-0 flex-1 bg-muted p-4 md:p-8 ${showsAssistantFab ? 'pb-28 md:pb-28' : ''}`}
         id="contenido-principal"
       >
-        <MobileTopBar />
+        <MobileTopBar pendingWorkdays={pendingWorkdays} />
         <Outlet />
       </main>
       <AssistantFab />

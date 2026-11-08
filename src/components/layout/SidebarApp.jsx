@@ -18,6 +18,7 @@ import {
   ChartPie,
 } from "lucide-react"
 import SidebarNavGroup from "./SidebarNavGroup.jsx"
+import NotificationBell from "#components/shared/NotificationBell"
 
 const gruposNavegacion = [
   {
@@ -62,7 +63,7 @@ function obtenerNombreMostrar(usuario) {
   return "Usuario"
 }
 
-export const SidebarApp = ({ usuario, onLogout }) => {
+export const SidebarApp = ({ usuario, onLogout, pendingWorkdays }) => {
   const { pathname } = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
   const nombreMostrar = obtenerNombreMostrar(usuario)
@@ -81,7 +82,7 @@ export const SidebarApp = ({ usuario, onLogout }) => {
               className="size-10 object-contain"
             />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-lg font-bold tracking-tight text-foreground">
               CafeSmart
             </p>
@@ -89,6 +90,13 @@ export const SidebarApp = ({ usuario, onLogout }) => {
               Gestión Cafetera
             </p>
           </div>
+          {/* En celular la campanita ya está en la barra superior. */}
+          {pendingWorkdays && !isMobile && (
+            <NotificationBell
+              onClose={pendingWorkdays.close}
+              pending={pendingWorkdays.pending}
+            />
+          )}
         </div>
       </SidebarHeader>
 
