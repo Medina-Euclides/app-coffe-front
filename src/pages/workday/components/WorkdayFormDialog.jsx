@@ -21,50 +21,10 @@ import {
 } from '#components/ui/select';
 import { FieldError, FormAlert, FormField } from '#components/shared/FormFeedback';
 import { useFormFeedback } from '#hooks/useFormFeedback';
+import { PAYMENT_MODES } from '#lib/constants';
+import { hoy } from '#lib/formatters';
+import { getLotLabel, getWorkerLabel } from '#lib/domain/entities';
 
-const PAYMENT_MODES = {
-  JOURNAL: 'jornal',
-  KILOGRAM: 'kg',
-};
-
-function getLocalDate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getDisplayName(person) {
-  return (
-    person.nombre ||
-    person.name ||
-    person.full_name ||
-    [person.first_name, person.last_name].filter(Boolean).join(' ')
-  );
-}
-
-function getWorkerLabel(worker) {
-  const name = getDisplayName(worker);
-  const identification = worker.identification || worker.cedula;
-  return [
-    name || 'Trabajador sin nombre',
-    identification ? `C.C. ${identification}` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
-
-function getLotLabel(lot) {
-  const lotName = lot.nombre || lot.name || 'Lote sin nombre';
-  const farmName =
-    lot.farmName ||
-    lot.farm?.name ||
-    lot.farm_name ||
-    lot.fincaNombre ||
-    '';
-  return farmName ? `${lotName} · Finca ${farmName}` : lotName;
-}
 
 export default function WorkdayFormDialog({
   existingWorkdays,
@@ -82,8 +42,8 @@ export default function WorkdayFormDialog({
   const [activityId, setActivityId] = useState('');
   const [farmId, setFarmId] = useState('');
   const [lotIds, setLotIds] = useState([]);
-  const [todayDate] = useState(getLocalDate);
-  const [date, setDate] = useState(getLocalDate);
+  const [todayDate] = useState(hoy);
+  const [date, setDate] = useState(hoy);
   const [paymentMode, setPaymentMode] = useState(PAYMENT_MODES.JOURNAL);
   const [rate, setRate] = useState('');
   const feedback = useFormFeedback();

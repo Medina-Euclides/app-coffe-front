@@ -26,169 +26,16 @@ import {
 } from '#components/ui/select';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
 import { useFormFeedback } from '#hooks/useFormFeedback';
+import { formatoDinero, formatoFechaAnio, hoy } from '#lib/formatters';
+import { getHarvestDetails } from '#lib/domain/workdays';
 
 const MAX_KILOGRAMS = 9_999_999.999;
-
-const currencyFormatter = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  maximumFractionDigits: 0,
-});
-
-const dateFormatter = new Intl.DateTimeFormat('es-CO', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-});
-
-function getLocalDate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 function getLocalTime() {
   const now = new Date();
   return `${String(now.getHours()).padStart(2, '0')}:${String(
     now.getMinutes(),
   ).padStart(2, '0')}`;
-}
-
-function formatWorkdayDate(value) {
-  if (!value) return 'Fecha sin registrar';
-  const date =
-    /^\d{4}-\d{2}-\d{2}$/.test(value)
-      ? new Date(`${value}T00:00:00`)
-      : new Date(value);
-  return Number.isNaN(date.getTime())
-    ? 'Fecha sin registrar'
-    : dateFormatter.format(date);
-}
-
-function getWorkerName(participation) {
-  if (
-    typeof participation.worker === 'object' &&
-    participation.worker !== null
-  ) {
-    const worker = participation.worker;
-    return (
-      worker.nombre ||
-      worker.name ||
-      worker.full_name ||
-      [worker.first_name, worker.last_name].filter(Boolean).join(' ')
-    );
-  }
-  return participation.worker_name || participation.nombre_trabajador || '';
-}
-
-function getWorkerIdentification(participation) {
-  const worker =
-    typeof participation.worker === 'object' && participation.worker !== null
-      ? participation.worker
-      : null;
-  return (
-    worker?.identification ||
-    worker?.cedula ||
-    participation.worker_identification ||
-    ''
-  );
-}
-
-function getHarvestDetails(workdays, activities, today) {
-  const harvestActivityIds = new Set(
-    activities
-      .filter((activity) => activity.is_harvest)
-      .map((activity) => String(activity.id)),
-  );
-
-  return workdays.flatMap((workday) => {
-    const date = workday.date || '';
-    const dateKey = String(date).slice(0, 10);
-    if (
-      !workday.id ||
-      !dateKey ||
-      dateKey > today ||
-      workday.status !== 'abierta'
-    ) {
-      return [];
-    }
-
-    return (Array.isArray(workday.participants) ? workday.participants : [])
-      .filter(
-        (participation) =>
-          participation.settlement_status === 'pendiente' &&
-          participation.worker?.is_active !== false,
-      )
-      .flatMap((participation) => {
-        const worker =
-          typeof participation.worker === 'object'
-            ? participation.worker
-            : null;
-        const workerId = worker?.id ?? participation.worker;
-        const workerName = getWorkerName(participation);
-        if (!workerId || !workerName) return [];
-
-        const details = Array.isArray(participation.details)
-          ? participation.details
-          : [];
-        return details.flatMap((detail) => {
-          const activityTypeId =
-            typeof detail.activity_type === 'object'
-              ? detail.activity_type.id
-              : detail.activity_type ?? detail.activity_type_id;
-          if (
-            !detail.id ||
-            !(
-              detail.activity_is_harvest === true ||
-              detail.activity_type?.is_harvest === true ||
-              harvestActivityIds.has(String(activityTypeId))
-            )
-          ) {
-            return [];
-          }
-
-          const activity = activities.find(
-            (item) => String(item.id) === String(activityTypeId),
-          );
-          return [
-            {
-              id: String(detail.id),
-              workdayId: String(workday.id),
-              farmId: String(
-                workday.farm?.id ?? workday.farm_id ?? workday.farm ?? '',
-              ),
-              participantId: String(participation.id),
-              workerId: String(workerId),
-              workerName,
-              workerIdentification: getWorkerIdentification(participation),
-              activityTypeId: String(activityTypeId),
-              lotId: String(
-                typeof detail.lot === 'object'
-                  ? detail.lot.id
-                  : detail.lot ?? detail.lot_id ?? '',
-              ),
-              date,
-              dateKey,
-              workdayLabel: `${formatWorkdayDate(date)}${
-                workday.farm_name ? ` · ${workday.farm_name}` : ''
-              }`,
-              activityName: detail.activity_name || activity?.name || 'Recolección',
-              lotName: detail.lot_name || 'Lote sin nombre',
-              farmName: workday.farm_name || '',
-              paymentMode: participation.payment_mode,
-              rate: Number(participation.agreed_rate) || 0,
-              existingRecords: Array.isArray(detail.harvest_records)
-                ? detail.harvest_records.filter(
-                    (record) => record.settlement_status !== 'anulado',
-                  )
-                : [],
-            },
-          ];
-        });
-      });
-  });
 }
 
 function SelectField({ feedback, htmlFor, ...props }) {
@@ -221,7 +68,7 @@ export default function HarvestRecordFormDialog({
   const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
   const [retry, setRetry] = useState(0);
-  const [today] = useState(getLocalDate);
+  const [today] = useState(hoy);
 
   useEffect(() => {
     let active = true;
@@ -728,7 +575,7 @@ export default function HarvestRecordFormDialog({
                     </p>
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-leaf/30 bg-leaf-soft px-3 py-1 text-xs font-medium text-leaf">
                       <CalendarDays aria-hidden="true" className="size-3.5" />
-                      {formatWorkdayDate(selectedWorker.date)}
+                      {formatoFechaAnio(selectedWorker.date)}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -743,7 +590,7 @@ export default function HarvestRecordFormDialog({
                     <p className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
                       Tarifa:{' '}
                       <span className="font-semibold text-primary">
-                        {currencyFormatter.format(selectedWorker.rate)}
+                        {formatoDinero(selectedWorker.rate)}
                         {selectedWorker.paymentMode === 'kg'
                           ? ' / kg'
                           : ' / jornal'}

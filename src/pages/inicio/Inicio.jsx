@@ -18,16 +18,11 @@ import { useNotice } from '#hooks/useNotice';
 import { api } from '#services/api';
 import { DATA_EVENT } from '#services/syncService';
 import { leerFincaActiva } from '#services/farmStorage';
-import { createWorkdayWithWorkers, toExistingWorkdays } from '#pages/workday/workdayActions.js';
-import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions.js';
-import {
-  getDateKey,
-  getHarvestRecords,
-  getWeekRange,
-  groupWorkdayParticipants,
-  mapWorkday,
-} from '#pages/workday/utils/workdayMappers.js';
-import { hoy } from '#lib/formatters';
+import { createWorkdayWithWorkers, toExistingWorkdays } from '#lib/domain/workdayActions';
+import { saveWorkerRequest, validateWorker } from '#lib/domain/workers';
+import { getHarvestRecords, groupWorkdayParticipants, mapWorkday } from '#lib/domain/workdays';
+import { getWeekRange, toDateKey } from '#lib/dates';
+import { formatoFechaLarga, formatoKilos, hoy, plural } from '#lib/formatters';
 import PageTitle from '#components/shared/PageTitle';
 import { construirRecientes } from './recentActivity.js';
 
@@ -81,11 +76,8 @@ const WorkerFormDialog = lazy(() =>
   import('#pages/trabajadores/components/WorkerFormDialog.jsx'),
 );
 
-const formatoKilos = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 });
 const formatoDiaSemana = new Intl.DateTimeFormat('es-CO', { weekday: 'long' });
 const formatoDiaMes = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'long' });
-
-const plural = (n, uno, varios) => `${formatoKilos.format(n)} ${n === 1 ? uno : varios}`;
 
 // «2 – 8 de noviembre» o «30 de octubre – 5 de noviembre».
 function rangoLegible({ monday, sunday }) {
@@ -311,19 +303,14 @@ export default function Inicio({ usuario }) {
   const semana = getWeekRange(fechaHoy);
   const ayer = new Date(`${fechaHoy}T12:00:00`);
   ayer.setDate(ayer.getDate() - 1);
-  const fechaAyer = getDateKey(ayer);
+  const fechaAyer = toDateKey(ayer);
   const resumen = participaciones ? resumirSemana(participaciones, semana) : null;
-  const fechaLegible = new Intl.DateTimeFormat('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(`${fechaHoy}T12:00:00`));
+  const fechaLegible = formatoFechaLarga(fechaHoy);
 
   const indicadores = [
     {
       etiqueta: 'Kilos',
-      valor: resumen && formatoKilos.format(resumen.kilos),
+      valor: resumen && formatoKilos(resumen.kilos, 1),
       unidad: 'kg',
       detalle: resumen && plural(resumen.pesajes, 'pesaje', 'pesajes'),
       color: 'text-cereza',
@@ -332,7 +319,7 @@ export default function Inicio({ usuario }) {
     },
     {
       etiqueta: 'Jornales',
-      valor: resumen && formatoKilos.format(resumen.jornales),
+      valor: resumen && formatoKilos(resumen.jornales, 1),
       unidad: '',
       detalle: resumen && `en ${plural(resumen.jornadas, 'jornada', 'jornadas')}`,
       color: 'text-primary',

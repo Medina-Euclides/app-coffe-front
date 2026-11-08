@@ -6,22 +6,14 @@ import CardShell, { CardHeaderStrip, CardIdentity } from '#components/shared/Car
 import DetailButton from '#components/shared/DetailButton';
 import DetailDialog, { AmountHighlight, DetailList } from '#components/shared/DetailDialog';
 import IconBadge from '#components/shared/IconBadge';
-
-const kilograms = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 3 });
-const shortDate = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' });
-
-function formatDate(dateKey) {
-  if (!dateKey) return 'Sin fecha';
-  const date = new Date(`${dateKey}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? 'Sin fecha' : shortDate.format(date).replace(/\./g, '');
-}
+import { formatoFechaCorta, formatoKilos, plural } from '#lib/formatters';
 
 export default function HarvestWorkerCard({ worker, periodLabel }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const count = worker.records.length;
   const lastTime = worker.latestRecord.time.slice(0, 5);
-  const totalKg = kilograms.format(worker.totalKilograms);
-  const countLabel = `${count} ${count === 1 ? 'pesaje' : 'pesajes'} ${periodLabel}`;
+  const totalKg = formatoKilos(worker.totalKilograms);
+  const countLabel = `${plural(count, 'pesaje')} ${periodLabel}`;
   const badge = <IconBadge name={worker.workerName} tone="harvest" />;
 
   return (
@@ -78,7 +70,7 @@ export default function HarvestWorkerCard({ worker, periodLabel }) {
                   <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">
                       <CalendarDays aria-hidden="true" className="size-4" />
-                      {formatDate(record.dateKey)}
+                      {formatoFechaCorta(record.dateKey)}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <Clock3 aria-hidden="true" className="size-4" />
@@ -93,7 +85,7 @@ export default function HarvestWorkerCard({ worker, periodLabel }) {
                   </p>
                 </div>
                 <p className="shrink-0 font-semibold tabular-nums text-cereza">
-                  {kilograms.format(record.quantityKg)} kg
+                  {formatoKilos(record.quantityKg)} kg
                 </p>
               </li>
             ))}

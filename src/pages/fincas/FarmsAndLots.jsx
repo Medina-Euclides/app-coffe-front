@@ -17,7 +17,9 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { api } from '#services/api';
-import { guardarFincaActiva } from '#services/farmStorage';
+import { borrarFincaActiva, guardarFincaActiva, leerFincaActiva } from '#services/farmStorage';
+import { formatoArea, formatoConteo } from '#lib/formatters';
+import { validateFarm, validateLot } from '#lib/domain/farms';
 import { useApiList } from '#hooks/useApiList';
 import { useSearchFilter } from '#hooks/useSearchFilter';
 import { useNotice } from '#hooks/useNotice';
@@ -47,9 +49,7 @@ export default function FarmsAndLots({ usuario }) {
     () => api.lots.list(),
   );
 
-  const [selectedFarmId, setSelectedFarmId] = useState(() =>
-    localStorage.getItem(`cafesmart_finca_activa_${userId}`),
-  );
+  const [selectedFarmId, setSelectedFarmId] = useState(() => leerFincaActiva(userId) || null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(farmsLoading || lotsLoading);
   const [farmDialogOpen, setFarmDialogOpen] = useState(false);
@@ -90,17 +90,8 @@ export default function FarmsAndLots({ usuario }) {
   }, [lots, search, selectedFarm]);
 
   const saveFarm = async (data) => {
-    if (data.name.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
-    if (
-      farms.some(
-        (farm) =>
-          String(farm.id) !== String(farmToEdit?.id) &&
-          String(farm.nombre || '').trim().toLocaleLowerCase() ===
-            data.name.toLocaleLowerCase(),
-      )
-    ) {
-      return 'Ya existe una finca con ese nombre.';
-    }
+    const validationError = validateFarm(data, farms, farmToEdit?.id);
+    if (validationError) return validationError;
 
     try {
       const savedFarm = farmToEdit
@@ -131,30 +122,13 @@ export default function FarmsAndLots({ usuario }) {
     description,
   }) => {
     if (!selectedFarm) return 'Selecciona primero una finca.';
-    if (nombre.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
-    if (
-      hectareas !== null &&
-      (!Number.isFinite(hectareas) || hectareas <= 0)
-    ) {
-      return 'El área debe ser un número mayor que cero.';
-    }
-    if (
-      plantCount !== null &&
-      (!Number.isInteger(plantCount) || plantCount < 0)
-    ) {
-      return 'El número de plantas debe ser un entero igual o mayor que cero.';
-    }
-    if (
-      lots.some(
-        (lot) =>
-          String(lot.id) !== String(lotToEdit?.id) &&
-          String(lot.fincaId) === String(selectedFarm.id) &&
-          String(lot.nombre || '').trim().toLocaleLowerCase() ===
-            nombre.toLocaleLowerCase(),
-      )
-    ) {
-      return 'Ya existe un lote con ese nombre en esta finca.';
-    }
+    const validationError = validateLot(
+      { nombre, hectareas, plantCount },
+      lots,
+      selectedFarm.id,
+      lotToEdit?.id,
+    );
+    if (validationError) return validationError;
 
     const data = {
       name: nombre,
@@ -260,7 +234,7 @@ export default function FarmsAndLots({ usuario }) {
               className="min-h-10 rounded-lg px-2 text-ink-soft hover:bg-tint hover:text-primary"
               onClick={() => {
                 setSelectedFarmId(null);
-                localStorage.removeItem(`cafesmart_finca_activa_${userId}`);
+                borrarFincaActiva(userId);
                 setSearch('');
               }}
               type="button"
@@ -399,9 +373,7 @@ export default function FarmsAndLots({ usuario }) {
                 </dt>
                 <dd className="mt-1 font-medium text-ink-soft">
                   {lotToView.hectareas
-                    ? `${new Intl.NumberFormat('es-CO', {
-                        maximumFractionDigits: 2,
-                      }).format(Number(lotToView.hectareas))} ha`
+                    ? formatoArea(Number(lotToView.hectareas))
                     : 'No especificada'}
                 </dd>
               </div>
@@ -413,9 +385,7 @@ export default function FarmsAndLots({ usuario }) {
                     {lotToView.plant_count === null ||
                     lotToView.plant_count === undefined
                       ? 'No especificadas'
-                      : new Intl.NumberFormat('es-CO').format(
-                          lotToView.plant_count,
-                        )}
+                      : formatoConteo(lotToView.plant_count)}
                 </dd>
               </div>
               <div>

@@ -11,16 +11,10 @@ import {
   Sprout,
   UserPlus,
 } from 'lucide-react';
-import { getDateKey, getHarvestRecords, groupWorkdayParticipants } from '#pages/workday/utils/workdayMappers.js';
-import {
-  currencyFormatter,
-  expenseCategoryLabels,
-  kgToArrobas,
-  numberFormatter,
-} from '#pages/finance/movementFormat.js';
-
-const formatoKilos = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 });
-const plural = (n, uno, varios) => `${formatoKilos.format(n)} ${n === 1 ? uno : varios}`;
+import { toDateKey } from '#lib/dates';
+import { formatoDinero, formatoKilos, formatoNumero, plural } from '#lib/formatters';
+import { getHarvestRecords, groupWorkdayParticipants } from '#lib/domain/workdays';
+import { expenseCategoryLabels, kgToArrobas } from '#lib/domain/movements';
 
 const destinos = {
   pesaje: { ruta: '/jornada-laboral', state: { section: 'harvest', period: 'week' } },
@@ -37,7 +31,7 @@ function momentoLocal(iso) {
   const fecha = new Date(iso);
   if (Number.isNaN(fecha.getTime())) return { dateKey: '', hora: '' };
   const hora = `${String(fecha.getHours()).padStart(2, '0')}:${String(fecha.getMinutes()).padStart(2, '0')}`;
-  return { dateKey: getDateKey(fecha), hora };
+  return { dateKey: toDateKey(fecha), hora };
 }
 
 // Para registros con fecha propia (venta, gasto): la hora sale de created_at
@@ -68,7 +62,7 @@ export function construirRecientes(
       tono: 'harvest',
       titulo: pesaje.workerName,
       detalle: pesaje.lotName,
-      valor: `${formatoKilos.format(pesaje.quantityKg)} kg`,
+      valor: `${formatoKilos(pesaje.quantityKg, 1)} kg`,
       dateKey: pesaje.dateKey,
       hora: String(pesaje.time || '').slice(0, 5),
       destino: destinos.pesaje,
@@ -91,8 +85,8 @@ export function construirRecientes(
         icono: HandCoins,
         tono: 'income',
         titulo: venta.coffee_type === 'pasilla' ? 'Venta de pasilla' : 'Venta de café pergamino',
-        detalle: kilos ? `${numberFormatter.format(kgToArrobas(kilos))} @ · ${numberFormatter.format(kilos)} kg` : '',
-        valor: `+${currencyFormatter.format(Number(venta.total_amount) || 0)}`,
+        detalle: kilos ? `${formatoNumero(kgToArrobas(kilos))} @ · ${formatoNumero(kilos)} kg` : '',
+        valor: `+${formatoDinero(Number(venta.total_amount) || 0)}`,
         ...fechaConHora(venta.sale_date, venta.created_at),
         destino: destinos.movimiento,
       };
@@ -105,7 +99,7 @@ export function construirRecientes(
         tono: esPago ? 'primary' : 'expense',
         titulo: gasto.concept || (esPago ? 'Pago a trabajador' : 'Gasto'),
         detalle: esPago ? 'Pago laboral' : expenseCategoryLabels[gasto.category] || 'Otros gastos',
-        valor: `−${currencyFormatter.format(Number(gasto.amount) || 0)}`,
+        valor: `−${formatoDinero(Number(gasto.amount) || 0)}`,
         ...fechaConHora(gasto.date, gasto.created_at),
         destino: esPago ? destinos.pago : destinos.movimiento,
       };

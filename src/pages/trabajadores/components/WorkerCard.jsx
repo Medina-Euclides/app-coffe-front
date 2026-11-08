@@ -5,7 +5,7 @@ import CardShell, { CardIdentity } from '#components/shared/CardShell';
 import IconBadge from '#components/shared/IconBadge';
 import MetaLine from '#components/shared/MetaLine';
 import Tag from '#components/shared/Tag';
-import { getWorkerDisplayName } from '../workerActions.js';
+import { getWorkerDisplayName } from '#lib/domain/workers';
 
 export default function WorkerCard({ worker, onView, onEdit, onToggleStatus }) {
   const isActive = worker.is_active !== false;

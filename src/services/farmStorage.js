@@ -15,3 +15,12 @@ export function leerFincaActiva(userId) {
     return '';
   }
 }
+
+// Olvida la finca elegida (p. ej. cuando se elimina o desactiva).
+export function borrarFincaActiva(userId) {
+  try {
+    localStorage.removeItem(`cafesmart_finca_activa_${userId}`);
+  } catch {
+    // Almacenamiento bloqueado: no hay nada que borrar.
+  }
+}

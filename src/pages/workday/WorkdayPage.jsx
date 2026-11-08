@@ -11,34 +11,29 @@ import NoticeBanner from '#components/shared/NoticeBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs';
 import { api } from '#services/api';
 import WorkdayCard from './components/WorkdayCard.jsx';
-import WorkdayFilters from './components/WorkdayFilters.jsx';
+import ListFilters from '#components/shared/ListFilters';
 import WorkdayFormDialog from './components/WorkdayFormDialog.jsx';
 import AddWorkdayWorkersDialog from './components/AddWorkdayWorkersDialog.jsx';
 import EditWorkdayLaborDialog from './components/EditWorkdayLaborDialog.jsx';
 import HarvestRecordFormDialog from './components/HarvestRecordFormDialog.jsx';
 import WorkdayHeader from './components/WorkdayHeader.jsx';
 import HarvestWorkerCard from './components/HarvestWorkerCard.jsx';
-import { createWorkdayWithWorkers } from './workdayActions.js';
 import {
-  getDateKey,
+  addWorkersToWorkday as addWorkersToWorkdayRequest,
+  createWorkdayWithWorkers,
+} from '#lib/domain/workdayActions';
+import {
   getHarvestRecords,
-  getWeekRange,
   groupWorkdayParticipants,
   mapParticipant,
   mapWorkday,
-} from './utils/workdayMappers.js';
+} from '#lib/domain/workdays';
+import { belongsToPeriod, PERIOD_LABELS } from '#lib/dates';
+import { isPerKilogram } from '#lib/constants';
+import { formatoDinero, formatoKilos, hoy } from '#lib/formatters';
+import { sumBy } from '#lib/utils';
 import { DATA_EVENT } from '#services/syncService';
 import { notifyDataChanged } from '#hooks/usePendingWorkdays';
-
-const currencyFormatter = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  maximumFractionDigits: 0,
-});
-
-const kilogramsFormatter = new Intl.NumberFormat('es-CO', {
-  maximumFractionDigits: 3,
-});
 
 function groupHarvestRecords(records) {
   const grouped = new Map();
@@ -74,18 +69,6 @@ function groupHarvestRecords(records) {
         second.latestRecord.time.localeCompare(first.latestRecord.time) ||
         first.workerName.localeCompare(second.workerName, 'es'),
     );
-}
-
-function belongsToPeriod(dateKey, period, todayKey) {
-  if (period === 'all') return true;
-  if (!dateKey) return false;
-  if (period === 'today') return dateKey === todayKey;
-  if (period === 'week') {
-    const week = getWeekRange(todayKey);
-    return dateKey >= week.start && dateKey <= week.end;
-  }
-  if (period === 'month') return dateKey.slice(0, 7) === todayKey.slice(0, 7);
-  return dateKey.slice(0, 4) === todayKey.slice(0, 4);
 }
 
 function WorkdayEmptyState({ hasWorkdays, errorMessage }) {
@@ -159,7 +142,7 @@ export default function WorkdayPage() {
     };
   }, []);
 
-  const [todayKey] = useState(() => getDateKey(new Date()));
+  const [todayKey] = useState(hoy);
   const filteredWorkdays = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     const matchingParticipants = workdays
@@ -197,15 +180,11 @@ export default function WorkdayPage() {
   }, [modality, period, search, todayKey, workdays]);
 
   // Un jornal = una persona pagada por jornal un día; una jornada puede tener varios.
-  const jornalCount = filteredWorkdays.reduce(
-    (total, workday) =>
-      total + workday.participants.filter((entry) => !entry.isPerKilogram).length,
-    0,
+  const jornalCount = sumBy(
+    filteredWorkdays,
+    (workday) => workday.participants.filter((entry) => !entry.isPerKilogram).length,
   );
-  const calculatedTotal = filteredWorkdays.reduce(
-    (total, workday) => total + workday.totalAmount,
-    0,
-  );
+  const calculatedTotal = sumBy(filteredWorkdays, (workday) => workday.totalAmount);
   const harvestRecords = useMemo(() => getHarvestRecords(workdays), [workdays]);
   const query = search.trim().toLocaleLowerCase();
   const filteredHarvestRecords = harvestRecords
@@ -213,8 +192,8 @@ export default function WorkdayPage() {
       belongsToPeriod(record.dateKey, period, todayKey),
     )
     .filter((record) => {
-      if (modality === 'jornal') return !/kg|kilo|kilogram/.test(record.paymentMode);
-      if (modality === 'kilogram') return /kg|kilo|kilogram/.test(record.paymentMode);
+      if (modality === 'jornal') return !isPerKilogram(record.paymentMode);
+      if (modality === 'kilogram') return isPerKilogram(record.paymentMode);
       return true;
     })
     .filter((record) => {
@@ -235,17 +214,8 @@ export default function WorkdayPage() {
         second.dateKey.localeCompare(first.dateKey) ||
         second.time.localeCompare(first.time),
     );
-  const totalHarvestKilograms = filteredHarvestRecords.reduce(
-    (total, record) => total + record.quantityKg,
-    0,
-  );
-  const periodLabel = {
-    today: 'hoy',
-    week: 'esta semana',
-    month: 'este mes',
-    year: 'este año',
-    all: 'en total',
-  }[period];
+  const totalHarvestKilograms = sumBy(filteredHarvestRecords, (record) => record.quantityKg);
+  const periodLabel = PERIOD_LABELS[period];
 
   const saveWorkday = async (payload, context) => {
     const { createdWorkday, savedParticipants } =
@@ -302,116 +272,7 @@ export default function WorkdayPage() {
       throw new Error('No se pueden agregar trabajadores a una jornada cerrada.');
     }
 
-    const createdParticipations = [];
-    const createdDetails = [];
-    const savedParticipants = [];
-    try {
-      for (const worker of context.workers) {
-        const wasCanceled = Boolean(worker.canceledParticipationId);
-        const priorParticipant = wasCanceled
-          ? workday.allParticipants.find(
-              (participant) =>
-                String(participant.id) ===
-                String(worker.canceledParticipationId),
-            )
-          : null;
-        const existingDetails = priorParticipant?.details || [];
-        let participation;
-
-        if (wasCanceled) {
-          participation = await api.workdayWorkers.reactivate(
-            worker.canceledParticipationId,
-          );
-          createdParticipations.push({ participation, wasCanceled: true });
-          participation = await api.workdayWorkers.update(participation.id, {
-            payment_mode: context.paymentMode,
-            agreed_rate: context.agreedRate,
-          });
-        } else {
-          participation = await api.workdayWorkers.create({
-            workday: workday.id,
-            worker: worker.id,
-            payment_mode: context.paymentMode,
-            agreed_rate: context.agreedRate,
-          });
-          createdParticipations.push({ participation, wasCanceled: false });
-        }
-
-        const details = [...existingDetails];
-        for (const lot of context.lots) {
-          const alreadyAssigned = existingDetails.some(
-            (detail) =>
-              String(
-                typeof detail.activity_type === 'object'
-                  ? detail.activity_type.id
-                  : detail.activity_type,
-              ) === String(context.activity.id) &&
-              String(
-                typeof detail.lot === 'object'
-                  ? detail.lot.id
-                  : detail.lot,
-              ) === String(lot.id),
-          );
-          if (alreadyAssigned) continue;
-
-          const createdDetail = await api.workdayDetails.create({
-            workday_worker: participation.id,
-            activity_type: context.activity.id,
-            lot: lot.id,
-          });
-          createdDetails.push(createdDetail);
-          details.push({
-            ...createdDetail,
-            activity_type: context.activity,
-            activity_name:
-              createdDetail.activity_name || context.activity.name,
-            lot_name: createdDetail.lot_name || lot.nombre || lot.name,
-            harvest_records: createdDetail.harvest_records || [],
-          });
-        }
-
-        savedParticipants.push({
-          ...participation,
-          worker,
-          worker_name:
-            participation.worker_name ||
-            [worker.first_name, worker.last_name].filter(Boolean).join(' '),
-          payment_mode: context.paymentMode,
-          agreed_rate: context.agreedRate,
-          details,
-        });
-      }
-    } catch (saveError) {
-      const cleanupErrors = [];
-      for (const detail of createdDetails.reverse()) {
-        try {
-          await api.workdayDetails.delete(detail.id);
-        } catch (cleanupError) {
-          cleanupErrors.push(cleanupError);
-        }
-      }
-      for (const { participation, wasCanceled } of createdParticipations.reverse()) {
-        try {
-          if (wasCanceled) {
-            await api.workdayWorkers.cancel(participation.id);
-          } else {
-            await api.workdayWorkers.delete(participation.id);
-          }
-        } catch (cleanupError) {
-          cleanupErrors.push(cleanupError);
-        }
-      }
-      if (cleanupErrors.length) {
-        console.error(
-          'Error al limpiar participaciones incompletas:',
-          cleanupErrors,
-        );
-        throw new Error(
-          `${saveError.message} No se pudieron limpiar todos los registros creados; verifica la jornada antes de volver a intentarlo.`,
-        );
-      }
-      throw saveError;
-    }
+    const savedParticipants = await addWorkersToWorkdayRequest(workday, context);
 
     const mappedParticipants = mapWorkday({
       id: workday.id,
@@ -559,8 +420,8 @@ export default function WorkdayPage() {
         countVerb={section === 'harvest' ? 'visualizados' : 'visualizadas'}
         calculatedTotal={
           section === 'harvest'
-            ? kilogramsFormatter.format(totalHarvestKilograms)
-            : currencyFormatter.format(calculatedTotal)
+            ? formatoKilos(totalHarvestKilograms)
+            : formatoDinero(calculatedTotal)
         }
         totalLabel={section === 'harvest' ? 'kg recolectados' : 'calculado'}
         onAddHarvest={() => setAction('pesaje')}
@@ -601,7 +462,7 @@ export default function WorkdayPage() {
           </TabsTrigger>
         </TabsList>
 
-        <WorkdayFilters
+        <ListFilters
           modality={modality}
           onModalityChange={setModality}
           onPeriodChange={setPeriod}

@@ -12,7 +12,10 @@ import { api } from '#services/api';
 import MovementFormDialog from './components/MovementFormDialog.jsx';
 import MovementCard from './components/MovementCard.jsx';
 import MovementDetailDialog from './components/MovementDetailDialog.jsx';
-import { currencyFormatter, expenseCategoryLabels } from './movementFormat.js';
+import { expenseCategoryLabels } from '#lib/domain/movements';
+import { belongsToPeriod } from '#lib/dates';
+import { formatoDinero, hoy } from '#lib/formatters';
+import { guardarFincaActiva, leerFincaActiva } from '#services/farmStorage';
 import PageTitle from '#components/shared/PageTitle';
 import SegmentedControl from '#components/shared/SegmentedControl';
 
@@ -29,13 +32,6 @@ const dateFilters = [
   { value: 'month', label: 'Este mes' },
   { value: 'year', label: 'Este año' },
 ];
-
-function localDateKey(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-    2,
-    '0',
-  )}-${String(date.getDate()).padStart(2, '0')}`;
-}
 
 function getMovementFarmId(movement) {
   const farm = movement.farm ?? movement.farm_id;
@@ -74,18 +70,6 @@ function mapMovements(sales, expenses, farms) {
   );
 }
 
-function isInDateFilter(dateValue, dateFilter, today = new Date()) {
-  const dateKey = String(dateValue || '').slice(0, 10);
-  if (!dateKey) return false;
-  if (dateFilter === 'today') return dateKey === localDateKey(today);
-
-  const [year, month] = dateKey.split('-').map(Number);
-  if (dateFilter === 'month') {
-    return year === today.getFullYear() && month === today.getMonth() + 1;
-  }
-  return year === today.getFullYear();
-}
-
 export default function FinanceActivityPage({ usuario }) {
   const userId = usuario?.id || 'default';
   const [farms, setFarms] = useState([]);
@@ -100,7 +84,7 @@ export default function FinanceActivityPage({ usuario }) {
   const [dialogType, setDialogType] = useState(null);
   const [movementToEdit, setMovementToEdit] = useState(null);
   const [movementToView, setMovementToView] = useState(null);
-  const [today] = useState(() => new Date());
+  const [todayKey] = useState(hoy);
   const requestKey = `${userId}-${refreshKey}`;
   const loading = loadedRequestKey !== requestKey;
 
@@ -116,9 +100,7 @@ export default function FinanceActivityPage({ usuario }) {
         if (!active) return;
         setError('');
         setFarms(loadedFarms);
-        const savedFarmId = localStorage.getItem(
-          `cafesmart_finca_activa_${userId}`,
-        );
+        const savedFarmId = leerFincaActiva(userId);
         setSelectedFarmId((current) => {
           if (current && loadedFarms.some((farm) => String(farm.id) === current)) {
             return current;
@@ -152,7 +134,7 @@ export default function FinanceActivityPage({ usuario }) {
         return false;
       }
       if (typeFilter !== 'all' && movement.type !== typeFilter) return false;
-      if (!isInDateFilter(movement.date, dateFilter, today)) return false;
+      if (!belongsToPeriod(String(movement.date || '').slice(0, 10), dateFilter, todayKey)) return false;
       if (
         query &&
         ![
@@ -170,7 +152,7 @@ export default function FinanceActivityPage({ usuario }) {
       }
       return true;
     });
-  }, [dateFilter, movements, search, selectedFarmId, today, typeFilter]);
+  }, [dateFilter, movements, search, selectedFarmId, todayKey, typeFilter]);
 
   const openNewMovement = (type) => {
     setMovementToEdit(null);
@@ -283,10 +265,7 @@ export default function FinanceActivityPage({ usuario }) {
           onChange={(event) => {
             setSelectedFarmId(event.target.value);
             if (event.target.value) {
-              localStorage.setItem(
-                `cafesmart_finca_activa_${userId}`,
-                event.target.value,
-              );
+              guardarFincaActiva(userId, event.target.value);
             }
           }}
           value={selectedFarmId}
@@ -309,13 +288,13 @@ export default function FinanceActivityPage({ usuario }) {
         <Card className="flex flex-row items-center justify-between rounded-2xl border-border/60 bg-muted px-4 py-3 shadow-none">
           <span className="text-sm text-ink-soft">Ventas · {selectedDateFilter.toLocaleLowerCase()}</span>
           <strong className="text-base text-leaf">
-            {currencyFormatter.format(filteredSales)}
+            {formatoDinero(filteredSales)}
           </strong>
         </Card>
         <Card className="flex flex-row items-center justify-between rounded-2xl border-destructive/20 bg-destructive-soft px-4 py-3 shadow-none">
           <span className="text-sm text-muted-foreground">Gastos · {selectedDateFilter.toLocaleLowerCase()}</span>
           <strong className="text-base text-destructive">
-            {currencyFormatter.format(filteredExpenses)}
+            {formatoDinero(filteredExpenses)}
           </strong>
         </Card>
       </section>

@@ -91,3 +91,15 @@ export function validityMessage(element) {
 
   return 'Revisa este campo.';
 }
+
+// ¿Otro elemento de la lista (distinto al que se edita) ya tiene ese valor?
+// Compara sin mayúsculas ni espacios sobrantes.
+export function isDuplicate(list, getValue, value, editingId) {
+  const target = String(value || '').trim().toLocaleLowerCase();
+  if (!target) return false;
+  return (list || []).some(
+    (item) =>
+      String(item.id) !== String(editingId) &&
+      String(getValue(item) || '').trim().toLocaleLowerCase() === target,
+  );
+}

@@ -20,15 +20,7 @@ import {
 } from '#components/ui/select';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
 import { useFormFeedback } from '#hooks/useFormFeedback';
-
-function getReferenceId(reference) {
-  if (reference && typeof reference === 'object') return reference.id;
-  return reference;
-}
-
-function getParticipantDetails(participant) {
-  return Array.isArray(participant?.details) ? participant.details : [];
-}
+import { getParticipantDetails, getReferenceId } from '#lib/domain/entities';
 
 export default function EditWorkdayLaborDialog({
   workday,

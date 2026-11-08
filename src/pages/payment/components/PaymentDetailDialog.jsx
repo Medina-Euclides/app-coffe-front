@@ -9,12 +9,8 @@ import DetailDialog, {
 } from '#components/shared/DetailDialog';
 import IconBadge from '#components/shared/IconBadge';
 import MetaLine from '#components/shared/MetaLine';
-import {
-  currencyFormatter,
-  formatDate,
-  getPaymentMethodLabel,
-  kilogramsFormatter,
-} from '../utils/paymentFormat.js';
+import { formatoDinero, formatoFechaAnio, formatoKilos } from '#lib/formatters';
+import { getPaymentMethodLabel } from '#lib/domain/payments';
 
 const statusLabel = {
   pendiente: 'Pendiente de liquidar',
@@ -36,7 +32,7 @@ function PayButton({ settlement, paying, onPay }) {
       ) : (
         <Banknote aria-hidden="true" className="size-5" />
       )}
-      {paying ? 'Registrando pago…' : `Pagar ${currencyFormatter.format(settlement.total)} en efectivo`}
+      {paying ? 'Registrando pago…' : `Pagar ${formatoDinero(settlement.total)} en efectivo`}
     </button>
   );
 }
@@ -60,12 +56,12 @@ export default function PaymentDetailDialog({ settlement, paying, onPay, onOpenC
       <AmountHighlight
         label={isPaid ? 'Total pagado' : 'Total a pagar'}
         tone={isPaid ? 'income' : 'default'}
-        value={currencyFormatter.format(settlement.total)}
+        value={formatoDinero(settlement.total)}
       >
         <MetaLine icon={CalendarDays} label="Periodo">
           {settlement.startDate === settlement.endDate
-            ? formatDate(settlement.startDate)
-            : `${formatDate(settlement.startDate)} al ${formatDate(settlement.endDate)}`}
+            ? formatoFechaAnio(settlement.startDate)
+            : `${formatoFechaAnio(settlement.startDate)} al ${formatoFechaAnio(settlement.endDate)}`}
         </MetaLine>
         <MetaLine icon={MapPin} label="Finca">
           {settlement.farmName}
@@ -74,7 +70,7 @@ export default function PaymentDetailDialog({ settlement, paying, onPay, onOpenC
 
       {isPaid && (
         <InfoGrid>
-          <InfoField label="Pagado el">{formatDate(settlement.paymentDate)}</InfoField>
+          <InfoField label="Pagado el">{formatoFechaAnio(settlement.paymentDate)}</InfoField>
           <InfoField label="Método">{getPaymentMethodLabel(settlement.paymentMethod)}</InfoField>
           {settlement.notes && (
             <InfoField label="Nota" wide>
@@ -93,13 +89,13 @@ export default function PaymentDetailDialog({ settlement, paying, onPay, onOpenC
             <div className="min-w-0 flex-1">
               <p className="font-medium text-foreground">
                 {item.type === 'kilogram'
-                  ? `${kilogramsFormatter.format(item.kilograms)} kg en ${item.lotName || 'recolección'}`
+                  ? `${formatoKilos(item.kilograms)} kg en ${item.lotName || 'recolección'}`
                   : 'Jornal'}
               </p>
               <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarDays aria-hidden="true" className="size-4" />
-                  {formatDate(item.date)}
+                  {formatoFechaAnio(item.date)}
                 </span>
                 {item.time && (
                   <span className="inline-flex items-center gap-1.5">
@@ -108,12 +104,12 @@ export default function PaymentDetailDialog({ settlement, paying, onPay, onOpenC
                   </span>
                 )}
                 <span>
-                  {currencyFormatter.format(item.rate)} {item.type === 'kilogram' ? 'por kg' : 'por jornal'}
+                  {formatoDinero(item.rate)} {item.type === 'kilogram' ? 'por kg' : 'por jornal'}
                 </span>
               </p>
             </div>
             <p className="shrink-0 font-semibold tabular-nums text-foreground">
-              {currencyFormatter.format(item.amount)}
+              {formatoDinero(item.amount)}
             </p>
           </li>
         ))}

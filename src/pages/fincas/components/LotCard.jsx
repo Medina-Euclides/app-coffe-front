@@ -5,7 +5,8 @@ import CardShell, { CardIdentity } from '#components/shared/CardShell';
 import CardStats from '#components/shared/CardStats';
 import IconBadge from '#components/shared/IconBadge';
 import Tag from '#components/shared/Tag';
-import { formatArea, formatCount, getLotArea, getLotPlants } from '../lotFigures.js';
+import { formatoArea, formatoConteo } from '#lib/formatters';
+import { getLotArea, getLotPlants } from '#lib/domain/farms';
 
 export default function LotCard({ lot, onView, onEdit, onToggleStatus }) {
   const isActive = lot.estado !== 'inactivo';
@@ -45,9 +46,9 @@ export default function LotCard({ lot, onView, onEdit, onToggleStatus }) {
       </CardIdentity>
       <CardStats
         items={[
-          { label: 'área', value: formatArea(area) },
-          { label: 'plantas', value: formatCount(plants) },
-          { label: 'plantas por ha', value: formatCount(density) },
+          { label: 'área', value: formatoArea(area) },
+          { label: 'plantas', value: formatoConteo(plants) },
+          { label: 'plantas por ha', value: formatoConteo(density) },
         ]}
       />
     </CardShell>

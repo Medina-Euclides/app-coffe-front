@@ -13,9 +13,11 @@ import { useFormFeedback } from '#hooks/useFormFeedback';
 import { api } from '#services/api';
 import { guardarFincaActiva } from '#services/farmStorage';
 import MaduracionStripe from '#components/shared/MaduracionStripe';
-import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions';
+import { saveWorkerRequest, validateWorker } from '#lib/domain/workers';
+import { isValidLotArea, isValidPlantCount } from '#lib/domain/farms';
+import { VARIEDADES_CAFE } from '#lib/constants';
+import { getFullName } from '#lib/formatters';
 
-const variedadesCafe = ['Castillo', 'Caturra', 'Colombia', 'Borbón', 'Geisha'];
 const etapas = ['Finca', 'Lote', 'Actividad', 'Trabajador'];
 
 export function SetupWizard({ usuario, onComplete }) {
@@ -23,7 +25,7 @@ export function SetupWizard({ usuario, onComplete }) {
   const [nombreFinca, setNombreFinca] = useState('');
   const [ubicacion, setUbicacion] = useState('');
   const [nombreLote, setNombreLote] = useState('');
-  const [variedad, setVariedad] = useState(variedadesCafe[0]);
+  const [variedad, setVariedad] = useState(VARIEDADES_CAFE[0]);
   const [hectareas, setHectareas] = useState('');
   const [plantas, setPlantas] = useState('');
   const [nombreActividad, setNombreActividad] = useState('');
@@ -70,17 +72,14 @@ export function SetupWizard({ usuario, onComplete }) {
     }
 
     const area = hectareas === '' ? null : Number(hectareas);
-    if (area !== null && (!Number.isFinite(area) || area <= 0)) {
+    if (!isValidLotArea(area)) {
       feedback.setFormError(
         'El área del lote debe ser mayor que cero. Vuelve atrás para corregirla o déjala vacía.',
       );
       return;
     }
     const plantCount = plantas === '' ? null : Number(plantas);
-    if (
-      plantCount !== null &&
-      (!Number.isInteger(plantCount) || plantCount < 0)
-    ) {
+    if (!isValidPlantCount(plantCount)) {
       feedback.setFormError(
         'El número de plantas debe ser un número entero. Vuelve atrás para corregirlo.',
       );
@@ -144,11 +143,7 @@ export function SetupWizard({ usuario, onComplete }) {
     }
   };
 
-  const nombreProductor =
-    usuario?.full_name ||
-    [usuario?.first_name, usuario?.last_name].filter(Boolean).join(' ') ||
-    usuario?.nombreProductor ||
-    'Productor';
+  const nombreProductor = getFullName(usuario, 'Productor');
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
@@ -561,7 +556,7 @@ export function SetupWizard({ usuario, onComplete }) {
                   onChange={(event) => setVariedad(event.target.value)}
                   value={variedad}
                 >
-                  {variedadesCafe.map((opcion) => (
+                  {VARIEDADES_CAFE.map((opcion) => (
                     <option key={opcion} value={opcion}>
                       {opcion}
                     </option>

@@ -2,14 +2,13 @@
 import { Pencil } from 'lucide-react';
 import DetailDialog, { AmountHighlight, InfoField, InfoGrid } from '#components/shared/DetailDialog';
 import IconBadge from '#components/shared/IconBadge';
+import { formatoDinero, formatoNumero } from '#lib/formatters';
 import {
-  currencyFormatter,
   getMovementIcon,
   kgToArrobas,
   movementLongDate,
-  numberFormatter,
   pricePerKgToArroba,
-} from '../movementFormat.js';
+} from '#lib/domain/movements';
 
 export default function MovementDetailDialog({ movement, onOpenChange, onEdit }) {
   if (!movement) return null;
@@ -42,21 +41,21 @@ export default function MovementDetailDialog({ movement, onOpenChange, onEdit })
       <AmountHighlight
         label={isSale ? 'Ingreso por venta' : 'Gasto'}
         tone={isSale ? 'income' : 'expense'}
-        value={`${isSale ? '+' : '−'}${currencyFormatter.format(movement.amount)}`}
+        value={`${isSale ? '+' : '−'}${formatoDinero(movement.amount)}`}
       />
 
       <InfoGrid>
         {isSale ? (
           <>
             <InfoField label="Café vendido">
-              {numberFormatter.format(Number(movement.quantity_kg) || 0)} kg (
-              {numberFormatter.format(kgToArrobas(movement.quantity_kg || 0))} @)
+              {formatoNumero(Number(movement.quantity_kg) || 0)} kg (
+              {formatoNumero(kgToArrobas(movement.quantity_kg || 0))} @)
             </InfoField>
             <InfoField label="Precio por arroba">
-              {currencyFormatter.format(pricePerKgToArroba(movement.unit_price || 0))}
+              {formatoDinero(pricePerKgToArroba(movement.unit_price || 0))}
             </InfoField>
             <InfoField label="Precio por kg">
-              {currencyFormatter.format(Number(movement.unit_price) || 0)}
+              {formatoDinero(Number(movement.unit_price) || 0)}
             </InfoField>
             {movement.buyer && (
               <InfoField label="Comprador" wide>

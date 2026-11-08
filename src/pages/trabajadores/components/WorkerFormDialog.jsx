@@ -11,11 +11,7 @@ import {
 import { Input } from '#components/ui/input';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
 import { useFormFeedback } from '#hooks/useFormFeedback';
-
-function splitLegacyName(fullName = '') {
-  const [firstName = '', ...lastNames] = fullName.trim().split(/\s+/);
-  return { firstName, lastName: lastNames.join(' ') };
-}
+import { splitFullName } from '#lib/domain/workers';
 
 export default function WorkerFormDialog({
   open,
@@ -23,7 +19,7 @@ export default function WorkerFormDialog({
   worker,
   onSave,
 }) {
-  const legacyName = splitLegacyName(worker?.nombre);
+  const legacyName = splitFullName(worker?.nombre);
   const [firstName, setFirstName] = useState(
     worker?.first_name || legacyName.firstName,
   );

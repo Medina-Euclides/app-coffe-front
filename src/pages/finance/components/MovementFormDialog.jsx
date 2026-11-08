@@ -13,15 +13,15 @@ import { Button } from '#components/ui/button';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import SegmentedControl from '#components/shared/SegmentedControl';
+import { EXPENSE_CATEGORIES, KG_PER_ARROBA } from '#lib/constants';
+import { formatoDinero, formatoNumero, hoy } from '#lib/formatters';
+import { guardarLocal, leerLocal } from '#lib/storage';
 import {
-  KG_PER_ARROBA,
   arrobasToKg,
-  currencyFormatter,
   kgToArrobas,
-  numberFormatter,
   pricePerArrobaToKg,
   pricePerKgToArroba,
-} from '../movementFormat.js';
+} from '#lib/domain/movements';
 
 const UNIT_STORAGE_KEY = 'cafesmart:sale-unit';
 
@@ -30,21 +30,8 @@ const unitOptions = [
   { value: 'kg', label: 'Kilos' },
 ];
 
-function readSavedUnit() {
-  try {
-    return localStorage.getItem(UNIT_STORAGE_KEY) === 'kg' ? 'kg' : 'arroba';
-  } catch {
-    return 'arroba';
-  }
-}
-
-function saveUnit(unit) {
-  try {
-    localStorage.setItem(UNIT_STORAGE_KEY, unit);
-  } catch {
-    // Sin almacenamiento disponible: se usará Arrobas la próxima vez.
-  }
-}
+const readSavedUnit = () => (leerLocal(UNIT_STORAGE_KEY, 'arroba') === 'kg' ? 'kg' : 'arroba');
+const saveUnit = (unit) => guardarLocal(UNIT_STORAGE_KEY, unit);
 
 // Unidad con la que se abre el formulario. Una venta existente se abre en arrobas
 // solo si sus kilos dan arrobas enteras o medias (25 kg → 2 @); si no (37 kg), en kilos.
@@ -57,21 +44,8 @@ function initialUnit(movement) {
 
 const toFieldValue = (number) => (Number.isFinite(number) && number > 0 ? String(number) : '');
 
-const expenseCategories = [
-  { value: 'inputs', label: 'Insumos agrícolas' },
-  { value: 'tools_materials', label: 'Herramientas y materiales' },
-  { value: 'transport', label: 'Transporte' },
-  { value: 'services', label: 'Servicios' },
-  { value: 'other', label: 'Otros' },
-];
-
-function localDateValue() {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-    2,
-    '0',
-  )}-${String(date.getDate()).padStart(2, '0')}`;
-}
+// La mano de obra se registra sola al pagar jornales; no se elige a mano.
+const expenseCategories = EXPENSE_CATEGORIES.filter(({ value }) => value !== 'labor');
 
 export default function MovementFormDialog({
   open,
@@ -85,7 +59,7 @@ export default function MovementFormDialog({
   const [farmId, setFarmId] = useState(
     String(movement?.farm || selectedFarmId || farms[0]?.id || ''),
   );
-  const [date, setDate] = useState(movement?.sale_date || movement?.date || localDateValue());
+  const [date, setDate] = useState(movement?.sale_date || movement?.date || hoy());
   const [concept, setConcept] = useState(
     type === 'sale' ? movement?.coffee_type || 'pergamino' : movement?.concept || '',
   );
@@ -135,9 +109,9 @@ export default function MovementFormDialog({
     quantityNumber > 0
       ? [
           isArroba
-            ? `${numberFormatter.format(quantityNumber)} @ = ${numberFormatter.format(quantityKg)} kg`
-            : `${numberFormatter.format(quantityNumber)} kg = ${numberFormatter.format(kgToArrobas(quantityNumber))} @`,
-          saleTotal > 0 ? `Total ${currencyFormatter.format(saleTotal)}` : null,
+            ? `${formatoNumero(quantityNumber)} @ = ${formatoNumero(quantityKg)} kg`
+            : `${formatoNumero(quantityNumber)} kg = ${formatoNumero(kgToArrobas(quantityNumber))} @`,
+          saleTotal > 0 ? `Total ${formatoDinero(saleTotal)}` : null,
         ]
           .filter(Boolean)
           .join(' · ')
@@ -246,7 +220,7 @@ export default function MovementFormDialog({
             <Input
               className="h-11 rounded-xl"
               id="movement-date"
-              max={localDateValue()}
+              max={hoy()}
               onChange={(event) => setDate(event.target.value)}
               required
               type="date"

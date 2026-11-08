@@ -11,8 +11,8 @@ import {
 import { Input } from '#components/ui/input';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
 import { useFormFeedback } from '#hooks/useFormFeedback';
+import { VARIEDADES_CAFE } from '#lib/constants';
 
-const variedadesCafe = ['Castillo', 'Caturra', 'Colombia', 'Borbón', 'Geisha'];
 
 export default function LotFormDialog({
   open,
@@ -129,7 +129,7 @@ export default function LotFormDialog({
               onChange={(event) => setVariety(event.target.value)}
               value={variety}
             >
-              {variedadesCafe.map((item) => (
+              {VARIEDADES_CAFE.map((item) => (
                 <option key={item} value={item}>
                   {item}
                 </option>

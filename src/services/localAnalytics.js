@@ -2,20 +2,11 @@
 // Es un port de AnalyticsService.get_summary (backend: apps/analytics/services.py) sobre la
 // caché de IndexedDB, que ya incluye lo registrado sin conexión. Devuelve la misma forma
 // JSON que /analytics/summary/ para que la página no necesite saber de dónde vienen los datos.
+import { EXPENSE_CATEGORIES } from '#lib/constants';
 import { readCache } from './offlineStore.js';
 
 // Años que cubre el histórico (period="all"), contando el actual.
 const HISTORY_YEARS = 5;
-
-// Mismo orden y etiquetas que OperatingExpense.Category en el backend.
-const EXPENSE_CATEGORIES = [
-  ['labor', 'Mano de obra'],
-  ['inputs', 'Insumos agrícolas'],
-  ['tools_materials', 'Herramientas y materiales'],
-  ['transport', 'Transporte'],
-  ['services', 'Servicios'],
-  ['other', 'Otros'],
-];
 
 const money = (value) => value.toFixed(2);
 const kilograms = (value) => value.toFixed(3);
@@ -157,7 +148,7 @@ export async function computeLocalSummary({ farmId, period = 'month' } = {}) {
       (expenseTotals.get(expense.category) || 0) + num(expense.amount),
     );
   }
-  const expensesByCategory = EXPENSE_CATEGORIES.map(([category, label]) => ({
+  const expensesByCategory = EXPENSE_CATEGORIES.map(({ value: category, label }) => ({
     category,
     label,
     total_amount: money(expenseTotals.get(category) || 0),

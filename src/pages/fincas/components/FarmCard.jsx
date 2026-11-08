@@ -5,7 +5,8 @@ import CardShell, { CardIdentity } from '#components/shared/CardShell';
 import CardStats from '#components/shared/CardStats';
 import IconBadge from '#components/shared/IconBadge';
 import MetaLine from '#components/shared/MetaLine';
-import { formatArea, formatCount, getLotArea, getLotPlants } from '../lotFigures.js';
+import { formatoArea, formatoConteo } from '#lib/formatters';
+import { getLotArea, getLotPlants } from '#lib/domain/farms';
 
 // Suma solo los lotes que tienen el dato; si ninguno lo tiene, no hay total.
 function sumar(lots, leer) {
@@ -39,9 +40,9 @@ export default function FarmCard({ farm, lots, onOpenLots, onEdit }) {
       </CardIdentity>
       <CardStats
         items={[
-          { label: lots.length === 1 ? 'lote' : 'lotes', value: formatCount(lots.length) },
-          { label: 'área', value: formatArea(sumar(lots, getLotArea)) },
-          { label: 'plantas', value: formatCount(sumar(lots, getLotPlants)) },
+          { label: lots.length === 1 ? 'lote' : 'lotes', value: formatoConteo(lots.length) },
+          { label: 'área', value: formatoArea(sumar(lots, getLotArea)) },
+          { label: 'plantas', value: formatoConteo(sumar(lots, getLotPlants)) },
         ]}
       />
     </CardShell>

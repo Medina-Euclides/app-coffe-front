@@ -19,25 +19,10 @@ import { useNotice } from '#hooks/useNotice';
 import { useDialog } from '#hooks/useDialog';
 import {
   getWorkerDisplayName,
+  normalizeWorker,
   saveWorkerRequest,
   validateWorker,
-} from './workerActions.js';
-
-// Normaliza trabajadores al esquema usado por la UI.
-function normalizarTrabajador(worker) {
-  if (worker.first_name && worker.last_name) return worker;
-  const [firstName = '', ...lastNames] = String(worker.nombre || '')
-    .trim()
-    .split(/\s+/);
-  return {
-    ...worker,
-    first_name: firstName,
-    last_name: lastNames.join(' '),
-    identification: worker.identification || worker.cedula || '',
-    phone: worker.phone || '',
-    is_active: worker.is_active ?? worker.estado !== 'inactivo',
-  };
-}
+} from '#lib/domain/workers';
 
 export default function Trabajadores({ usuario }) {
   const userId = usuario?.id || 'default';
@@ -50,7 +35,7 @@ export default function Trabajadores({ usuario }) {
 
   // Normaliza los trabajadores al esquema usado por la UI.
   const workers = useMemo(
-    () => workersRaw.map(normalizarTrabajador),
+    () => workersRaw.map(normalizeWorker),
     [workersRaw],
   );
 

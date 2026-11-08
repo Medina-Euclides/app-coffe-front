@@ -16,6 +16,8 @@ import { useOnlineStatus } from '#hooks/useOnlineStatus';
 import IconBadge from '#components/shared/IconBadge';
 import { useSpeechDictation } from './hooks/useSpeechDictation.js';
 import AnswerText from './components/AnswerText.jsx';
+import { formatoHora, getFirstName } from '#lib/formatters';
+import { prefersReducedMotion } from '#lib/utils';
 
 // Preguntas frecuentes como teclas, con el color de su tema en toda la app
 // (recolección = cereza, ingreso = leaf, labor = verde primario).
@@ -56,24 +58,13 @@ function AssistantMark() {
   );
 }
 
-function formatTime(date) {
-  return new Intl.DateTimeFormat('es-CO', {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
-
 function AssistantPage({ usuario }) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   // El asistente usa una API externa: sin conexión no se puede preguntar.
   const isOnline = useOnlineStatus();
-  const nombre =
-    usuario?.first_name ||
-    usuario?.nombre ||
-    usuario?.full_name?.split(' ')[0] ||
-    '';
+  const nombre = getFirstName(usuario);
   const nextMessageId = useRef(0);
   const conversationRef = useRef(null);
   const conversationEndRef = useRef(null);
@@ -88,14 +79,10 @@ function AssistantPage({ usuario }) {
   }, [dictation.listening]);
 
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches;
-
     const conversation = conversationRef.current;
     conversation?.scrollTo({
       top: conversation.scrollHeight,
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
     });
   }, [isLoading, messages]);
 
@@ -112,7 +99,7 @@ function AssistantPage({ usuario }) {
         id: nextMessageId.current++,
         role: 'user',
         content: question,
-        time: formatTime(new Date()),
+        time: formatoHora(new Date()),
       },
     ]);
     setIsLoading(true);
@@ -131,7 +118,7 @@ function AssistantPage({ usuario }) {
           id: nextMessageId.current++,
           role: 'assistant',
           content: response.answer.trim(),
-          time: formatTime(new Date()),
+          time: formatoHora(new Date()),
         },
       ]);
     } catch (error) {
@@ -141,7 +128,7 @@ function AssistantPage({ usuario }) {
           id: nextMessageId.current++,
           role: 'assistant',
           content: `No pude responder en este momento. ${error.message}`,
-          time: formatTime(new Date()),
+          time: formatoHora(new Date()),
         },
       ]);
     } finally {

@@ -6,10 +6,7 @@ import { useLocation } from 'react-router-dom';
 import { api } from '#services/api';
 import { DATA_EVENT } from '#services/syncService';
 import { hoy } from '#lib/formatters';
-import {
-  groupWorkdayParticipants,
-  mapWorkday,
-} from '#pages/workday/utils/workdayMappers.js';
+import { groupWorkdayParticipants, mapWorkday } from '#lib/domain/workdays';
 
 function findPending(items) {
   const todayKey = hoy();

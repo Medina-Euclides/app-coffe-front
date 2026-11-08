@@ -17,6 +17,15 @@ import { api } from '#services/api';
 import { DATA_EVENT } from '#services/syncService';
 import PageTitle from '#components/shared/PageTitle';
 import SegmentedControl from '#components/shared/SegmentedControl';
+import { parseLocalDate } from '#lib/dates';
+import {
+  formatoCompacto,
+  formatoConteo,
+  formatoDinero,
+  formatoFechaAnio,
+  formatoFechaCorta,
+  formatoKilos,
+} from '#lib/formatters';
 
 // Etiquetas cortas para que los cuatro botones quepan en el celular; el rango de
 // fechas debajo del filtro aclara qué se está viendo. `produccion` completa la
@@ -51,21 +60,8 @@ const lotChartConfig = {
   },
 };
 
-const currencyFormatter = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  maximumFractionDigits: 0,
-});
-
-const kilogramsFormatter = new Intl.NumberFormat('es-CO', {
-  maximumFractionDigits: 3,
-});
-
-function parseLocalDate(value) {
-  if (!value) return null;
-  const parsedDate = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-}
+const weekdayShort = new Intl.DateTimeFormat('es-CO', { weekday: 'short' });
+const monthShort = new Intl.DateTimeFormat('es-CO', { month: 'short' });
 
 function formatBucket(point, period) {
   const start = parseLocalDate(point.start_date);
@@ -73,31 +69,20 @@ function formatBucket(point, period) {
   if (!start || !end) return '';
 
   if (period === 'week') {
-    return new Intl.DateTimeFormat('es-CO', { weekday: 'short' }).format(start);
+    return weekdayShort.format(start);
   }
   if (period === 'all') return String(start.getFullYear());
   if (period === 'year') {
-    return new Intl.DateTimeFormat('es-CO', { month: 'short' }).format(start);
+    return monthShort.format(start);
   }
   return `${String(start.getDate()).padStart(2, '0')}–${String(
     end.getDate(),
   ).padStart(2, '0')}`;
 }
 
-function formatDate(value, options = { day: 'numeric', month: 'short' }) {
-  const date = parseLocalDate(value);
-  return date
-    ? new Intl.DateTimeFormat('es-CO', options).format(date)
-    : '';
-}
-
 function formatPeriodRange(series) {
   if (!series) return '';
-  return `${formatDate(series.start_date)} – ${formatDate(series.end_date, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })}`;
+  return `${formatoFechaCorta(series.start_date, '')} – ${formatoFechaAnio(series.end_date, '')}`;
 }
 
 function StatCard({ title, value, tone = 'default' }) {
@@ -115,7 +100,7 @@ function StatCard({ title, value, tone = 'default' }) {
           {title}
         </CardDescription>
         <CardTitle className={`cifra text-3xl sm:text-4xl ${toneClass}`}>
-          {currencyFormatter.format(Number(value) || 0)}
+          {formatoDinero(Number(value) || 0)}
         </CardTitle>
       </CardHeader>
     </Card>
@@ -372,7 +357,7 @@ export default function AnalyticPage({ usuario }) {
                   </CardDescription>
                 </div>
                 <div className="shrink-0 rounded-full border border-border bg-tint px-3 py-1.5 text-sm font-semibold text-primary">
-                  {kilogramsFormatter.format(
+                  {formatoKilos(
                     Number(productionSeries?.total_quantity_kg) || 0,
                   )}{' '}
                   kg
@@ -398,12 +383,7 @@ export default function AnalyticPage({ usuario }) {
                       />
                       <YAxis
                         axisLine={false}
-                        tickFormatter={(value) =>
-                          new Intl.NumberFormat('es-CO', {
-                            notation: 'compact',
-                            maximumFractionDigits: 1,
-                          }).format(value)
-                        }
+                        tickFormatter={formatoCompacto}
                         tickLine={false}
                         tickMargin={8}
                         width={48}
@@ -413,7 +393,7 @@ export default function AnalyticPage({ usuario }) {
                           <ChartTooltipContent
                             formatter={(value) => (
                               <span className="font-semibold">
-                                {kilogramsFormatter.format(Number(value))} kg
+                                {formatoKilos(Number(value))} kg
                               </span>
                             )}
                           />
@@ -447,7 +427,7 @@ export default function AnalyticPage({ usuario }) {
                   </CardDescription>
                 </div>
                 <div className="shrink-0 rounded-full border border-border bg-muted px-3 py-1.5 text-sm font-semibold text-foreground">
-                  {currencyFormatter.format(totalExpenses)}
+                  {formatoDinero(totalExpenses)}
                 </div>
               </CardHeader>
               <CardContent className="space-y-5 pt-4">
@@ -463,7 +443,7 @@ export default function AnalyticPage({ usuario }) {
                           {expense.label}
                         </span>
                         <span className="text-sm font-semibold text-foreground">
-                          {currencyFormatter.format(amount)}{' '}
+                          {formatoDinero(amount)}{' '}
                           <span className="font-normal text-muted-foreground">
                             ({Math.round(percentage)}%)
                           </span>
@@ -518,7 +498,7 @@ export default function AnalyticPage({ usuario }) {
                     <XAxis
                       axisLine={false}
                       tickFormatter={(value) =>
-                        `${kilogramsFormatter.format(value)} kg`
+                        `${formatoKilos(value)} kg`
                       }
                       tickLine={false}
                       type="number"
@@ -535,12 +515,10 @@ export default function AnalyticPage({ usuario }) {
                         <ChartTooltipContent
                           formatter={(value, _name, item) => (
                             <span className="font-semibold">
-                              {kilogramsFormatter.format(Number(value))} kg
+                              {formatoKilos(Number(value))} kg
                               {item.payload.plant_count !== null &&
                                 item.payload.plant_count !== undefined &&
-                                ` · ${new Intl.NumberFormat('es-CO').format(
-                                  item.payload.plant_count,
-                                )} plantas`}
+                                ` · ${formatoConteo(item.payload.plant_count)} plantas`}
                             </span>
                           )}
                         />

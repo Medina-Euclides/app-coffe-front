@@ -24,7 +24,8 @@ const modalities = [
 ];
 const modalityLabel = Object.fromEntries(modalities.map(({ value, label }) => [value, label]));
 
-export default function WorkdayFilters({
+// Búsqueda + periodo + modalidad de pago (Jornadas y Pagos).
+export default function ListFilters({
   search,
   onSearchChange,
   period,

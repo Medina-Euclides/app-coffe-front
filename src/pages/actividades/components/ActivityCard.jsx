@@ -3,7 +3,7 @@ import { Eye, Pencil, Trash2 } from 'lucide-react';
 import CardActionBar from '#components/shared/CardActionBar';
 import CardShell, { CardIdentity } from '#components/shared/CardShell';
 import IconBadge from '#components/shared/IconBadge';
-import { getActivityIcon } from '../activityIcon.js';
+import { getActivityIcon } from '#lib/domain/activities';
 
 export default function ActivityCard({ activity, onView, onEdit, onDelete }) {
   const isHarvest = Boolean(activity.is_harvest);

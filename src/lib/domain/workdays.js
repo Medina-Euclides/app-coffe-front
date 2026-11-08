@@ -1,33 +1,17 @@
 // Convierte las jornadas de la API en participaciones, jornadas agrupadas y pesajes.
-// Compartido por la página de jornadas e Inicio.
+// Compartido por Jornadas, Pagos, Inicio y las notificaciones.
+import { isPerKilogram as isPerKilogramMode } from '#lib/constants';
+import { toDateKey } from '#lib/dates';
+import { formatoFechaAnio } from '#lib/formatters';
+import { getWorkerIdentification, getWorkerName } from './entities.js';
+
+export { getWorkerName };
+
+export { getWeekRange } from '#lib/dates';
 
 export function asAmount(value) {
   const amount = Number(value);
   return Number.isFinite(amount) ? amount : 0;
-}
-
-export function getWorkerName(worker) {
-  if (typeof worker === 'string') return worker;
-  if (!worker || typeof worker !== 'object') return '';
-  return (
-    worker.nombre ||
-    worker.name ||
-    worker.full_name ||
-    [worker.first_name, worker.last_name].filter(Boolean).join(' ')
-  );
-}
-
-export function getDateKey(value) {
-  if (!value) return '';
-  const date =
-    typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-      ? new Date(`${value}T00:00:00`)
-      : new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 export function mapParticipant(workday, participant) {
@@ -43,7 +27,7 @@ export function mapParticipant(workday, participant) {
   const paymentMode = String(
     participant.payment_mode || workday.payment_mode || '',
   ).toLocaleLowerCase();
-  const isPerKilogram = /kg|kilo|kilogram/.test(paymentMode);
+  const isPerKilogram = isPerKilogramMode(paymentMode);
   const activityNames = details
     .map((item) =>
       item.activity_name ||
@@ -98,7 +82,7 @@ export function mapParticipant(workday, participant) {
     details,
     activityName,
     date,
-    dateKey: getDateKey(date),
+    dateKey: toDateKey(date),
     identification:
       worker?.identification ||
       worker?.cedula ||
@@ -224,12 +208,107 @@ export function getHarvestRecords(participants) {
   );
 }
 
-// Semana de lunes a domingo que contiene la fecha dada (YYYY-MM-DD).
-export function getWeekRange(dateKey) {
-  const base = new Date(`${dateKey}T12:00:00`);
-  const monday = new Date(base);
-  monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return { start: getDateKey(monday), end: getDateKey(sunday), monday, sunday };
+// Trabajador anidado de una participación (o null si solo llegó su id).
+function getParticipationWorker(participation) {
+  return participation.worker && typeof participation.worker === 'object'
+    ? participation.worker
+    : null;
+}
+
+// Labores de recolección abiertas y pendientes, hasta hoy, donde se puede registrar un pesaje.
+export function getHarvestDetails(workdays, activities, today) {
+  const harvestActivityIds = new Set(
+    activities
+      .filter((activity) => activity.is_harvest)
+      .map((activity) => String(activity.id)),
+  );
+
+  return workdays.flatMap((workday) => {
+    const date = workday.date || '';
+    const dateKey = String(date).slice(0, 10);
+    if (
+      !workday.id ||
+      !dateKey ||
+      dateKey > today ||
+      workday.status !== 'abierta'
+    ) {
+      return [];
+    }
+
+    return (Array.isArray(workday.participants) ? workday.participants : [])
+      .filter(
+        (participation) =>
+          participation.settlement_status === 'pendiente' &&
+          participation.worker?.is_active !== false,
+      )
+      .flatMap((participation) => {
+        const worker = getParticipationWorker(participation);
+        const workerId = worker?.id ?? participation.worker;
+        const workerName =
+          getWorkerName(worker) ||
+          participation.worker_name ||
+          participation.nombre_trabajador ||
+          '';
+        if (!workerId || !workerName) return [];
+
+        const details = Array.isArray(participation.details)
+          ? participation.details
+          : [];
+        return details.flatMap((detail) => {
+          const activityTypeId =
+            typeof detail.activity_type === 'object'
+              ? detail.activity_type.id
+              : detail.activity_type ?? detail.activity_type_id;
+          if (
+            !detail.id ||
+            !(
+              detail.activity_is_harvest === true ||
+              detail.activity_type?.is_harvest === true ||
+              harvestActivityIds.has(String(activityTypeId))
+            )
+          ) {
+            return [];
+          }
+
+          const activity = activities.find(
+            (item) => String(item.id) === String(activityTypeId),
+          );
+          return [
+            {
+              id: String(detail.id),
+              workdayId: String(workday.id),
+              farmId: String(
+                workday.farm?.id ?? workday.farm_id ?? workday.farm ?? '',
+              ),
+              participantId: String(participation.id),
+              workerId: String(workerId),
+              workerName,
+              workerIdentification:
+                getWorkerIdentification(worker) || participation.worker_identification || '',
+              activityTypeId: String(activityTypeId),
+              lotId: String(
+                typeof detail.lot === 'object'
+                  ? detail.lot.id
+                  : detail.lot ?? detail.lot_id ?? '',
+              ),
+              date,
+              dateKey,
+              workdayLabel: `${formatoFechaAnio(date)}${
+                workday.farm_name ? ` · ${workday.farm_name}` : ''
+              }`,
+              activityName: detail.activity_name || activity?.name || 'Recolección',
+              lotName: detail.lot_name || 'Lote sin nombre',
+              farmName: workday.farm_name || '',
+              paymentMode: participation.payment_mode,
+              rate: Number(participation.agreed_rate) || 0,
+              existingRecords: Array.isArray(detail.harvest_records)
+                ? detail.harvest_records.filter(
+                    (record) => record.settlement_status !== 'anulado',
+                  )
+                : [],
+            },
+          ];
+        });
+      });
+  });
 }

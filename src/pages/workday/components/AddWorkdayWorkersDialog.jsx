@@ -20,34 +20,7 @@ import {
 } from '#components/ui/select';
 import { FieldError, FormAlert, FormField } from '#components/shared/FormFeedback';
 import { useFormFeedback } from '#hooks/useFormFeedback';
-
-function getWorkerName(worker) {
-  return (
-    worker.nombre ||
-    worker.name ||
-    worker.full_name ||
-    [worker.first_name, worker.last_name].filter(Boolean).join(' ')
-  );
-}
-
-function getWorkerLabel(worker) {
-  const identification = worker.identification || worker.cedula;
-  return [
-    getWorkerName(worker) || 'Trabajador sin nombre',
-    identification ? `C.C. ${identification}` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
-
-function getSelectedDetails(participant) {
-  return Array.isArray(participant?.details) ? participant.details : [];
-}
-
-function getReferenceId(reference) {
-  if (reference && typeof reference === 'object') return reference.id;
-  return reference;
-}
+import { getParticipantDetails, getReferenceId, getWorkerLabel } from '#lib/domain/entities';
 
 export default function AddWorkdayWorkersDialog({
   workday,
@@ -130,7 +103,7 @@ export default function AddWorkdayWorkersDialog({
           currentParticipants.find(
             (participant) => participant.settlementStatus !== 'anulado',
           ) || currentParticipants[0];
-        const firstDetail = getSelectedDetails(firstParticipant)[0];
+        const firstDetail = getParticipantDetails(firstParticipant)[0];
         const defaultActivityId = String(
           getReferenceId(firstDetail?.activity_type) ||
             loadedActivities[0]?.id ||
@@ -146,7 +119,7 @@ export default function AddWorkdayWorkersDialog({
           '';
         const selectedLotIds = [
           ...new Set(
-            getSelectedDetails(firstParticipant)
+            getParticipantDetails(firstParticipant)
               .map((detail) => getReferenceId(detail.lot))
               .filter(Boolean)
               .map(String),

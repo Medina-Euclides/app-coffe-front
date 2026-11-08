@@ -9,6 +9,7 @@
 //     <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { validityMessage } from '#lib/validation';
+import { prefersReducedMotion } from '#lib/utils';
 
 export const FIELD_ERROR_MS = 4000;
 export const FORM_ERROR_MS = 6000;
@@ -21,10 +22,6 @@ const fieldKey = (element) =>
   element?.name ||
   element?.closest?.('[data-field-box]')?.id ||
   '';
-
-function prefersReducedMotion() {
-  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-}
 
 export function useFormFeedback() {
   // key → { message, visible }. `visible` se apaga a los pocos segundos, pero el

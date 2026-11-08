@@ -7,19 +7,10 @@ import DetailDialog from '#components/shared/DetailDialog';
 import IconBadge from '#components/shared/IconBadge';
 import { PrimaryAction } from '#components/shared/CardActionBar';
 import { FormAlert } from '#components/shared/FormFeedback';
-import { getActivityIcon } from '#pages/actividades/activityIcon.js';
+import { getActivityIcon } from '#lib/domain/activities';
+import { formatoFechaDia, plural } from '#lib/formatters';
 
-const longDate = new Intl.DateTimeFormat('es-CO', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-});
 
-function formatDateKey(dateKey) {
-  return dateKey ? longDate.format(new Date(`${dateKey}T12:00:00`)) : 'Fecha sin registrar';
-}
-
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function PendingRow({ workday, showFarm, onClose }) {
   const [confirming, setConfirming] = useState(false);
@@ -27,7 +18,7 @@ function PendingRow({ workday, showFarm, onClose }) {
   const [error, setError] = useState('');
   const activityNames = workday.activityName.split(', ');
   const workerCount = workday.workerCount ?? workday.participants?.length ?? 0;
-  const dateLabel = formatDateKey(workday.dateKey);
+  const dateLabel = formatoFechaDia(workday.dateKey);
 
   const close = async () => {
     setClosing(true);

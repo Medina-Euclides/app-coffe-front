@@ -16,28 +16,8 @@ import DetailButton from '#components/shared/DetailButton';
 import DetailDialog, { DetailList, InfoField, InfoGrid } from '#components/shared/DetailDialog';
 import IconBadge from '#components/shared/IconBadge';
 import Tag from '#components/shared/Tag';
-import { getActivityIcon } from '#pages/actividades/activityIcon.js';
-
-const currencyFormatter = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  maximumFractionDigits: 0,
-});
-
-const longDate = new Intl.DateTimeFormat('es-CO', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-});
-
-function formatWorkdayDate(value) {
-  if (!value) return 'Fecha sin registrar';
-  const date =
-    typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-      ? new Date(`${value}T00:00:00`)
-      : new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Fecha sin registrar' : longDate.format(date);
-}
+import { getActivityIcon } from '#lib/domain/activities';
+import { formatoDinero, formatoFechaDia } from '#lib/formatters';
 
 function getPayment(workday) {
   if (workday.hasMixedPayment) {
@@ -47,7 +27,7 @@ function getPayment(workday) {
   return {
     modality: workday.isPerKilogram ? 'Por kilo' : 'Jornal',
     rate: workday.rate
-      ? `${currencyFormatter.format(workday.rate)} ${unit}`
+      ? `${formatoDinero(workday.rate)} ${unit}`
       : 'Tarifa sin registrar',
   };
 }
@@ -75,7 +55,7 @@ export default function WorkdayCard({
   const activityNames = workday.activityName.split(', ');
   const title = activityNames.join(', ');
   const isOpen = workday.status === 'abierta';
-  const dateLabel = formatWorkdayDate(workday.date);
+  const dateLabel = formatoFechaDia(workday.date);
   const payment = getPayment(workday);
   const badge = (
     <IconBadge

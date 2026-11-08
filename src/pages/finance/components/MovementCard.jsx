@@ -1,21 +1,17 @@
 // Fila de movimiento financiero: qué fue, cuándo y cuánto. Al tocarla abre el detalle.
 import IconBadge from '#components/shared/IconBadge';
 import RowCard from '#components/shared/RowCard';
-import {
-  currencyFormatter,
-  getMovementIcon,
-  movementDate,
-  numberFormatter,
-} from '../movementFormat.js';
+import { formatoDinero, formatoNumero } from '#lib/formatters';
+import { getMovementIcon, movementDate } from '#lib/domain/movements';
 
 export default function MovementCard({ movement, onOpen }) {
   const isSale = movement.type === 'sale';
   const title = movement.title || (isSale ? 'Venta de café' : 'Gasto');
-  const amount = `${isSale ? '+' : '−'}${currencyFormatter.format(movement.amount)}`;
+  const amount = `${isSale ? '+' : '−'}${formatoDinero(movement.amount)}`;
   const kilos = Number(movement.quantity_kg);
   const subtitle =
     isSale && kilos > 0
-      ? `${movementDate(movement.date)}, ${numberFormatter.format(kilos)} kg`
+      ? `${movementDate(movement.date)}, ${formatoNumero(kilos)} kg`
       : movementDate(movement.date);
 
   return (
