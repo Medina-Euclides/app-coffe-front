@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUp, Leaf, LoaderCircle, Mic, Sprout, Wallet, Users } from 'lucide-react';
+import { ArrowUp, Leaf, LoaderCircle, Mic, Sprout, Square, Wallet, Users } from 'lucide-react';
 import { Avatar, AvatarFallback } from '#components/ui/avatar';
 import { Button } from '#components/ui/button';
 import { Bubble, BubbleContent } from '#components/ui/bubble';
@@ -16,6 +16,7 @@ import {
 } from '#components/ui/message';
 import { api } from '#services/api';
 import { useOnlineStatus } from '#hooks/useOnlineStatus';
+import { useSpeechDictation } from './hooks/useSpeechDictation.js';
 
 const preguntasSugeridas = [
   { label: 'Resumen de cosecha', icon: Sprout },
@@ -58,6 +59,14 @@ function AssistantPage({ usuario }) {
   const conversationRef = useRef(null);
   const conversationEndRef = useRef(null);
   const promptRef = useRef(null);
+  const dictation = useSpeechDictation({ onText: setPrompt });
+  const wasListening = useRef(false);
+
+  // Al terminar de dictar, el foco vuelve a la caja para revisar y enviar.
+  useEffect(() => {
+    if (wasListening.current && !dictation.listening) promptRef.current?.focus();
+    wasListening.current = dictation.listening;
+  }, [dictation.listening]);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
@@ -75,6 +84,7 @@ function AssistantPage({ usuario }) {
     event.preventDefault();
     const question = prompt.trim();
     if (!question || isLoading || !isOnline) return;
+    dictation.stop();
 
     setPrompt('');
     setMessages((currentMessages) => [
@@ -250,20 +260,42 @@ function AssistantPage({ usuario }) {
                   event.currentTarget.form?.requestSubmit();
                 }
               }}
-              placeholder="Escribe tu pregunta…"
+              placeholder={dictation.listening ? 'Te escucho…' : 'Escribe tu pregunta…'}
               ref={promptRef}
               rows={1}
               value={prompt}
             />
-            <InputGroupButton
-              aria-label="Micrófono, próximamente"
-              className="size-10 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-ink-soft disabled:opacity-70"
-              disabled
-              title="Dictado por voz próximamente"
-              variant="ghost"
-            >
-              <Mic aria-hidden="true" className="size-[18px]" />
-            </InputGroupButton>
+            {/* Sin soporte de voz en el navegador (p. ej. Firefox) no se muestra. */}
+            {dictation.supported && (
+              <InputGroupButton
+                aria-label={dictation.listening ? 'Detener dictado' : 'Dictar pregunta'}
+                aria-pressed={dictation.listening}
+                className={`size-10 shrink-0 rounded-full ${
+                  dictation.listening
+                    ? 'bg-destructive text-white ring-4 ring-destructive/25 hover:bg-destructive motion-safe:animate-pulse'
+                    : 'text-muted-foreground hover:bg-muted hover:text-ink-soft'
+                }`}
+                disabled={!isOnline || isLoading}
+                onClick={() =>
+                  dictation.listening ? dictation.stop() : dictation.start(prompt)
+                }
+                title={
+                  isOnline
+                    ? dictation.listening
+                      ? 'Detener dictado'
+                      : 'Dictar pregunta'
+                    : 'El dictado necesita conexión'
+                }
+                type="button"
+                variant="ghost"
+              >
+                {dictation.listening ? (
+                  <Square aria-hidden="true" className="size-4 fill-white text-white" />
+                ) : (
+                  <Mic aria-hidden="true" className="size-[18px]" />
+                )}
+              </InputGroupButton>
+            )}
             <InputGroupButton
               aria-label="Enviar mensaje"
               className="size-10 shrink-0 rounded-full bg-primary text-primary-foreground hover:bg-primary-hover"
@@ -278,11 +310,16 @@ function AssistantPage({ usuario }) {
         </form>
         <p
           aria-live="polite"
-          className="mt-2 text-center text-[10px] leading-4 text-muted-foreground sm:text-[11px]"
+          className={`mt-2 text-center text-[10px] leading-4 sm:text-[11px] ${
+            dictation.error ? 'font-semibold text-destructive' : 'text-muted-foreground'
+          }`}
         >
-          {isOnline
-            ? 'Enter para enviar · Shift + Enter para una nueva línea'
-            : 'Sin conexión: el asistente necesita internet. El resto de la app sigue funcionando.'}
+          {dictation.error ||
+            (dictation.listening
+              ? 'Habla con calma. Toca el cuadrado para terminar.'
+              : isOnline
+                ? 'Enter para enviar · Shift + Enter para una nueva línea'
+                : 'Sin conexión: el asistente necesita internet. El resto de la app sigue funcionando.')}
         </p>
       </footer>
     </section>
