@@ -302,7 +302,7 @@ export default function WorkdayFormDialog({
             Registrar Jornada Laboral
           </DialogTitle>
           <DialogDescription className="leading-5">
-            Registra una jornada para una finca, con varios trabajadores y lotes.
+            Anota el trabajo del día.
           </DialogDescription>
         </DialogHeader>
 
@@ -359,7 +359,7 @@ export default function WorkdayFormDialog({
             <FormField
               {...feedback.field('workday-farm')}
               htmlFor="workday-farm"
-              label="Finca"
+              label="¿En qué finca?"
               labelClassName="font-semibold text-primary"
               required
             >
@@ -371,7 +371,7 @@ export default function WorkdayFormDialog({
                 <SelectTrigger
                   aria-describedby="workday-farm-error"
                   aria-invalid={feedback.field('workday-farm').invalid || undefined}
-                  aria-label="Finca"
+                  aria-label="¿En qué finca?"
                   className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                   id="workday-farm"
                   name="farm"
@@ -399,7 +399,7 @@ export default function WorkdayFormDialog({
 
             <fieldset className="min-w-0 space-y-2">
               <legend className="text-sm font-semibold text-primary">
-                Trabajadores <span aria-hidden="true" className="text-destructive">*</span>
+                ¿Quiénes trabajan? <span aria-hidden="true" className="text-destructive">*</span>
                 <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedWorkers.length} seleccionados)
                 </span>
@@ -444,7 +444,7 @@ export default function WorkdayFormDialog({
               <FormField
                 {...feedback.field('workday-activity')}
                 htmlFor="workday-activity"
-                label="Tipo de actividad"
+                label="¿Qué harán hoy?"
                 labelClassName="font-semibold text-primary"
                 required
               >
@@ -456,14 +456,14 @@ export default function WorkdayFormDialog({
                   <SelectTrigger
                     aria-describedby="workday-activity-error"
                     aria-invalid={feedback.field('workday-activity').invalid || undefined}
-                    aria-label="Tipo de actividad"
+                    aria-label="¿Qué harán hoy?"
                     className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                     id="workday-activity"
                     name="activity_type"
                   >
                     <SelectValue
                       className="truncate font-semibold text-foreground"
-                      placeholder="Selecciona una actividad"
+                      placeholder="Elige la labor"
                     >
                       {selectedActivity?.name || undefined}
                     </SelectValue>
@@ -486,7 +486,7 @@ export default function WorkdayFormDialog({
               <FormField
                 {...feedback.field('workday-date')}
                 htmlFor="workday-date"
-                label="Fecha de ejecución"
+                label="¿Qué día?"
                 labelClassName="font-semibold text-primary"
               >
                 <Input
@@ -505,7 +505,7 @@ export default function WorkdayFormDialog({
 
             <fieldset className="min-w-0 space-y-2">
               <legend className="text-sm font-semibold text-primary">
-                Lotes de trabajo <span aria-hidden="true" className="text-destructive">*</span>
+                ¿En qué lotes? <span aria-hidden="true" className="text-destructive">*</span>
                 <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedLots.length} seleccionados)
                 </span>
@@ -600,14 +600,10 @@ export default function WorkdayFormDialog({
                 htmlFor="workday-rate"
                 label={
                   paymentMode === PAYMENT_MODES.KILOGRAM
-                    ? 'Tarifa por kg (COP)'
-                    : 'Valor del jornal (COP)'
+                    ? '¿Cuánto se paga por kilo?'
+                    : '¿Cuánto vale el jornal?'
                 }
-                hint={
-                  paymentMode === PAYMENT_MODES.KILOGRAM
-                    ? 'La misma tarifa por kilogramo se aplicará a todos los trabajadores.'
-                    : 'El mismo valor de jornal se aplicará a todos los trabajadores.'
-                }
+                hint="Igual para todos."
                 labelClassName="font-semibold text-primary"
                 required
               >

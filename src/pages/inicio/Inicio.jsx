@@ -11,10 +11,12 @@ import {
 } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import DetailDialog from '#components/shared/DetailDialog';
 import IconBadge from '#components/shared/IconBadge';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { useNotice } from '#hooks/useNotice';
 import { api } from '#services/api';
+import { DATA_EVENT } from '#services/syncService';
 import { leerFincaActiva } from '#services/farmStorage';
 import { createWorkdayWithWorkers, toExistingWorkdays } from '#pages/workday/workdayActions.js';
 import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions.js';
@@ -27,6 +29,7 @@ import {
 } from '#pages/workday/utils/workdayMappers.js';
 import { hoy } from '#lib/formatters';
 import PageTitle from '#components/shared/PageTitle';
+import { construirRecientes } from './recentActivity.js';
 
 // Las dos acciones del día en campo: botones grandes, uno al lado del otro.
 // El borde inferior más oscuro les da relieve de tecla y baja al tocarlos.
@@ -103,7 +106,7 @@ function cuando(dateKey, hoyKey, ayerKey, hora = '') {
   return hhmm ? `${dia}, ${hhmm}` : dia;
 }
 
-// Kilos, jornales y operaciones recientes de la semana a partir de las jornadas.
+// Kilos y jornales de la semana a partir de las jornadas.
 function resumirSemana(participaciones, semana) {
   const enSemana = participaciones.filter(
     (p) =>
@@ -116,36 +119,65 @@ function resumirSemana(participaciones, semana) {
   const jornales = enSemana.filter((p) => !p.isPerKilogram);
   const jornadasJornal = groupWorkdayParticipants(jornales);
 
-  const recientes = [
-    ...pesajes.map((pesaje) => ({
-      id: `pesaje-${pesaje.id}`,
-      tipo: 'pesaje',
-      titulo: pesaje.workerName,
-      detalle: pesaje.lotName,
-      valor: `${formatoKilos.format(pesaje.quantityKg)} kg`,
-      dateKey: pesaje.dateKey,
-      hora: pesaje.time,
-    })),
-    ...jornadasJornal.map((jornada) => ({
-      id: `jornada-${jornada.id}`,
-      tipo: 'jornada',
-      titulo: jornada.activityName,
-      detalle: jornada.lot || jornada.farmName,
-      valor: plural(jornada.workerCount, 'jornal', 'jornales'),
-      dateKey: jornada.dateKey,
-      hora: '',
-    })),
-  ].sort(
-    (a, b) => b.dateKey.localeCompare(a.dateKey) || b.hora.localeCompare(a.hora),
-  );
-
   return {
     kilos: pesajes.reduce((total, pesaje) => total + pesaje.quantityKg, 0),
     pesajes: pesajes.length,
     jornales: jornales.length,
     jornadas: jornadasJornal.length,
-    recientes,
   };
+}
+
+// Fuentes extra de «Lo más reciente». Cada una puede fallar sola sin vaciar la lista.
+const fuentesRecientes = {
+  ventas: () => api.production.sales.list(),
+  gastos: () => api.finance.expenses.list(),
+  trabajadores: () => api.workers.list(),
+  fincas: () => api.farms.list(),
+  lotes: () => api.lots.list(),
+};
+
+async function cargarFuentesRecientes() {
+  const nombres = Object.keys(fuentesRecientes);
+  const resultados = await Promise.allSettled(nombres.map((nombre) => fuentesRecientes[nombre]()));
+  return Object.fromEntries(
+    nombres.map((nombre, i) => {
+      const resultado = resultados[i];
+      if (resultado.status === 'rejected') {
+        console.error(`Error al cargar ${nombre} para lo más reciente:`, resultado.reason);
+      }
+      return [nombre, resultado.status === 'fulfilled' ? resultado.value : []];
+    }),
+  );
+}
+
+// Una fila de «Lo más reciente»: lleva a la página donde está ese registro.
+function FilaReciente({ item, fechaHoy, fechaAyer }) {
+  const { icono, tono, titulo, detalle, valor, dateKey, hora, destino } = item;
+  return (
+    <li>
+      <Link
+        className={`flex min-h-16 min-w-0 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-tint active:bg-secondary sm:px-3 ${enlaceTarjeta}`}
+        state={destino.state}
+        to={destino.ruta}
+      >
+        <IconBadge icon={icono} tone={tono} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold text-foreground">{titulo}</span>
+          {detalle && (
+            <span className="block truncate text-sm text-muted-foreground">{detalle}</span>
+          )}
+        </span>
+        <span className="shrink-0 text-right">
+          {valor && (
+            <span className="cifra block text-base tabular-nums text-foreground">{valor}</span>
+          )}
+          <span className="block text-sm first-letter:uppercase text-muted-foreground">
+            {cuando(dateKey, fechaHoy, fechaAyer, hora)}
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
 }
 
 const MAX_RECIENTES = 5;
@@ -163,6 +195,9 @@ export default function Inicio({ usuario }) {
   const { notice, isError, show: mostrarAviso } = useNotice();
   // null mientras carga; la lista viene de la caché local si no hay conexión.
   const [participaciones, setParticipaciones] = useState(null);
+  // Ventas, gastos, trabajadores, fincas y lotes para «Lo más reciente».
+  const [otrosRegistros, setOtrosRegistros] = useState(null);
+  const [verTodoAbierto, setVerTodoAbierto] = useState(false);
 
   const cargarJornadas = useCallback(
     () =>
@@ -176,9 +211,21 @@ export default function Inicio({ usuario }) {
     [],
   );
 
+  const cargarOtrosRegistros = useCallback(
+    () => cargarFuentesRecientes().then(setOtrosRegistros),
+    [],
+  );
+
   useEffect(() => {
-    cargarJornadas();
-  }, [cargarJornadas]);
+    const cargarTodo = () => {
+      cargarJornadas();
+      cargarOtrosRegistros();
+    };
+    cargarTodo();
+    // Recarga si los datos cambian fuera de Inicio (p. ej. al sincronizar).
+    window.addEventListener(DATA_EVENT, cargarTodo);
+    return () => window.removeEventListener(DATA_EVENT, cargarTodo);
+  }, [cargarJornadas, cargarOtrosRegistros]);
 
   // Abre el formulario sobre Inicio y trae en segundo plano los datos que necesita
   // para validar duplicados.
@@ -233,6 +280,7 @@ export default function Inicio({ usuario }) {
       if (esVenta) await api.production.sales.create(payload);
       else await api.finance.expenses.create(payload);
       mostrarAviso(esVenta ? 'Venta registrada.' : 'Gasto registrado.');
+      cargarOtrosRegistros();
       return '';
     } catch (error) {
       console.error('Error al guardar el movimiento:', error);
@@ -251,6 +299,7 @@ export default function Inicio({ usuario }) {
       const siguientes = [...trabajadores, nuevo];
       setTrabajadores(siguientes);
       mostrarAviso('Trabajador agregado.');
+      cargarOtrosRegistros();
       return '';
     } catch (error) {
       console.error('Error al guardar el trabajador:', error);
@@ -296,7 +345,11 @@ export default function Inicio({ usuario }) {
   const fincaActivaValida = fincas?.some((finca) => String(finca.id) === fincaGuardada)
     ? fincaGuardada
     : '';
-  const recientes = resumen?.recientes.slice(0, MAX_RECIENTES) ?? [];
+  // La lista espera a las jornadas; las demás fuentes se suman cuando llegan.
+  const todosRecientes = participaciones
+    ? construirRecientes({ participaciones, ...otrosRegistros }, semana)
+    : null;
+  const recientes = todosRecientes?.slice(0, MAX_RECIENTES) ?? [];
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -398,22 +451,22 @@ export default function Inicio({ usuario }) {
         <div className="rounded-2xl border border-border bg-card">
           <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-5">
             <h3 className="text-lg text-foreground">Lo más reciente</h3>
-            {resumen && resumen.recientes.length > MAX_RECIENTES && (
-              <Link
-                className={`-mr-2 inline-flex min-h-11 items-center rounded-xl px-2 text-sm font-medium text-primary hover:bg-tint ${enlaceTarjeta}`}
-                state={{ period: 'week' }}
-                to="/jornada-laboral"
+            {todosRecientes && todosRecientes.length > MAX_RECIENTES && (
+              <button
+                className={`-mr-2 inline-flex min-h-11 cursor-pointer items-center rounded-xl px-2 text-sm font-medium text-primary hover:bg-tint ${enlaceTarjeta}`}
+                onClick={() => setVerTodoAbierto(true)}
+                type="button"
               >
-                Ver todo
-              </Link>
+                Ver todo ({todosRecientes.length})
+              </button>
             )}
           </div>
 
-          {resumen && recientes.length === 0 ? (
+          {todosRecientes && recientes.length === 0 ? (
             <div className="flex flex-col items-center px-5 pt-6 pb-8 text-center">
               <Coffee aria-hidden="true" className="size-8 text-primary" />
               <p className="mt-3 font-medium text-ink-soft">
-                Aún no hay pesajes ni jornadas esta semana
+                Aún no hay registros esta semana
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Usa los accesos rápidos para registrar el primero.
@@ -421,45 +474,26 @@ export default function Inicio({ usuario }) {
             </div>
           ) : (
             <ul className="px-2 pt-1 pb-2">
-              {recientes.map(({ id, tipo, titulo, detalle, valor, dateKey, hora }) => (
-                <li key={id}>
-                  <Link
-                    className={`flex min-h-16 min-w-0 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-tint active:bg-secondary sm:px-3 ${enlaceTarjeta}`}
-                    state={{
-                      section: tipo === 'pesaje' ? 'harvest' : 'workdays',
-                      period: 'week',
-                    }}
-                    to="/jornada-laboral"
-                  >
-                    <IconBadge
-                      icon={tipo === 'pesaje' ? Cherry : ClipboardList}
-                      tone={tipo === 'pesaje' ? 'harvest' : 'primary'}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold text-foreground">
-                        {titulo}
-                      </span>
-                      {detalle && (
-                        <span className="block truncate text-sm text-muted-foreground">
-                          {detalle}
-                        </span>
-                      )}
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="cifra block text-base tabular-nums text-foreground">
-                        {valor}
-                      </span>
-                      <span className="block text-sm first-letter:uppercase text-muted-foreground">
-                        {cuando(dateKey, fechaHoy, fechaAyer, hora)}
-                      </span>
-                    </span>
-                  </Link>
-                </li>
+              {recientes.map((item) => (
+                <FilaReciente fechaAyer={fechaAyer} fechaHoy={fechaHoy} item={item} key={item.id} />
               ))}
             </ul>
           )}
         </div>
       </section>
+
+      <DetailDialog
+        description={`Esta semana · ${rangoLegible(semana)}`}
+        onOpenChange={setVerTodoAbierto}
+        open={verTodoAbierto}
+        title="Lo más reciente"
+      >
+        <ul className="-mx-2">
+          {(todosRecientes ?? []).map((item) => (
+            <FilaReciente fechaAyer={fechaAyer} fechaHoy={fechaHoy} item={item} key={item.id} />
+          ))}
+        </ul>
+      </DetailDialog>
 
       <Suspense fallback={null}>
         {formulario === 'pesaje' && (

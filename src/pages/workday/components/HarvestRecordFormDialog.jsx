@@ -430,7 +430,7 @@ export default function HarvestRecordFormDialog({
                 Registrar Pesaje
               </DialogTitle>
               <DialogDescription className="mt-1 leading-5">
-                Detalle de recolección vinculado a la jornada del día.
+                Anota los kilos que entregó cada recolector.
               </DialogDescription>
             </div>
           </div>
@@ -479,13 +479,13 @@ export default function HarvestRecordFormDialog({
               {...feedback.formProps}
               onSubmit={handleSubmit}
             >
-              <SelectField feedback={feedback} htmlFor="harvest-workday" label="Jornada de recolección">
+              <SelectField feedback={feedback} htmlFor="harvest-workday" label="¿De qué jornada?">
                 <Select
                   onValueChange={handleWorkdayChange}
                   value={workdayId}
                 >
                   <SelectTrigger
-                    aria-label="Jornada de recolección"
+                    aria-label="¿De qué jornada?"
                     aria-describedby="harvest-workday-error"
                     aria-invalid={feedback.field('harvest-workday').invalid || undefined}
                     className="h-13 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
@@ -524,14 +524,14 @@ export default function HarvestRecordFormDialog({
                 </Select>
               </SelectField>
 
-              <SelectField feedback={feedback} htmlFor="harvest-worker" label="Trabajador de la jornada">
+              <SelectField feedback={feedback} htmlFor="harvest-worker" label="¿Quién entregó?">
                 <Select
                   onValueChange={handleWorkerChange}
                   value={workerId}
                   disabled={!workdayId}
                 >
                   <SelectTrigger
-                    aria-label="Trabajador de la jornada"
+                    aria-label="¿Quién entregó?"
                     aria-describedby="harvest-worker-error"
                     aria-invalid={feedback.field('harvest-worker').invalid || undefined}
                     className="h-13 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
@@ -586,7 +586,7 @@ export default function HarvestRecordFormDialog({
                 )}
               </SelectField>
 
-              <SelectField feedback={feedback} htmlFor="harvest-lot" label="Lote de recolección">
+              <SelectField feedback={feedback} htmlFor="harvest-lot" label="¿De qué lote?">
                 <Select
                   onValueChange={(value) => {
                     setLotId(value);
@@ -597,7 +597,7 @@ export default function HarvestRecordFormDialog({
                   disabled={!workerId || availableLots.length === 0}
                 >
                   <SelectTrigger
-                    aria-label="Lote de recolección"
+                    aria-label="¿De qué lote?"
                     aria-describedby="harvest-lot-error"
                     aria-invalid={feedback.field('harvest-lot').invalid || undefined}
                     className="h-13 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
@@ -644,7 +644,7 @@ export default function HarvestRecordFormDialog({
                 <FormField
                   {...feedback.field('harvest-quantity')}
                   htmlFor="harvest-quantity"
-                  label="Kilogramos (kg)"
+                  label="¿Cuántos kilos? (kg)"
                   labelClassName="font-semibold text-primary"
                   required
                 >
@@ -683,7 +683,7 @@ export default function HarvestRecordFormDialog({
                 <FormField
                   {...feedback.field('harvest-time')}
                   htmlFor="harvest-time"
-                  label="Hora de entrega"
+                  label="¿A qué hora?"
                   labelClassName="font-semibold text-primary"
                   required
                 >

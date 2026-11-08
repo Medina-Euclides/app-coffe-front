@@ -179,8 +179,7 @@ export default function EditWorkdayLaborDialog({
             Editar jornada
           </DialogTitle>
           <DialogDescription className="leading-5">
-            Los cambios se aplicarán a todos los trabajadores activos y a sus
-            detalles. La fecha y la finca no se modificarán.
+            Aplica a todos los trabajadores. Fecha y finca no cambian.
           </DialogDescription>
         </DialogHeader>
 
@@ -226,7 +225,7 @@ export default function EditWorkdayLaborDialog({
             <FormField
               {...feedback.field('edit-workday-activity')}
               htmlFor="edit-workday-activity"
-              label="Actividad"
+              label="¿Qué se hizo?"
               labelClassName="font-semibold text-primary"
               required
             >
@@ -301,7 +300,7 @@ export default function EditWorkdayLaborDialog({
             <FormField
               {...feedback.field('edit-workday-rate')}
               htmlFor="edit-workday-rate"
-              label={paymentMode === 'kg' ? 'Tarifa por kg (COP)' : 'Valor del jornal (COP)'}
+              label={paymentMode === 'kg' ? '¿Cuánto se paga por kilo?' : '¿Cuánto vale el jornal?'}
               labelClassName="font-semibold text-primary"
               required
             >

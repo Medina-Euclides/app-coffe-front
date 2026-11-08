@@ -261,8 +261,7 @@ export default function AddWorkdayWorkersDialog({
             Agregar trabajadores
           </DialogTitle>
           <DialogDescription className="leading-5">
-            Jornada del {workday?.date}. Los datos actuales se cargan como
-            valores iniciales y puedes ajustarlos para estas participaciones.
+            Jornada del {workday?.date}.
           </DialogDescription>
         </DialogHeader>
 
@@ -346,7 +345,7 @@ export default function AddWorkdayWorkersDialog({
               <FormField
                 {...feedback.field('add-workday-activity')}
                 htmlFor="add-workday-activity"
-                label="Actividad"
+                label="¿Qué harán?"
                 labelClassName="font-semibold text-primary"
                 required
               >
@@ -385,7 +384,7 @@ export default function AddWorkdayWorkersDialog({
               <FormField
                 {...feedback.field('add-workday-rate')}
                 htmlFor="add-workday-rate"
-                label="Tarifa acordada"
+                label="¿Cuánto se le paga?"
                 labelClassName="font-semibold text-primary"
                 required
               >

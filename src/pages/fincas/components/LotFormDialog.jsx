@@ -103,7 +103,7 @@ export default function LotFormDialog({
           <FormField
             {...feedback.field('lot-plant-count')}
             htmlFor="lot-plant-count"
-            label="Número de plantas de café (opcional)"
+            label="¿Cuántas plantas? (opcional)"
           >
             <Input
               className="h-11 rounded-xl"
@@ -120,7 +120,7 @@ export default function LotFormDialog({
           <FormField
             {...feedback.field('lot-variety')}
             htmlFor="lot-variety"
-            label="Variedad de café"
+            label="¿Qué variedad?"
           >
             <select
               className="h-11 w-full rounded-xl border border-input bg-card px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:text-sm"
@@ -139,7 +139,7 @@ export default function LotFormDialog({
           <FormField
             {...feedback.field('lot-hectares')}
             htmlFor="lot-hectares"
-            label="Área en hectáreas (opcional)"
+            label="Área (hectáreas, opcional)"
           >
             <Input
               className="h-11 rounded-xl"

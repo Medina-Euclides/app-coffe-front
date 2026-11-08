@@ -204,8 +204,8 @@ export default function MovementFormDialog({
           </DialogTitle>
           <DialogDescription>
             {type === 'sale'
-              ? 'Registra la cantidad y el precio de venta del café.'
-              : 'Los gastos de mano de obra se registran automáticamente desde Pagos laborales.'}
+              ? '¿Cuánto café vendiste y a qué precio?'
+              : 'Los pagos a trabajadores se anotan solos.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -217,7 +217,7 @@ export default function MovementFormDialog({
           <FormField
             {...feedback.field('movement-farm')}
             htmlFor="movement-farm"
-            label="Finca"
+            label="¿De qué finca?"
           >
             <select
               className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -241,7 +241,7 @@ export default function MovementFormDialog({
           <FormField
             {...feedback.field('movement-date')}
             htmlFor="movement-date"
-            label="Fecha"
+            label="¿Qué día?"
           >
             <Input
               className="h-11 rounded-xl"
@@ -259,7 +259,7 @@ export default function MovementFormDialog({
               <FormField
                 {...feedback.field('sale-coffee-type')}
                 htmlFor="sale-coffee-type"
-                label="Tipo de café"
+                label="¿Qué café vendiste?"
               >
                 <select
                   className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -282,7 +282,7 @@ export default function MovementFormDialog({
                   <FormField
                     {...feedback.field('sale-quantity')}
                     htmlFor="sale-quantity"
-                    label={isArroba ? 'Cantidad (@)' : 'Cantidad (kg)'}
+                    label={isArroba ? '¿Cuántas arrobas?' : '¿Cuántos kilos?'}
                   >
                     <Input
                       className="h-11 rounded-xl"
@@ -302,7 +302,7 @@ export default function MovementFormDialog({
                   <FormField
                     {...feedback.field('sale-unit-price')}
                     htmlFor="sale-unit-price"
-                    label={isArroba ? 'Precio por arroba (COP)' : 'Precio por kg (COP)'}
+                    label={isArroba ? 'Precio por arroba' : 'Precio por kilo'}
                   >
                     <MoneyInput
                       className="h-11 rounded-xl"
@@ -325,7 +325,7 @@ export default function MovementFormDialog({
               <FormField
                 {...feedback.field('sale-buyer')}
                 htmlFor="sale-buyer"
-                label="Comprador (opcional)"
+                label="¿A quién le vendiste? (opcional)"
               >
                 <Input
                   className="h-11 rounded-xl"
@@ -341,7 +341,7 @@ export default function MovementFormDialog({
               <FormField
                 {...feedback.field('expense-category')}
                 htmlFor="expense-category"
-                label="Categoría"
+                label="¿En qué gastaste?"
               >
                 <select
                   className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -359,7 +359,7 @@ export default function MovementFormDialog({
               <FormField
                 {...feedback.field('expense-concept')}
                 htmlFor="expense-concept"
-                label="Concepto"
+                label="¿Qué compraste o pagaste?"
               >
                 <Input
                   className="h-11 rounded-xl"
@@ -374,7 +374,7 @@ export default function MovementFormDialog({
               <FormField
                 {...feedback.field('expense-amount')}
                 htmlFor="expense-amount"
-                label="Valor (COP)"
+                label="¿Cuánto costó?"
               >
                 <MoneyInput
                   className="h-11 rounded-xl"

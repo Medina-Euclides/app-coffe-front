@@ -11,6 +11,15 @@ export const numberFormatter = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 2,
 });
 
+export const expenseCategoryLabels = {
+  labor: 'Mano de obra',
+  inputs: 'Insumos agrícolas',
+  tools_materials: 'Herramientas y materiales',
+  transport: 'Transporte',
+  services: 'Servicios',
+  other: 'Otros gastos',
+};
+
 const categoryIcons = {
   labor: UsersRound,
   inputs: Package,

@@ -57,7 +57,7 @@ export default function FarmFormDialog({
           <DialogTitle className="text-2xl text-foreground">
             {farm ? 'Editar finca' : 'Agregar finca'}
           </DialogTitle>
-          <DialogDescription className="leading-6">
+          <DialogDescription className="sr-only">
             Registra el nombre, ubicación y descripción de esta finca.
           </DialogDescription>
         </DialogHeader>
@@ -90,7 +90,7 @@ export default function FarmFormDialog({
               className="text-sm font-medium text-ink-soft"
               htmlFor="farm-location"
             >
-              Ubicación (opcional)
+              ¿Dónde queda? (opcional)
             </label>
             <Input
               className="h-11 rounded-xl"

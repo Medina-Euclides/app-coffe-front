@@ -288,7 +288,7 @@ export function SetupWizard({ usuario, onComplete }) {
               <FormField
                 {...feedback.field('ubicacion-finca')}
                 htmlFor="ubicacion-finca"
-                label="Ubicación (opcional)"
+                label="¿Dónde queda? (opcional)"
                 labelClassName="font-medium text-foreground"
               >
                 <Input
@@ -343,7 +343,7 @@ export function SetupWizard({ usuario, onComplete }) {
               <FormField
                 {...feedback.field('nombre-actividad')}
                 htmlFor="nombre-actividad"
-                label="Nombre de la actividad"
+                label="¿Cómo se llama la labor?"
                 labelClassName="font-medium text-foreground"
               >
                 <Input
@@ -550,7 +550,7 @@ export function SetupWizard({ usuario, onComplete }) {
               <FormField
                 {...feedback.field('variedad-lote')}
                 htmlFor="variedad-lote"
-                label="Variedad de café"
+                label="¿Qué variedad?"
                 labelClassName="font-medium text-foreground"
               >
                 <select
@@ -571,7 +571,7 @@ export function SetupWizard({ usuario, onComplete }) {
               <FormField
                 {...feedback.field('hectareas-lote')}
                 htmlFor="hectareas-lote"
-                label="Área en hectáreas (opcional)"
+                label="Área (hectáreas, opcional)"
                 labelClassName="font-medium text-foreground"
               >
                 <Input
@@ -590,7 +590,7 @@ export function SetupWizard({ usuario, onComplete }) {
               <FormField
                 {...feedback.field('plantas-lote')}
                 htmlFor="plantas-lote"
-                label="Número de plantas de café (opcional)"
+                label="¿Cuántas plantas? (opcional)"
                 labelClassName="font-medium text-foreground"
               >
                 <Input

@@ -69,7 +69,7 @@ export default function ActivityFormDialog({
           <DialogTitle className="text-2xl text-foreground">
             {activity ? 'Editar actividad laboral' : 'Nueva actividad laboral'}
           </DialogTitle>
-          <DialogDescription className="leading-6">
+          <DialogDescription className="sr-only">
             Define el nombre, descripción y si esta labor corresponde a recolección.
           </DialogDescription>
         </DialogHeader>
@@ -81,7 +81,7 @@ export default function ActivityFormDialog({
           <FormField
             {...feedback.field('activity-name')}
             htmlFor="activity-name"
-            label="Nombre de la actividad"
+            label="¿Cómo se llama la labor?"
           >
             <Input
               autoComplete="off"
@@ -115,7 +115,7 @@ export default function ActivityFormDialog({
           <CheckField
             checked={isHarvest}
             id="activity-harvest"
-            label="Es una actividad de recolección de café. Habilita su uso con pago por kilogramo."
+            label="Es recolección (se paga por kilo)"
             onChange={(event) => setIsHarvest(event.target.checked)}
           />
           <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />

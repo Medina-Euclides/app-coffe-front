@@ -69,7 +69,7 @@ export default function WorkerFormDialog({
             {worker ? 'Editar trabajador' : 'Agregar trabajador'}
           </DialogTitle>
           <DialogDescription className="leading-6">
-            Registra los datos básicos de la persona que trabaja en tus fincas.
+            Datos de quien trabaja en tu finca.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -118,7 +118,7 @@ export default function WorkerFormDialog({
           <FormField
             {...feedback.field('worker-id')}
             htmlFor="worker-id"
-            label="Identificación (opcional)"
+            label="Cédula (opcional)"
           >
             <Input
               autoComplete="off"

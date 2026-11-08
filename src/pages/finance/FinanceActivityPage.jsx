@@ -12,18 +12,11 @@ import { api } from '#services/api';
 import MovementFormDialog from './components/MovementFormDialog.jsx';
 import MovementCard from './components/MovementCard.jsx';
 import MovementDetailDialog from './components/MovementDetailDialog.jsx';
-import { currencyFormatter } from './movementFormat.js';
+import { currencyFormatter, expenseCategoryLabels } from './movementFormat.js';
 import PageTitle from '#components/shared/PageTitle';
 import SegmentedControl from '#components/shared/SegmentedControl';
 
-const categories = {
-  labor: 'Mano de obra',
-  inputs: 'Insumos agrícolas',
-  tools_materials: 'Herramientas y materiales',
-  transport: 'Transporte',
-  services: 'Servicios',
-  other: 'Otros gastos',
-};
+const categories = expenseCategoryLabels;
 
 const filters = [
   { value: 'all', label: 'Todos' },
