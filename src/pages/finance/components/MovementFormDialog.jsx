@@ -10,6 +10,8 @@ import {
 import { Input } from '#components/ui/input';
 import MoneyInput from '#components/shared/MoneyInput';
 import { Button } from '#components/ui/button';
+import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useFormFeedback } from '#hooks/useFormFeedback';
 
 const expenseCategories = [
   { value: 'inputs', label: 'Insumos agrícolas' },
@@ -49,12 +51,21 @@ export default function MovementFormDialog({
   const [buyer, setBuyer] = useState(movement?.buyer || '');
   const [category, setCategory] = useState(movement?.category || 'inputs');
   const [notes, setNotes] = useState(movement?.notes || '');
-  const [error, setError] = useState('');
+  const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    feedback.clearFormError();
+    // MoneyInput es un campo de texto: el mínimo se revisa aquí.
+    if (type === 'sale' && !(Number(unitPrice) > 0)) {
+      feedback.setFieldError('sale-unit-price', 'Escribe un precio mayor que cero.');
+      return;
+    }
+    if (type !== 'sale' && !(Number(amount) > 0)) {
+      feedback.setFieldError('expense-amount', 'Escribe un valor mayor que cero.');
+      return;
+    }
     setSaving(true);
     try {
       const payload =
@@ -77,13 +88,13 @@ export default function MovementFormDialog({
             };
       const result = await onSave(payload);
       if (result) {
-        setError(result);
+        feedback.setFormError(result);
         return;
       }
       onOpenChange(false);
     } catch (saveError) {
       console.error('Error al guardar el movimiento financiero:', saveError);
-      setError(saveError.message || 'No se pudo guardar el movimiento.');
+      feedback.setFormError(saveError.message || 'No se pudo guardar el movimiento. Revisa tu conexión e inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -109,16 +120,19 @@ export default function MovementFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="movement-farm"
-            >
-              Finca
-            </label>
+        <form
+          className="space-y-4"
+          {...feedback.formProps}
+          onSubmit={handleSubmit}
+        >
+          <FormField
+            {...feedback.field('movement-farm')}
+            htmlFor="movement-farm"
+            label="Finca"
+          >
             <select
               className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              data-required-message="Elige la finca del movimiento."
               id="movement-farm"
               onChange={(event) => setFarmId(event.target.value)}
               required
@@ -133,15 +147,13 @@ export default function MovementFormDialog({
                 </option>
               ))}
             </select>
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="movement-date"
-            >
-              Fecha
-            </label>
+          <FormField
+            {...feedback.field('movement-date')}
+            htmlFor="movement-date"
+            label="Fecha"
+          >
             <Input
               className="h-11 rounded-xl"
               id="movement-date"
@@ -151,17 +163,15 @@ export default function MovementFormDialog({
               type="date"
               value={date}
             />
-          </div>
+          </FormField>
 
           {type === 'sale' ? (
             <>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-ink-soft"
-                  htmlFor="sale-coffee-type"
-                >
-                  Tipo de café
-                </label>
+              <FormField
+                {...feedback.field('sale-coffee-type')}
+                htmlFor="sale-coffee-type"
+                label="Tipo de café"
+              >
                 <select
                   className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   id="sale-coffee-type"
@@ -171,17 +181,16 @@ export default function MovementFormDialog({
                   <option value="pergamino">Café pergamino seco</option>
                   <option value="pasilla">Pasilla</option>
                 </select>
-              </div>
+              </FormField>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium text-ink-soft"
-                    htmlFor="sale-quantity"
-                  >
-                    Cantidad (kg)
-                  </label>
+                <FormField
+                  {...feedback.field('sale-quantity')}
+                  htmlFor="sale-quantity"
+                  label="Cantidad (kg)"
+                >
                   <Input
                     className="h-11 rounded-xl"
+                    data-required-message="Escribe cuántos kilos vendiste."
                     id="sale-quantity"
                     min="0.01"
                     onChange={(event) => setQuantity(event.target.value)}
@@ -190,30 +199,27 @@ export default function MovementFormDialog({
                     type="number"
                     value={quantity}
                   />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium text-ink-soft"
-                    htmlFor="sale-unit-price"
-                  >
-                    Precio por kg (COP)
-                  </label>
+                </FormField>
+                <FormField
+                  {...feedback.field('sale-unit-price')}
+                  htmlFor="sale-unit-price"
+                  label="Precio por kg (COP)"
+                >
                   <MoneyInput
                     className="h-11 rounded-xl"
+                    data-required-message="Escribe el precio por kilo."
                     id="sale-unit-price"
                     onValueChange={setUnitPrice}
                     required
                     value={unitPrice}
                   />
-                </div>
+                </FormField>
               </div>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-ink-soft"
-                  htmlFor="sale-buyer"
-                >
-                  Comprador (opcional)
-                </label>
+              <FormField
+                {...feedback.field('sale-buyer')}
+                htmlFor="sale-buyer"
+                label="Comprador (opcional)"
+              >
                 <Input
                   className="h-11 rounded-xl"
                   id="sale-buyer"
@@ -221,17 +227,15 @@ export default function MovementFormDialog({
                   onChange={(event) => setBuyer(event.target.value)}
                   value={buyer}
                 />
-              </div>
+              </FormField>
             </>
           ) : (
             <>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-ink-soft"
-                  htmlFor="expense-category"
-                >
-                  Categoría
-                </label>
+              <FormField
+                {...feedback.field('expense-category')}
+                htmlFor="expense-category"
+                label="Categoría"
+              >
                 <select
                   className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   id="expense-category"
@@ -244,63 +248,55 @@ export default function MovementFormDialog({
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-ink-soft"
-                  htmlFor="expense-concept"
-                >
-                  Concepto
-                </label>
+              </FormField>
+              <FormField
+                {...feedback.field('expense-concept')}
+                htmlFor="expense-concept"
+                label="Concepto"
+              >
                 <Input
                   className="h-11 rounded-xl"
+                  data-required-message="Escribe en qué se gastó."
                   id="expense-concept"
                   maxLength={200}
                   onChange={(event) => setConcept(event.target.value)}
                   required
                   value={concept}
                 />
-              </div>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-ink-soft"
-                  htmlFor="expense-amount"
-                >
-                  Valor (COP)
-                </label>
+              </FormField>
+              <FormField
+                {...feedback.field('expense-amount')}
+                htmlFor="expense-amount"
+                label="Valor (COP)"
+              >
                 <MoneyInput
                   className="h-11 rounded-xl"
+                  data-required-message="Escribe el valor del gasto."
                   id="expense-amount"
                   onValueChange={setAmount}
                   required
                   value={amount}
                 />
-              </div>
+              </FormField>
             </>
           )}
 
           {type === 'sale' && (
-            <div className="space-y-2">
-              <label
-                className="text-sm font-medium text-ink-soft"
-                htmlFor="movement-notes"
-              >
-                Notas (opcional)
-              </label>
+            <FormField
+              {...feedback.field('movement-notes')}
+              htmlFor="movement-notes"
+              label="Notas (opcional)"
+            >
               <textarea
                 className="min-h-20 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 id="movement-notes"
                 onChange={(event) => setNotes(event.target.value)}
                 value={notes}
               />
-            </div>
+            </FormField>
           )}
 
-          {error && (
-            <p aria-live="polite" className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
+          <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
 
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
             <Button

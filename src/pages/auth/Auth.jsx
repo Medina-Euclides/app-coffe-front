@@ -9,31 +9,43 @@ import {
   CardHeader,
 } from '#components/ui/card';
 import { Input } from '#components/ui/input';
-import NoticeBanner from '#components/shared/NoticeBanner';
+import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useFormFeedback } from '#hooks/useFormFeedback';
 import { api } from '#services/api';
 import MaduracionStripe from '#components/shared/MaduracionStripe';
 
 export function AuthField({
   autoComplete,
+  error,
+  hint,
   id,
+  invalid,
   label,
+  minLength,
   name,
   onChange,
   placeholder,
   required = true,
+  requiredMessage,
   spellCheck,
   type,
   value,
 }) {
   return (
-    <div className="space-y-2">
-      <label className="auth-field-label text-sm font-medium text-foreground" htmlFor={id}>
-        {label}
-      </label>
+    <FormField
+      error={error}
+      hint={hint}
+      htmlFor={id}
+      invalid={invalid}
+      label={label}
+      labelClassName="font-medium text-foreground"
+    >
       <Input
         autoComplete={autoComplete}
         className="h-12 rounded-xl bg-background px-4"
+        data-required-message={requiredMessage}
         id={id}
+        minLength={minLength}
         name={name}
         onChange={onChange}
         placeholder={placeholder}
@@ -42,7 +54,7 @@ export function AuthField({
         type={type}
         value={value}
       />
-    </div>
+    </FormField>
   );
 }
 
@@ -57,12 +69,12 @@ export default function Auth({
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [error, setError] = useState('');
+  const feedback = useFormFeedback();
   const [cargando, setCargando] = useState(false);
 
   const manejarAutenticacion = async (e) => {
     e.preventDefault();
-    setError('');
+    feedback.clearFormError();
     setCargando(true);
 
     try {
@@ -90,8 +102,11 @@ export default function Auth({
       }
     } catch (authError) {
       console.error('Error en autenticación:', authError);
-      setError(
-        authError.message || 'No se pudo completar la autenticación. Inténtalo de nuevo.',
+      feedback.setFormError(
+        authError.message ||
+          (esRegistro
+            ? 'No se pudo crear la cuenta. Revisa tu conexión e inténtalo de nuevo.'
+            : 'No se pudo iniciar sesión. Revisa tu conexión e inténtalo de nuevo.'),
       );
     } finally {
       setCargando(false);
@@ -101,7 +116,7 @@ export default function Auth({
   const alternarModo = () => {
     const nuevoModo = !esRegistro;
     setEsRegistro(nuevoModo);
-    setError('');
+    feedback.reset();
     onModeChange?.(nuevoModo);
   };
 
@@ -133,10 +148,16 @@ export default function Auth({
         </CardHeader>
 
         <CardContent className="px-6 pt-8 sm:px-8">
-          <form className="space-y-5" onSubmit={manejarAutenticacion}>
+          <form
+            className="space-y-5"
+            {...feedback.formProps}
+            onSubmit={manejarAutenticacion}
+          >
             {esRegistro && (
               <AuthField
                 autoComplete="name"
+                {...feedback.field('nombre')}
+                requiredMessage="Escribe tu nombre."
                 id="nombre"
                 label="Nombre"
                 name="first_name"
@@ -150,6 +171,8 @@ export default function Auth({
             {esRegistro && (
               <AuthField
                 autoComplete="family-name"
+                {...feedback.field('apellido')}
+                requiredMessage="Escribe tu apellido."
                 id="apellido"
                 label="Apellido"
                 name="last_name"
@@ -163,6 +186,7 @@ export default function Auth({
             {esRegistro && (
               <AuthField
                 autoComplete="tel"
+                {...feedback.field('telefono')}
                 id="telefono"
                 label="Teléfono (opcional)"
                 name="phone_number"
@@ -176,6 +200,8 @@ export default function Auth({
 
             <AuthField
               autoComplete="email"
+              {...feedback.field('correo')}
+              requiredMessage="Escribe tu correo electrónico."
               id="correo"
               label="Correo electrónico"
               name="email"
@@ -188,16 +214,20 @@ export default function Auth({
 
             <AuthField
               autoComplete={esRegistro ? 'new-password' : 'current-password'}
+              {...feedback.field('contrasena')}
+              requiredMessage="Escribe tu contraseña."
               id="contrasena"
               label="Contraseña"
               name="password"
               onChange={(e) => setPassword(e.target.value)}
+              hint={esRegistro ? 'Usa al menos 8 caracteres.' : undefined}
+              minLength={esRegistro ? 8 : undefined}
               placeholder="Ingresa tu contraseña…"
               type="password"
               value={password}
             />
 
-            <NoticeBanner message={error} isError />
+            <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
 
             <Button
               className="h-12 w-full rounded-xl bg-primary text-base font-semibold text-primary-foreground hover:bg-primary-hover"

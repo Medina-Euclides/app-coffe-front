@@ -8,7 +8,8 @@ import {
   CardHeader,
 } from '#components/ui/card';
 import { Input } from '#components/ui/input';
-import NoticeBanner from '#components/shared/NoticeBanner';
+import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useFormFeedback } from '#hooks/useFormFeedback';
 import { api } from '#services/api';
 import { guardarFincaActiva } from '#services/farmStorage';
 import MaduracionStripe from '#components/shared/MaduracionStripe';
@@ -26,7 +27,7 @@ export function SetupWizard({ usuario, onComplete }) {
   const [hectareas, setHectareas] = useState('');
   const [plantas, setPlantas] = useState('');
   const [nombreActividad, setNombreActividad] = useState('');
-  const [error, setError] = useState('');
+  const feedback = useFormFeedback();
   const [fincaCreada, setFincaCreada] = useState(null);
   const [loteCreado, setLoteCreado] = useState(null);
   const [actividadCreada, setActividadCreada] = useState(null);
@@ -45,26 +46,34 @@ export function SetupWizard({ usuario, onComplete }) {
 
   const guardarConfiguracion = async (event, { conTrabajador = true } = {}) => {
     event?.preventDefault();
-    setError('');
+    feedback.clearFormError();
     const actividadOpcional = nombreActividad;
 
+    // Los pasos anteriores ya validan sus campos; esto cubre casos raros
+    // (sesión perdida, volver atrás y borrar) con un aviso que dice dónde ir.
     if (!usuario?.id) {
-      setError('No se encontró tu sesión. Inicia sesión para continuar.');
+      feedback.setFormError('Tu sesión se cerró. Vuelve a iniciar sesión para continuar.');
       return;
     }
 
     if (!nombreFinca.trim() || !nombreLote.trim()) {
-      setError('Completa el nombre de la finca y del lote para continuar.');
+      feedback.setFormError(
+        'Falta el nombre de la finca o del lote. Vuelve atrás y complétalo.',
+      );
       return;
     }
     if (actividadOpcional.trim() && actividadOpcional.trim().length < 2) {
-      setError('El nombre de la actividad debe tener al menos 2 caracteres.');
+      feedback.setFormError(
+        'El nombre de la actividad es muy corto. Vuelve atrás y usa al menos 2 caracteres.',
+      );
       return;
     }
 
     const area = hectareas === '' ? null : Number(hectareas);
     if (area !== null && (!Number.isFinite(area) || area <= 0)) {
-      setError('Ingresa un área mayor que cero o deja el campo vacío.');
+      feedback.setFormError(
+        'El área del lote debe ser mayor que cero. Vuelve atrás para corregirla o déjala vacía.',
+      );
       return;
     }
     const plantCount = plantas === '' ? null : Number(plantas);
@@ -72,14 +81,16 @@ export function SetupWizard({ usuario, onComplete }) {
       plantCount !== null &&
       (!Number.isInteger(plantCount) || plantCount < 0)
     ) {
-      setError('Ingresa un número entero de plantas igual o mayor que cero.');
+      feedback.setFormError(
+        'El número de plantas debe ser un número entero. Vuelve atrás para corregirlo.',
+      );
       return;
     }
 
     if (conTrabajador) {
       const errorTrabajador = validateWorker(datosTrabajador(), [], null);
       if (errorTrabajador) {
-        setError(errorTrabajador);
+        feedback.setFormError(errorTrabajador);
         return;
       }
     }
@@ -124,7 +135,10 @@ export function SetupWizard({ usuario, onComplete }) {
       onComplete();
     } catch (saveError) {
       console.error('Error al guardar la configuración inicial:', saveError);
-      setError(saveError.message || 'No se pudo guardar la configuración inicial.');
+      feedback.setFormError(
+        saveError.message ||
+          'No se pudo guardar la configuración. Revisa tu conexión e inténtalo de nuevo.',
+      );
     } finally {
       setGuardando(false);
     }
@@ -242,26 +256,27 @@ export function SetupWizard({ usuario, onComplete }) {
           <CardContent className="px-6 pb-8 pt-7 sm:px-9 sm:pb-10">
             <form
               className="space-y-5"
+              {...feedback.formProps}
               onSubmit={(event) => {
                 event.preventDefault();
                 if (!nombreFinca.trim()) {
-                  setError('Ingresa el nombre de tu finca para continuar.');
+                  feedback.setFieldError('nombre-finca', 'Escribe el nombre de tu finca.');
                   return;
                 }
-                setError('');
+                feedback.clearFormError();
                 setPaso(3);
               }}
             >
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-foreground"
-                  htmlFor="nombre-finca"
-                >
-                  Nombre de la finca
-                </label>
+              <FormField
+                {...feedback.field('nombre-finca')}
+                htmlFor="nombre-finca"
+                label="Nombre de la finca"
+                labelClassName="font-medium text-foreground"
+              >
                 <Input
                   autoComplete="off"
                   className="h-12 rounded-xl px-4"
+                  data-required-message="Escribe el nombre de tu finca."
                   id="nombre-finca"
                   name="farmName"
                   onChange={(event) => setNombreFinca(event.target.value)}
@@ -269,14 +284,13 @@ export function SetupWizard({ usuario, onComplete }) {
                   required
                   value={nombreFinca}
                 />
-              </div>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-foreground"
-                  htmlFor="ubicacion-finca"
-                >
-                  Ubicación <span className="text-muted-foreground">(opcional)</span>
-                </label>
+              </FormField>
+              <FormField
+                {...feedback.field('ubicacion-finca')}
+                htmlFor="ubicacion-finca"
+                label="Ubicación (opcional)"
+                labelClassName="font-medium text-foreground"
+              >
                 <Input
                   autoComplete="off"
                   className="h-12 rounded-xl px-4"
@@ -286,8 +300,8 @@ export function SetupWizard({ usuario, onComplete }) {
                   placeholder="Ej.: Vereda El Roble…"
                   value={ubicacion}
                 />
-              </div>
-              <NoticeBanner message={error} isError />
+              </FormField>
+              <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
               <WizardActions>
                 <Button
                   className={btnAtras}
@@ -311,24 +325,27 @@ export function SetupWizard({ usuario, onComplete }) {
           <CardContent className="px-6 pb-8 pt-7 sm:px-9 sm:pb-10">
             <form
               className="space-y-5"
+              {...feedback.formProps}
               onSubmit={(event) => {
                 event.preventDefault();
                 const nombre = nombreActividad.trim();
                 if (nombre && nombre.length < 2) {
-                  setError('El nombre de la actividad debe tener al menos 2 caracteres.');
+                  feedback.setFieldError(
+                    'nombre-actividad',
+                    'Escribe al menos 2 caracteres o usa la predeterminada.',
+                  );
                   return;
                 }
-                setError('');
+                feedback.clearFormError();
                 setPaso(5);
               }}
             >
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-foreground"
-                  htmlFor="nombre-actividad"
-                >
-                  Nombre de la actividad
-                </label>
+              <FormField
+                {...feedback.field('nombre-actividad')}
+                htmlFor="nombre-actividad"
+                label="Nombre de la actividad"
+                labelClassName="font-medium text-foreground"
+              >
                 <Input
                   autoComplete="off"
                   className="h-12 rounded-xl px-4"
@@ -344,16 +361,16 @@ export function SetupWizard({ usuario, onComplete }) {
                   La actividad quedará marcada como recolección y se usará de
                   forma predeterminada al registrar pesajes.
                 </p>
-              </div>
+              </FormField>
 
-              <NoticeBanner message={error} isError />
+              <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
 
               <WizardActions>
                 <Button
                   className={btnAtras}
                   disabled={guardando || Boolean(loteCreado)}
                   onClick={() => {
-                    setError('');
+                    feedback.reset();
                     setPaso(3);
                   }}
                   type="button"
@@ -366,7 +383,7 @@ export function SetupWizard({ usuario, onComplete }) {
                   disabled={guardando}
                   onClick={() => {
                     setNombreActividad('');
-                    setError('');
+                    feedback.reset();
                     setPaso(5);
                   }}
                   type="button"
@@ -390,55 +407,59 @@ export function SetupWizard({ usuario, onComplete }) {
           <CardContent className="px-6 pb-8 pt-7 sm:px-9 sm:pb-10">
             <form
               className="space-y-5"
+              {...feedback.formProps}
               onSubmit={(event) => guardarConfiguracion(event)}
             >
               <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium text-foreground"
-                    htmlFor="nombre-trabajador"
-                  >
-                    Nombre
-                  </label>
+                <FormField
+                  {...feedback.field('nombre-trabajador')}
+                  htmlFor="nombre-trabajador"
+                  label="Nombre"
+                  labelClassName="font-medium text-foreground"
+                >
                   <Input
                     autoComplete="off"
                     className="h-12 rounded-xl px-4"
                     disabled={Boolean(trabajadorCreado)}
+                    data-required-message="Escribe el nombre del trabajador, o toca Omitir por ahora."
                     id="nombre-trabajador"
                     maxLength={150}
+                    minLength={2}
                     name="first_name"
                     onChange={(event) => setNombreTrabajador(event.target.value)}
                     placeholder="Ej.: María…"
+                    required
                     value={nombreTrabajador}
                   />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium text-foreground"
-                    htmlFor="apellido-trabajador"
-                  >
-                    Apellido
-                  </label>
+                </FormField>
+                <FormField
+                  {...feedback.field('apellido-trabajador')}
+                  htmlFor="apellido-trabajador"
+                  label="Apellido"
+                  labelClassName="font-medium text-foreground"
+                >
                   <Input
                     autoComplete="off"
                     className="h-12 rounded-xl px-4"
                     disabled={Boolean(trabajadorCreado)}
+                    data-required-message="Escribe el apellido del trabajador."
                     id="apellido-trabajador"
                     maxLength={150}
+                    minLength={2}
                     name="last_name"
                     onChange={(event) => setApellidoTrabajador(event.target.value)}
                     placeholder="Ej.: Gómez…"
+                    required
                     value={apellidoTrabajador}
                   />
-                </div>
+                </FormField>
               </div>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-foreground"
-                  htmlFor="cedula-trabajador"
-                >
-                  Cédula <span className="text-muted-foreground">(opcional)</span>
-                </label>
+              <FormField
+                {...feedback.field('cedula-trabajador')}
+                htmlFor="cedula-trabajador"
+                label="Cédula (opcional)"
+                labelClassName="font-medium text-foreground"
+              >
                 <Input
                   autoComplete="off"
                   className="h-12 rounded-xl px-4"
@@ -455,16 +476,16 @@ export function SetupWizard({ usuario, onComplete }) {
                   El teléfono y los demás datos los puedes completar luego en
                   Trabajadores.
                 </p>
-              </div>
+              </FormField>
 
-              <NoticeBanner message={error} isError />
+              <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
 
               <WizardActions>
                 <Button
                   className={btnAtras}
                   disabled={guardando || Boolean(actividadCreada)}
                   onClick={() => {
-                    setError('');
+                    feedback.reset();
                     setPaso(4);
                   }}
                   type="button"
@@ -497,26 +518,27 @@ export function SetupWizard({ usuario, onComplete }) {
           <CardContent className="px-6 pb-8 pt-7 sm:px-9 sm:pb-10">
             <form
               className="space-y-5"
+              {...feedback.formProps}
               onSubmit={(event) => {
                 event.preventDefault();
                 if (!nombreLote.trim()) {
-                  setError('Ingresa el nombre de tu lote para continuar.');
+                  feedback.setFieldError('nombre-lote', 'Escribe el nombre de tu lote.');
                   return;
                 }
-                setError('');
+                feedback.clearFormError();
                 setPaso(4);
               }}
             >
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-foreground"
-                  htmlFor="nombre-lote"
-                >
-                  Nombre del lote
-                </label>
+              <FormField
+                {...feedback.field('nombre-lote')}
+                htmlFor="nombre-lote"
+                label="Nombre del lote"
+                labelClassName="font-medium text-foreground"
+              >
                 <Input
                   autoComplete="off"
                   className="h-12 rounded-xl px-4"
+                  data-required-message="Escribe el nombre de tu lote."
                   id="nombre-lote"
                   name="lotName"
                   onChange={(event) => setNombreLote(event.target.value)}
@@ -524,14 +546,13 @@ export function SetupWizard({ usuario, onComplete }) {
                   required
                   value={nombreLote}
                 />
-              </div>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-foreground"
-                  htmlFor="variedad-lote"
-                >
-                  Variedad de café
-                </label>
+              </FormField>
+              <FormField
+                {...feedback.field('variedad-lote')}
+                htmlFor="variedad-lote"
+                label="Variedad de café"
+                labelClassName="font-medium text-foreground"
+              >
                 <select
                   autoComplete="off"
                   className="h-12 w-full rounded-xl border border-input bg-background px-4 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -546,15 +567,13 @@ export function SetupWizard({ usuario, onComplete }) {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-foreground"
-                  htmlFor="hectareas-lote"
-                >
-                  Área en hectáreas{' '}
-                  <span className="text-muted-foreground">(opcional)</span>
-                </label>
+              </FormField>
+              <FormField
+                {...feedback.field('hectareas-lote')}
+                htmlFor="hectareas-lote"
+                label="Área en hectáreas (opcional)"
+                labelClassName="font-medium text-foreground"
+              >
                 <Input
                   autoComplete="off"
                   className="h-12 rounded-xl px-4"
@@ -567,15 +586,13 @@ export function SetupWizard({ usuario, onComplete }) {
                   type="number"
                   value={hectareas}
                 />
-              </div>
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-foreground"
-                  htmlFor="plantas-lote"
-                >
-                  Número de plantas de café{' '}
-                  <span className="text-muted-foreground">(opcional)</span>
-                </label>
+              </FormField>
+              <FormField
+                {...feedback.field('plantas-lote')}
+                htmlFor="plantas-lote"
+                label="Número de plantas de café (opcional)"
+                labelClassName="font-medium text-foreground"
+              >
                 <Input
                   autoComplete="off"
                   className="h-12 rounded-xl px-4"
@@ -588,16 +605,16 @@ export function SetupWizard({ usuario, onComplete }) {
                   type="number"
                   value={plantas}
                 />
-              </div>
+              </FormField>
 
-              <NoticeBanner message={error} isError />
+              <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
 
               <WizardActions>
                 <Button
                   className={btnAtras}
                   disabled={guardando || Boolean(fincaCreada)}
                   onClick={() => {
-                    setError('');
+                    feedback.reset();
                     setPaso(2);
                   }}
                   type="button"

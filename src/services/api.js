@@ -41,8 +41,69 @@ function saveAuthTokens(tokens) {
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokens));
 }
 
+// Mensajes frecuentes de Django REST Framework / SimpleJWT que pueden llegar en
+// inglés si el servidor no está en español. Se traducen antes de mostrarlos.
+const SERVER_MESSAGES = [
+  [/^This field is required\.?$/i, 'Este campo es obligatorio.'],
+  [/^This field may not be (blank|null)\.?$/i, 'Este campo no puede quedar vacío.'],
+  [/^A valid (number|integer) is required\.?$/i, 'Escribe un número válido.'],
+  [/^Enter a valid email address\.?$/i, 'Escribe un correo válido, por ejemplo nombre@correo.com.'],
+  [/^Enter a valid (date|time|date\/time)\.?/i, 'Revisa la fecha u hora.'],
+  [/^Date has wrong format\./i, 'Revisa la fecha.'],
+  [/^"?.*"? is not a valid choice\.?$/i, 'Elige una opción de la lista.'],
+  [/^Invalid pk .*object does not exist\.?$/i, 'El registro elegido ya no existe. Recarga y vuelve a elegirlo.'],
+  [/^Ensure this value is greater than or equal to (.+?)\.?$/i, (m) => `Debe ser mayor o igual a ${m[1]}.`],
+  [/^Ensure this value is less than or equal to (.+?)\.?$/i, (m) => `Debe ser menor o igual a ${m[1]}.`],
+  [/^Ensure this field has at least (\d+) characters?\.?$/i, (m) => `Escribe al menos ${m[1]} caracteres.`],
+  [/^Ensure this field has no more than (\d+) characters?\.?$/i, (m) => `Usa máximo ${m[1]} caracteres.`],
+  [/^Ensure that there are no more than (\d+) digits in total\.?$/i, (m) => `Usa máximo ${m[1]} dígitos.`],
+  [/^Ensure that there are no more than (\d+) decimal places\.?$/i, (m) => `Usa máximo ${m[1]} decimales.`],
+  [/already exists\.?$/i, 'Ya existe un registro con ese dato.'],
+  [/^The fields? .* must make a unique set\.?$/i, 'Ya existe un registro con esos datos.'],
+  [/^No active account found/i, 'Correo o contraseña incorrectos.'],
+  [/^Unable to log in with provided credentials\.?$/i, 'Correo o contraseña incorrectos.'],
+  [/^(Given token not valid|Token is invalid or expired|Authentication credentials were not provided)/i, 'Tu sesión expiró. Vuelve a iniciar sesión.'],
+  [/^You do not have permission/i, 'No tienes permiso para hacer esto.'],
+  [/^Not found\.?$/i, 'No se encontró el registro. Puede que lo hayan borrado.'],
+  [/^Method .* not allowed\.?$/i, 'Esta acción no está disponible.'],
+  [/^Request was throttled/i, 'Demasiados intentos. Espera un momento e inténtalo de nuevo.'],
+  [/^This password is too (short|common|similar)/i, 'Elige una contraseña más segura: al menos 8 caracteres, que no sea común.'],
+  [/^This password is entirely numeric\.?$/i, 'La contraseña no puede tener solo números.'],
+];
+
+function translateServerMessage(message) {
+  const text = String(message ?? '').trim();
+  for (const [pattern, replacement] of SERVER_MESSAGES) {
+    const match = text.match(pattern);
+    if (match) return typeof replacement === 'function' ? replacement(match) : replacement;
+  }
+  return text;
+}
+
+function statusMessage(status) {
+  if (status === 400) return 'Revisa los datos del formulario e inténtalo de nuevo.';
+  if (status === 401) return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+  if (status === 403) return 'No tienes permiso para hacer esto.';
+  if (status === 404) return 'No se encontró el registro. Puede que lo hayan borrado.';
+  if (status === 409) return 'Ya existe un registro con esos datos.';
+  if (status === 413) return 'El archivo es demasiado grande.';
+  if (status === 429) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+  if (status >= 500) return 'El servidor tuvo un problema. Inténtalo de nuevo en unos minutos.';
+  return 'No se pudo completar la acción. Inténtalo de nuevo.';
+}
+
+function flattenMessages(messages) {
+  if (Array.isArray(messages)) return messages.flatMap(flattenMessages);
+  if (messages && typeof messages === 'object') {
+    return Object.values(messages).flatMap(flattenMessages);
+  }
+  return messages === null || messages === undefined || messages === '' ? [] : [messages];
+}
+
 function getErrorMessage(data, status) {
-  if (typeof data?.detail === 'string') return data.detail;
+  if (typeof data?.detail === 'string') return translateServerMessage(data.detail);
+  // Respuestas HTML o texto plano (p. ej. un 502 del proxy) no se muestran tal cual.
+  if (!data || typeof data !== 'object') return statusMessage(status);
 
   const fieldLabels = {
     email: 'Correo electrónico',
@@ -82,14 +143,18 @@ function getErrorMessage(data, status) {
     quantity_kg: 'Cantidad recolectada',
     time: 'Hora',
   };
-  const fieldErrors = Object.entries(data || {})
+  const fieldErrors = Object.entries(data)
     .map(([field, messages]) => {
-      const values = Array.isArray(messages) ? messages : [messages];
-      return `${fieldLabels[field] || field}: ${values.join(' ')}`;
+      const values = flattenMessages(messages).map(translateServerMessage).join(' ');
+      if (!values) return '';
+      // Los nombres técnicos (id_activity, …) no le dicen nada a quien usa la app.
+      const label = fieldLabels[field];
+      return label && field !== 'non_field_errors' ? `${label}: ${values}` : values;
     })
+    .filter(Boolean)
     .join(' ');
 
-  return fieldErrors || `Error ${status}`;
+  return fieldErrors || statusMessage(status);
 }
 
 function normalizeList(data, resourceName) {
@@ -142,6 +207,12 @@ function normalizeActivity(activity) {
 }
 
 function normalizeApiError(error) {
+  if (!error.response && error.code === 'ECONNABORTED') {
+    return new Error(
+      'El servidor tardó demasiado en responder. Revisa tu señal e inténtalo de nuevo.',
+      { cause: error },
+    );
+  }
   if (!error.response) {
     return new Error(
       'No se pudo conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.',

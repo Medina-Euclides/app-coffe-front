@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { Input } from '#components/ui/input';
+import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useFormFeedback } from '#hooks/useFormFeedback';
 
 const variedadesCafe = ['Castillo', 'Caturra', 'Colombia', 'Borbón', 'Geisha'];
 
@@ -32,12 +34,12 @@ export default function LotFormDialog({
       : String(lot.plant_count),
   );
   const [description, setDescription] = useState(lot?.description || '');
-  const [error, setError] = useState('');
+  const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    feedback.clearFormError();
     setSaving(true);
     try {
       const result = await onSave({
@@ -48,13 +50,16 @@ export default function LotFormDialog({
         description: description.trim(),
       });
       if (result) {
-        setError(result);
+        feedback.setFormError(result);
         return;
       }
       onOpenChange(false);
     } catch (saveError) {
       console.error('Error al guardar el lote:', saveError);
-      setError(saveError.message || 'No se pudo guardar el lote.');
+      feedback.setFormError(
+        saveError.message ||
+          'No se pudo guardar el lote. Revisa tu conexión e inténtalo de nuevo.',
+      );
     } finally {
       setSaving(false);
     }
@@ -71,17 +76,20 @@ export default function LotFormDialog({
             Este lote quedará asociado a {farmName}.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="lot-name"
-            >
-              Nombre del lote
-            </label>
+        <form
+          className="space-y-4"
+          {...feedback.formProps}
+          onSubmit={handleSubmit}
+        >
+          <FormField
+            {...feedback.field('lot-name')}
+            htmlFor="lot-name"
+            label="Nombre del lote"
+          >
             <Input
               autoComplete="off"
               className="h-11 rounded-xl"
+              data-required-message="Escribe el nombre del lote."
               id="lot-name"
               maxLength={150}
               minLength={2}
@@ -91,14 +99,12 @@ export default function LotFormDialog({
               required
               value={name}
             />
-          </div>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="lot-plant-count"
-            >
-              Número de plantas de café (opcional)
-            </label>
+          </FormField>
+          <FormField
+            {...feedback.field('lot-plant-count')}
+            htmlFor="lot-plant-count"
+            label="Número de plantas de café (opcional)"
+          >
             <Input
               className="h-11 rounded-xl"
               id="lot-plant-count"
@@ -110,14 +116,12 @@ export default function LotFormDialog({
               type="number"
               value={plantCount}
             />
-          </div>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="lot-variety"
-            >
-              Variedad de café
-            </label>
+          </FormField>
+          <FormField
+            {...feedback.field('lot-variety')}
+            htmlFor="lot-variety"
+            label="Variedad de café"
+          >
             <select
               className="h-11 w-full rounded-xl border border-input bg-card px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:text-sm"
               id="lot-variety"
@@ -131,14 +135,12 @@ export default function LotFormDialog({
                 </option>
               ))}
             </select>
-          </div>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="lot-hectares"
-            >
-              Área en hectáreas (opcional)
-            </label>
+          </FormField>
+          <FormField
+            {...feedback.field('lot-hectares')}
+            htmlFor="lot-hectares"
+            label="Área en hectáreas (opcional)"
+          >
             <Input
               className="h-11 rounded-xl"
               id="lot-hectares"
@@ -150,14 +152,12 @@ export default function LotFormDialog({
               type="number"
               value={hectares}
             />
-          </div>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="lot-description"
-            >
-              Descripción (opcional)
-            </label>
+          </FormField>
+          <FormField
+            {...feedback.field('lot-description')}
+            htmlFor="lot-description"
+            label="Descripción (opcional)"
+          >
             <textarea
               className="min-h-24 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               id="lot-description"
@@ -166,12 +166,8 @@ export default function LotFormDialog({
               placeholder="Detalles adicionales del lote…"
               value={description}
             />
-          </div>
-          {error && (
-            <p aria-live="polite" className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
+          </FormField>
+          <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
             <Button
               className="min-h-11 rounded-xl"

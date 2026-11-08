@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#components/ui/select';
+import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useFormFeedback } from '#hooks/useFormFeedback';
 
 function getReferenceId(reference) {
   if (reference && typeof reference === 'object') return reference.id;
@@ -40,7 +42,7 @@ export default function EditWorkdayLaborDialog({
   const [rate, setRate] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [error, setError] = useState('');
+  const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
   const [retry, setRetry] = useState(0);
 
@@ -110,30 +112,41 @@ export default function EditWorkdayLaborDialog({
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    feedback.clearFormError();
 
     if (workday?.status !== 'abierta') {
-      setError('No se puede modificar una jornada cerrada.');
+      feedback.setFormError('Esta jornada ya está cerrada y no se puede modificar.');
       return;
     }
-    if (!activity || !currentParticipants.length) {
-      setError('La jornada debe tener trabajadores y una actividad válida.');
+    if (!currentParticipants.length) {
+      feedback.setFormError('La jornada no tiene trabajadores. Agrega al menos uno antes de editarla.');
+      return;
+    }
+    if (!activity) {
+      feedback.setFieldError('edit-workday-activity', 'Elige qué actividad se hizo.');
       return;
     }
     if (paymentMode === 'kg' && !activity.is_harvest) {
-      setError('El pago por kilogramo solo aplica a actividades de recolección.');
+      feedback.setFormError(
+        'El pago por kilo solo aplica a actividades de recolección. Elige pago por jornal.',
+      );
       return;
     }
     if (paymentMode === 'jornal' && hasHarvestRecords) {
-      setError(
-        'No se puede cambiar a pago por jornal porque la jornada tiene pesajes registrados.',
+      feedback.setFormError(
+        'Esta jornada ya tiene pesajes registrados, así que debe seguir con pago por kilo.',
       );
       return;
     }
 
     const agreedRate = Number(rate);
     if (!Number.isFinite(agreedRate) || agreedRate <= 0) {
-      setError('Ingresa una tarifa mayor que cero.');
+      feedback.setFieldError(
+        'edit-workday-rate',
+        paymentMode === 'kg'
+          ? 'Escribe la tarifa por kilo, mayor que cero.'
+          : 'Escribe el valor del jornal, mayor que cero.',
+      );
       return;
     }
 
@@ -147,7 +160,10 @@ export default function EditWorkdayLaborDialog({
       onOpenChange(false);
     } catch (saveError) {
       console.error('Error al actualizar los datos de la jornada:', saveError);
-      setError(saveError.message || 'No se pudo actualizar la jornada.');
+      feedback.setFormError(
+        saveError.message ||
+          'No se pudo actualizar la jornada. Revisa tu conexión e inténtalo de nuevo.',
+      );
     } finally {
       setSaving(false);
     }
@@ -196,22 +212,27 @@ export default function EditWorkdayLaborDialog({
             </Button>
           </div>
         ) : (
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form
+            className="space-y-4"
+            {...feedback.formProps}
+            onSubmit={handleSubmit}
+          >
             {currentParticipants.length > 1 && (
               <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-primary">
                 Se actualizarán {currentParticipants.length} trabajadores.
               </p>
             )}
 
-            <div className="space-y-2">
-              <label
-                className="text-sm font-semibold text-primary"
-                htmlFor="edit-workday-activity"
-              >
-                Actividad <span aria-hidden="true">*</span>
-              </label>
+            <FormField
+              {...feedback.field('edit-workday-activity')}
+              htmlFor="edit-workday-activity"
+              label="Actividad"
+              labelClassName="font-semibold text-primary"
+              required
+            >
               <Select
                 onValueChange={(value) => {
+                  feedback.clearField('edit-workday-activity');
                   setActivityId(value);
                   const selected = activities.find(
                     (item) => String(item.id) === value,
@@ -221,6 +242,8 @@ export default function EditWorkdayLaborDialog({
                 value={activityId}
               >
                 <SelectTrigger
+                  aria-describedby="edit-workday-activity-error"
+                  aria-invalid={feedback.field('edit-workday-activity').invalid || undefined}
                   className="h-11 w-full rounded-xl border-input bg-card px-3 text-sm text-foreground"
                   id="edit-workday-activity"
                 >
@@ -237,7 +260,7 @@ export default function EditWorkdayLaborDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
 
             <fieldset className="space-y-2">
               <legend className="text-sm font-semibold text-primary">
@@ -275,39 +298,35 @@ export default function EditWorkdayLaborDialog({
               </div>
             </fieldset>
 
-            <div className="space-y-2">
-              <label
-                className="text-sm font-semibold text-primary"
-                htmlFor="edit-workday-rate"
-              >
-                {paymentMode === 'kg'
-                  ? 'Tarifa por kg (COP)'
-                  : 'Valor del jornal (COP)'}{' '}
-                <span aria-hidden="true">*</span>
-              </label>
+            <FormField
+              {...feedback.field('edit-workday-rate')}
+              htmlFor="edit-workday-rate"
+              label={paymentMode === 'kg' ? 'Tarifa por kg (COP)' : 'Valor del jornal (COP)'}
+              labelClassName="font-semibold text-primary"
+              required
+            >
               <div className="relative">
                 <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
                   $
                 </span>
                 <MoneyInput
+                  aria-describedby="edit-workday-rate-error"
+                  aria-invalid={feedback.field('edit-workday-rate').invalid || undefined}
                   className="h-11 rounded-xl border-input bg-card pl-8 text-sm text-foreground"
+                  data-required-message={
+                    paymentMode === 'kg'
+                      ? 'Escribe la tarifa por kilo.'
+                      : 'Escribe el valor del jornal.'
+                  }
                   id="edit-workday-rate"
                   onValueChange={setRate}
                   required
                   value={rate}
                 />
               </div>
-            </div>
+            </FormField>
 
-            {error && (
-              <p
-                aria-live="polite"
-                className="rounded-xl border border-destructive/20 bg-destructive-soft px-3 py-2 text-sm text-destructive"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
+            <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
 
             <DialogFooter className="flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row">
               <Button

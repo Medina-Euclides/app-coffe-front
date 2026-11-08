@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { Input } from '#components/ui/input';
+import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useFormFeedback } from '#hooks/useFormFeedback';
 
 export default function FarmFormDialog({
   open,
@@ -19,12 +21,12 @@ export default function FarmFormDialog({
   const [name, setName] = useState(farm?.nombre || '');
   const [location, setLocation] = useState(farm?.location || '');
   const [description, setDescription] = useState(farm?.description || '');
-  const [error, setError] = useState('');
+  const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    feedback.clearFormError();
     setSaving(true);
     try {
       const result = await onSave({
@@ -33,13 +35,16 @@ export default function FarmFormDialog({
         description: description.trim(),
       });
       if (result) {
-        setError(result);
+        feedback.setFormError(result);
         return;
       }
       onOpenChange(false);
     } catch (saveError) {
       console.error('Error al guardar la finca:', saveError);
-      setError(saveError.message || 'No se pudo guardar la finca.');
+      feedback.setFormError(
+        saveError.message ||
+          'No se pudo guardar la finca. Revisa tu conexión e inténtalo de nuevo.',
+      );
     } finally {
       setSaving(false);
     }
@@ -56,17 +61,20 @@ export default function FarmFormDialog({
             Registra el nombre, ubicación y descripción de esta finca.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="farm-name"
-            >
-              Nombre de la finca
-            </label>
+        <form
+          className="space-y-4"
+          {...feedback.formProps}
+          onSubmit={handleSubmit}
+        >
+          <FormField
+            {...feedback.field('farm-name')}
+            htmlFor="farm-name"
+            label="Nombre de la finca"
+          >
             <Input
               autoComplete="off"
               className="h-11 rounded-xl"
+              data-required-message="Escribe el nombre de la finca."
               id="farm-name"
               maxLength={150}
               minLength={2}
@@ -76,7 +84,7 @@ export default function FarmFormDialog({
               required
               value={name}
             />
-          </div>
+          </FormField>
           <div className="space-y-2">
             <label
               className="text-sm font-medium text-ink-soft"
@@ -110,11 +118,7 @@ export default function FarmFormDialog({
               value={description}
             />
           </div>
-          {error && (
-            <p aria-live="polite" className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
+          <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
             <Button
               className="min-h-11 rounded-xl"

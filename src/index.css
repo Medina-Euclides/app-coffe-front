@@ -237,6 +237,15 @@
     outline-offset: 2px;
   }
 
+  /* Campo con error (lo marca FormField): mismo borde rojo que ui/input en
+     selects, áreas de texto nativos y cajas de opciones (data-field-box). */
+  select[aria-invalid="true"],
+  textarea[aria-invalid="true"],
+  [data-field-box][aria-invalid="true"] {
+    border-color: var(--destructive);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

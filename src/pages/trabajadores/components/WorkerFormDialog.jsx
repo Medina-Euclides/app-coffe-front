@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from '#components/ui/dialog';
 import { Input } from '#components/ui/input';
+import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useFormFeedback } from '#hooks/useFormFeedback';
 
 function splitLegacyName(fullName = '') {
   const [firstName = '', ...lastNames] = fullName.trim().split(/\s+/);
@@ -32,12 +34,12 @@ export default function WorkerFormDialog({
     worker?.identification || worker?.cedula || '',
   );
   const [phone, setPhone] = useState(worker?.phone || '');
-  const [error, setError] = useState('');
+  const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    feedback.clearFormError();
     setSaving(true);
     try {
       const result = await onSave({
@@ -47,13 +49,13 @@ export default function WorkerFormDialog({
         phone: phone.trim(),
       });
       if (result) {
-        setError(result);
+        feedback.setFormError(result);
         return;
       }
       onOpenChange(false);
     } catch (saveError) {
       console.error('Error al guardar el trabajador:', saveError);
-      setError(saveError.message || 'No se pudo guardar el trabajador.');
+      feedback.setFormError(saveError.message || 'No se pudo guardar el trabajador. Revisa tu conexión e inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -70,52 +72,54 @@ export default function WorkerFormDialog({
             Registra los datos básicos de la persona que trabaja en tus fincas.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="worker-first-name"
-            >
-              Nombre
-            </label>
+        <form
+          className="space-y-4"
+          {...feedback.formProps}
+          onSubmit={handleSubmit}
+        >
+          <FormField
+            {...feedback.field('worker-first-name')}
+            htmlFor="worker-first-name"
+            label="Nombre"
+          >
             <Input
               autoComplete="off"
               className="h-11 rounded-xl"
+              data-required-message="Escribe el nombre del trabajador."
               id="worker-first-name"
               maxLength={150}
+              minLength={2}
               name="first_name"
               onChange={(event) => setFirstName(event.target.value)}
               placeholder="Ej. María…"
               required
               value={firstName}
             />
-          </div>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="worker-last-name"
-            >
-              Apellido
-            </label>
+          </FormField>
+          <FormField
+            {...feedback.field('worker-last-name')}
+            htmlFor="worker-last-name"
+            label="Apellido"
+          >
             <Input
               autoComplete="family-name"
               className="h-11 rounded-xl"
+              data-required-message="Escribe el apellido del trabajador."
               id="worker-last-name"
               maxLength={150}
+              minLength={2}
               name="last_name"
               onChange={(event) => setLastName(event.target.value)}
               placeholder="Ej. Gómez…"
               required
               value={lastName}
             />
-          </div>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="worker-id"
-            >
-              Identificación (opcional)
-            </label>
+          </FormField>
+          <FormField
+            {...feedback.field('worker-id')}
+            htmlFor="worker-id"
+            label="Identificación (opcional)"
+          >
             <Input
               autoComplete="off"
               className="h-11 rounded-xl"
@@ -127,14 +131,12 @@ export default function WorkerFormDialog({
               type="text"
               value={identification}
             />
-          </div>
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-ink-soft"
-              htmlFor="worker-phone"
-            >
-              Teléfono (opcional)
-            </label>
+          </FormField>
+          <FormField
+            {...feedback.field('worker-phone')}
+            htmlFor="worker-phone"
+            label="Teléfono (opcional)"
+          >
             <Input
               autoComplete="tel"
               className="h-11 rounded-xl"
@@ -146,12 +148,8 @@ export default function WorkerFormDialog({
               type="tel"
               value={phone}
             />
-          </div>
-          {error && (
-            <p aria-live="polite" className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
+          </FormField>
+          <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
             <Button
               className="min-h-11 rounded-xl"

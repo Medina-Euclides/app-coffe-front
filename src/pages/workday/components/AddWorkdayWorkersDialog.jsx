@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#components/ui/select';
+import { FieldError, FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useFormFeedback } from '#hooks/useFormFeedback';
 
 function getWorkerName(worker) {
   return (
@@ -47,20 +49,6 @@ function getReferenceId(reference) {
   return reference;
 }
 
-function FormField({ children, htmlFor, label }) {
-  return (
-    <div className="min-w-0 space-y-2">
-      <label
-        className="text-sm font-semibold text-primary"
-        htmlFor={htmlFor}
-      >
-        {label} <span aria-hidden="true">*</span>
-      </label>
-      {children}
-    </div>
-  );
-}
-
 export default function AddWorkdayWorkersDialog({
   workday,
   open,
@@ -77,7 +65,7 @@ export default function AddWorkdayWorkersDialog({
   const [rate, setRate] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [error, setError] = useState('');
+  const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
   const [retry, setRetry] = useState(0);
 
@@ -215,24 +203,32 @@ export default function AddWorkdayWorkersDialog({
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    feedback.clearFormError();
 
     if (workday?.status !== 'abierta') {
-      setError('No se pueden agregar trabajadores a una jornada cerrada.');
-      return;
-    }
-    if (!selectedWorkers.length || !activity || !selectedLots.length) {
-      setError('Selecciona al menos un trabajador, una actividad y un lote.');
-      return;
-    }
-    if (paymentMode === 'kg' && !activity.is_harvest) {
-      setError('El pago por kilogramo solo aplica a actividades de recolección.');
+      feedback.setFormError('Esta jornada ya está cerrada; no se le pueden agregar trabajadores.');
       return;
     }
 
     const agreedRate = Number(rate);
-    if (!Number.isFinite(agreedRate) || agreedRate <= 0) {
-      setError('Ingresa una tarifa mayor que cero.');
+    // Se marcan todos los campos que faltan; el primero recibe el foco.
+    const missing = [
+      !selectedWorkers.length && ['add-workday-workers', 'Marca al menos un trabajador.'],
+      !activity && ['add-workday-activity', 'Elige qué actividad hará.'],
+      !(Number.isFinite(agreedRate) && agreedRate > 0) && [
+        'add-workday-rate',
+        'Escribe la tarifa, mayor que cero.',
+      ],
+      !selectedLots.length && ['add-workday-lots', 'Marca al menos un lote.'],
+    ].filter(Boolean);
+    if (missing.length) {
+      missing.forEach(([key, message]) => feedback.setFieldError(key, message));
+      return;
+    }
+    if (paymentMode === 'kg' && !activity.is_harvest) {
+      feedback.setFormError(
+        'El pago por kilo solo aplica a actividades de recolección. Elige pago por jornal.',
+      );
       return;
     }
 
@@ -248,7 +244,10 @@ export default function AddWorkdayWorkersDialog({
       onOpenChange(false);
     } catch (saveError) {
       console.error('Error al agregar trabajadores a la jornada:', saveError);
-      setError(saveError.message || 'No se pudieron agregar los trabajadores.');
+      feedback.setFormError(
+        saveError.message ||
+          'No se pudieron agregar los trabajadores. Revisa tu conexión e inténtalo de nuevo.',
+      );
     } finally {
       setSaving(false);
     }
@@ -295,7 +294,11 @@ export default function AddWorkdayWorkersDialog({
             </Button>
           </div>
         ) : (
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form
+            className="space-y-4"
+            {...feedback.formProps}
+            onSubmit={handleSubmit}
+          >
             {!availableWorkers.length && (
               <p className="rounded-xl border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">
                 No hay trabajadores activos disponibles para agregar.
@@ -304,12 +307,20 @@ export default function AddWorkdayWorkersDialog({
 
             <fieldset className="min-w-0 space-y-2">
               <legend className="text-sm font-semibold text-primary">
-                Trabajadores disponibles
+                Trabajadores disponibles{' '}
+                <span aria-hidden="true" className="text-destructive">*</span>
                 <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedWorkers.length} seleccionados)
                 </span>
               </legend>
-              <div className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2">
+              <div
+                aria-describedby="add-workday-workers-error"
+                aria-invalid={feedback.field('add-workday-workers').invalid || undefined}
+                className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2"
+                data-field-box
+                id="add-workday-workers"
+                tabIndex={-1}
+              >
                 {availableWorkers.map((worker) => (
                   <label
                     className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted"
@@ -325,12 +336,23 @@ export default function AddWorkdayWorkersDialog({
                   </label>
                 ))}
               </div>
+              <FieldError
+                id="add-workday-workers-error"
+                message={feedback.field('add-workday-workers').error}
+              />
             </fieldset>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField htmlFor="add-workday-activity" label="Actividad">
+              <FormField
+                {...feedback.field('add-workday-activity')}
+                htmlFor="add-workday-activity"
+                label="Actividad"
+                labelClassName="font-semibold text-primary"
+                required
+              >
                 <Select
                   onValueChange={(value) => {
+                    feedback.clearField('add-workday-activity');
                     setActivityId(value);
                     const selected = activities.find(
                       (item) => String(item.id) === value,
@@ -340,6 +362,8 @@ export default function AddWorkdayWorkersDialog({
                   value={activityId}
                 >
                   <SelectTrigger
+                    aria-describedby="add-workday-activity-error"
+                    aria-invalid={feedback.field('add-workday-activity').invalid || undefined}
                     className="h-11 w-full rounded-xl border-input bg-card px-3 text-sm text-foreground"
                     id="add-workday-activity"
                   >
@@ -358,13 +382,22 @@ export default function AddWorkdayWorkersDialog({
                 </Select>
               </FormField>
 
-              <FormField htmlFor="add-workday-rate" label="Tarifa acordada">
+              <FormField
+                {...feedback.field('add-workday-rate')}
+                htmlFor="add-workday-rate"
+                label="Tarifa acordada"
+                labelClassName="font-semibold text-primary"
+                required
+              >
                 <div className="relative">
                   <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
                     $
                   </span>
                   <MoneyInput
+                    aria-describedby="add-workday-rate-error"
+                    aria-invalid={feedback.field('add-workday-rate').invalid || undefined}
                     className="h-11 rounded-xl border-input bg-card pl-8 text-sm text-foreground"
+                    data-required-message="Escribe la tarifa acordada."
                     id="add-workday-rate"
                     onValueChange={setRate}
                     required
@@ -408,12 +441,19 @@ export default function AddWorkdayWorkersDialog({
 
             <fieldset className="space-y-2">
               <legend className="text-sm font-semibold text-primary">
-                Lotes
+                Lotes <span aria-hidden="true" className="text-destructive">*</span>
                 <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedLots.length} seleccionados)
                 </span>
               </legend>
-              <div className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2">
+              <div
+                aria-describedby="add-workday-lots-error"
+                aria-invalid={feedback.field('add-workday-lots').invalid || undefined}
+                className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2"
+                data-field-box
+                id="add-workday-lots"
+                tabIndex={-1}
+              >
                 {activeLots.map((lot) => (
                   <label
                     className="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted"
@@ -436,17 +476,13 @@ export default function AddWorkdayWorkersDialog({
                   No hay lotes activos en esta finca.
                 </p>
               )}
+              <FieldError
+                id="add-workday-lots-error"
+                message={feedback.field('add-workday-lots').error}
+              />
             </fieldset>
 
-            {error && (
-              <p
-                aria-live="polite"
-                className="rounded-xl border border-destructive/20 bg-destructive-soft px-3 py-2 text-sm text-destructive"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
+            <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
 
             <DialogFooter className="flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row">
               <Button

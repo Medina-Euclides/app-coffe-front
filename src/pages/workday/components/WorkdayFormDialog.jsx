@@ -19,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#components/ui/select';
+import { FieldError, FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useFormFeedback } from '#hooks/useFormFeedback';
 
 const PAYMENT_MODES = {
   JOURNAL: 'jornal',
@@ -64,21 +66,6 @@ function getLotLabel(lot) {
   return farmName ? `${lotName} · Finca ${farmName}` : lotName;
 }
 
-function FormField({ children, htmlFor, label, required }) {
-  return (
-    <div className="min-w-0 space-y-2">
-      <label
-        className="text-sm font-semibold text-primary"
-        htmlFor={htmlFor}
-      >
-        {label}
-        {required && <span aria-hidden="true"> *</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 export default function WorkdayFormDialog({
   existingWorkdays,
   open,
@@ -99,7 +86,7 @@ export default function WorkdayFormDialog({
   const [date, setDate] = useState(getLocalDate);
   const [paymentMode, setPaymentMode] = useState(PAYMENT_MODES.JOURNAL);
   const [rate, setRate] = useState('');
-  const [error, setError] = useState('');
+  const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
   const [reloadOptions, setReloadOptions] = useState(0);
 
@@ -209,34 +196,24 @@ export default function WorkdayFormDialog({
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    feedback.clearFormError();
 
-    if (
-      !selectedFarm ||
-      !selectedWorkers.length ||
-      !selectedActivity ||
-      !selectedLots.length
-    ) {
-      setError(
-        'Selecciona una finca, al menos un trabajador, una actividad y un lote activo.',
-      );
-      document
-        .getElementById(
-          !selectedFarm
-            ? 'workday-farm'
-            : !selectedWorkers.length
-              ? 'workday-workers'
-            : !selectedActivity
-              ? 'workday-activity'
-              : 'workday-lots',
-        )
-        ?.focus();
-      return;
-    }
-
-    if (date > todayDate) {
-      setError('La fecha de la jornada no puede ser futura.');
-      document.getElementById('workday-date')?.focus();
+    // Se marcan todos los campos que faltan; el primero recibe el foco.
+    const missing = [
+      !selectedFarm && ['workday-farm', 'Elige la finca donde se trabajó.'],
+      !selectedWorkers.length && ['workday-workers', 'Marca al menos un trabajador.'],
+      !selectedActivity && ['workday-activity', 'Elige qué actividad se hizo.'],
+      !selectedLots.length && ['workday-lots', 'Marca al menos un lote donde se trabajó.'],
+      !(Number(rate) > 0) && [
+        'workday-rate',
+        paymentMode === PAYMENT_MODES.KILOGRAM
+          ? 'Escribe la tarifa por kilo, mayor que cero.'
+          : 'Escribe el valor del jornal, mayor que cero.',
+      ],
+      date > todayDate && ['workday-date', 'La fecha no puede ser posterior a hoy.'],
+    ].filter(Boolean);
+    if (missing.length) {
+      missing.forEach(([key, message]) => feedback.setFieldError(key, message));
       return;
     }
 
@@ -245,18 +222,14 @@ export default function WorkdayFormDialog({
         String(workday.farmId) === farmId && workday.dateKey === date,
     );
     if (duplicateWorkday) {
-      setError(
-        'Ya existe una jornada para esta finca y fecha.',
+      feedback.setFormError(
+        'Ya registraste una jornada en esta finca para esa fecha. Cambia la fecha o edita la jornada que ya existe.',
       );
-      document.getElementById('workday-farm')?.focus();
+      feedback.setFieldError('workday-date', 'Ya hay una jornada en esta fecha.');
       return;
     }
 
     const agreedRate = Number(rate);
-    if (!Number.isFinite(agreedRate) || agreedRate <= 0) {
-      setError('Ingresa una tarifa mayor que cero.');
-      return;
-    }
 
     setSaving(true);
     try {
@@ -275,13 +248,17 @@ export default function WorkdayFormDialog({
       onOpenChange(false);
     } catch (saveError) {
       console.error('Error al guardar la jornada laboral:', saveError);
-      setError(saveError.message || 'No se pudo guardar la jornada laboral.');
+      feedback.setFormError(
+        saveError.message ||
+          'No se pudo guardar la jornada. Revisa tu conexión e inténtalo de nuevo.',
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const handleActivityChange = (nextActivityId) => {
+    feedback.clearField('workday-activity');
     setActivityId(nextActivityId);
     const nextActivity = activities.find(
       (activity) => String(activity.id) === nextActivityId,
@@ -301,6 +278,8 @@ export default function WorkdayFormDialog({
   };
 
   const handleFarmChange = (nextFarmId) => {
+    feedback.clearField('workday-farm');
+    feedback.clearField('workday-lots');
     setFarmId(nextFarmId);
     setLotIds(
       lots
@@ -355,7 +334,11 @@ export default function WorkdayFormDialog({
             </Button>
           </div>
         ) : (
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form
+            className="space-y-4"
+            {...feedback.formProps}
+            onSubmit={handleSubmit}
+          >
             {(!activeWorkers.length ||
               !activeFarms.length ||
               !activities.length ||
@@ -373,13 +356,21 @@ export default function WorkdayFormDialog({
               </p>
             )}
 
-            <FormField htmlFor="workday-farm" label="Finca" required>
+            <FormField
+              {...feedback.field('workday-farm')}
+              htmlFor="workday-farm"
+              label="Finca"
+              labelClassName="font-semibold text-primary"
+              required
+            >
               <Select
                 onValueChange={handleFarmChange}
                 value={farmId}
                 disabled={!activeFarms.length}
               >
                 <SelectTrigger
+                  aria-describedby="workday-farm-error"
+                  aria-invalid={feedback.field('workday-farm').invalid || undefined}
                   aria-label="Finca"
                   className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                   id="workday-farm"
@@ -408,14 +399,17 @@ export default function WorkdayFormDialog({
 
             <fieldset className="min-w-0 space-y-2">
               <legend className="text-sm font-semibold text-primary">
-                Trabajadores <span aria-hidden="true">*</span>
+                Trabajadores <span aria-hidden="true" className="text-destructive">*</span>
                 <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedWorkers.length} seleccionados)
                 </span>
               </legend>
               <div
+                aria-describedby="workday-workers-error"
+                aria-invalid={feedback.field('workday-workers').invalid || undefined}
                 aria-label="Trabajadores de la jornada"
                 className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2"
+                data-field-box
                 id="workday-workers"
                 tabIndex={-1}
               >
@@ -440,12 +434,18 @@ export default function WorkdayFormDialog({
                   );
                 })}
               </div>
+              <FieldError
+                id="workday-workers-error"
+                message={feedback.field('workday-workers').error}
+              />
             </fieldset>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
+                {...feedback.field('workday-activity')}
                 htmlFor="workday-activity"
                 label="Tipo de actividad"
+                labelClassName="font-semibold text-primary"
                 required
               >
                 <Select
@@ -454,6 +454,8 @@ export default function WorkdayFormDialog({
                   disabled={!activities.length}
                 >
                   <SelectTrigger
+                    aria-describedby="workday-activity-error"
+                    aria-invalid={feedback.field('workday-activity').invalid || undefined}
                     aria-label="Tipo de actividad"
                     className="h-12 w-full rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
                     id="workday-activity"
@@ -482,9 +484,10 @@ export default function WorkdayFormDialog({
               </FormField>
 
               <FormField
+                {...feedback.field('workday-date')}
                 htmlFor="workday-date"
                 label="Fecha de ejecución"
-                required
+                labelClassName="font-semibold text-primary"
               >
                 <Input
                   autoComplete="off"
@@ -502,15 +505,18 @@ export default function WorkdayFormDialog({
 
             <fieldset className="min-w-0 space-y-2">
               <legend className="text-sm font-semibold text-primary">
-                Lotes de trabajo <span aria-hidden="true">*</span>
+                Lotes de trabajo <span aria-hidden="true" className="text-destructive">*</span>
                 <span className="ml-1 font-normal normal-case text-muted-foreground">
                   ({selectedLots.length} seleccionados)
                 </span>
               </legend>
               {activeLots.length ? (
                 <div
+                  aria-describedby="workday-lots-error"
+                  aria-invalid={feedback.field('workday-lots').invalid || undefined}
                   aria-label="Lotes de la jornada"
                   className="grid max-h-36 gap-2 overflow-y-auto rounded-xl border border-input bg-card p-3 sm:grid-cols-2"
+                  data-field-box
                   id="workday-lots"
                   tabIndex={-1}
                 >
@@ -540,6 +546,10 @@ export default function WorkdayFormDialog({
                   Selecciona una finca con lotes activos.
                 </p>
               )}
+              <FieldError
+                id="workday-lots-error"
+                message={feedback.field('workday-lots').error}
+              />
             </fieldset>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -586,12 +596,19 @@ export default function WorkdayFormDialog({
               </fieldset>
 
               <FormField
+                {...feedback.field('workday-rate')}
                 htmlFor="workday-rate"
                 label={
                   paymentMode === PAYMENT_MODES.KILOGRAM
                     ? 'Tarifa por kg (COP)'
                     : 'Valor del jornal (COP)'
                 }
+                hint={
+                  paymentMode === PAYMENT_MODES.KILOGRAM
+                    ? 'La misma tarifa por kilogramo se aplicará a todos los trabajadores.'
+                    : 'El mismo valor de jornal se aplicará a todos los trabajadores.'
+                }
+                labelClassName="font-semibold text-primary"
                 required
               >
                 <div className="relative">
@@ -602,6 +619,8 @@ export default function WorkdayFormDialog({
                     $
                   </span>
                   <MoneyInput
+                    aria-describedby="workday-rate-error"
+                    aria-invalid={feedback.field('workday-rate').invalid || undefined}
                     className="h-12 rounded-xl border-input bg-card pl-9 text-base font-semibold text-foreground"
                     id="workday-rate"
                     name="agreed_rate"
@@ -611,23 +630,10 @@ export default function WorkdayFormDialog({
                     value={rate}
                   />
                 </div>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {paymentMode === PAYMENT_MODES.KILOGRAM
-                    ? 'La misma tarifa por kilogramo se aplicará a todos los trabajadores.'
-                    : 'El mismo valor de jornal se aplicará a todos los trabajadores.'}
-                </p>
               </FormField>
             </div>
 
-            {error && (
-              <p
-                aria-live="polite"
-                className="rounded-xl border border-destructive/20 bg-destructive-soft px-3 py-2 text-sm leading-5 text-destructive"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
+            <FormAlert message={feedback.formError} onDismiss={feedback.clearFormError} />
 
             <DialogFooter className="flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row">
               <Button
