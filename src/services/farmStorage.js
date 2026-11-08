@@ -6,3 +6,12 @@ export function guardarFincaActiva(userId, farmId) {
     console.error('No se pudo guardar la finca seleccionada:', error);
   }
 }
+
+// Finca elegida la última vez (o '' si no hay o el almacenamiento está bloqueado).
+export function leerFincaActiva(userId) {
+  try {
+    return localStorage.getItem(`cafesmart_finca_activa_${userId}`) || '';
+  } catch {
+    return '';
+  }
+}

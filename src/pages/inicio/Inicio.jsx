@@ -4,6 +4,8 @@ import {
   Cherry,
   ClipboardList,
   Coffee,
+  HandCoins,
+  ReceiptText,
   Scale,
   UserPlus,
 } from 'lucide-react';
@@ -13,6 +15,7 @@ import IconBadge from '#components/shared/IconBadge';
 import NoticeBanner from '#components/shared/NoticeBanner';
 import { useNotice } from '#hooks/useNotice';
 import { api } from '#services/api';
+import { leerFincaActiva } from '#services/farmStorage';
 import { createWorkdayWithWorkers, toExistingWorkdays } from '#pages/workday/workdayActions.js';
 import { saveWorkerRequest, validateWorker } from '#pages/trabajadores/workerActions.js';
 import {
@@ -50,7 +53,21 @@ const accionesPrincipales = [
   },
 ];
 
+// Acciones de menos uso: fila de teclas compactas bajo las principales. El color
+// sigue el significado de toda la app (ingreso = leaf, gasto = destructive).
+const accionesSecundarias = [
+  { titulo: 'Agregar venta', formulario: 'venta', icono: HandCoins, tono: 'income' },
+  { titulo: 'Agregar gasto', formulario: 'gasto', icono: ReceiptText, tono: 'expense' },
+  { titulo: 'Agregar trabajador', formulario: 'trabajador', icono: UserPlus, tono: 'primary' },
+];
+
+const tipoMovimiento = { venta: 'sale', gasto: 'expense' };
+
 // Los formularios se cargan solo cuando se abren, para que Inicio cargue rápido.
+// El de movimientos se precarga al pasar o enfocar su botón.
+const cargarFormularioMovimiento = () =>
+  import('#pages/finance/components/MovementFormDialog.jsx');
+const MovementFormDialog = lazy(cargarFormularioMovimiento);
 const HarvestRecordFormDialog = lazy(() =>
   import('#pages/workday/components/HarvestRecordFormDialog.jsx'),
 );
@@ -135,8 +152,11 @@ const MAX_RECIENTES = 5;
 const enlaceTarjeta =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 
-export default function Inicio() {
+export default function Inicio({ usuario }) {
+  const userId = usuario?.id || 'default';
   const [formulario, setFormulario] = useState('');
+  // null hasta que se abre una venta o un gasto por primera vez.
+  const [fincas, setFincas] = useState(null);
   const [jornadasExistentes, setJornadasExistentes] = useState([]);
   // Los trabajadores vienen de la caché de IndexedDB (api.workers.list), no de localStorage.
   const [trabajadores, setTrabajadores] = useState([]);
@@ -171,6 +191,19 @@ export default function Inicio() {
         .then((items) => setJornadasExistentes(toExistingWorkdays(items)))
         .catch((error) => console.error('Error al cargar jornadas:', error));
     }
+    if (tipoMovimiento[tipo] && fincas === null) {
+      api.farms
+        .list()
+        .then(setFincas)
+        .catch((error) => {
+          console.error('Error al cargar fincas:', error);
+          setFormulario('');
+          mostrarAviso(
+            error.message || 'No se pudieron cargar tus fincas. Inténtalo de nuevo.',
+            true,
+          );
+        });
+    }
     if (tipo === 'trabajador') {
       api.workers
         .list()
@@ -192,6 +225,22 @@ export default function Inicio() {
   const guardarPesaje = () => {
     mostrarAviso('El pesaje de recolección se registró correctamente.');
     cargarJornadas();
+  };
+
+  const guardarMovimiento = async (payload) => {
+    const esVenta = formulario === 'venta';
+    try {
+      if (esVenta) await api.production.sales.create(payload);
+      else await api.finance.expenses.create(payload);
+      mostrarAviso(esVenta ? 'Venta registrada.' : 'Gasto registrado.');
+      return '';
+    } catch (error) {
+      console.error('Error al guardar el movimiento:', error);
+      return (
+        error.message ||
+        `No se pudo guardar ${esVenta ? 'la venta' : 'el gasto'}. Revisa tu conexión e inténtalo de nuevo.`
+      );
+    }
   };
 
   const guardarTrabajador = async (data) => {
@@ -242,6 +291,11 @@ export default function Inicio() {
       destino: { section: 'workdays', period: 'week', modality: 'jornal' },
     },
   ];
+  // Solo se preselecciona la finca guardada si sigue existiendo.
+  const fincaGuardada = fincas ? leerFincaActiva(userId) : '';
+  const fincaActivaValida = fincas?.some((finca) => String(finca.id) === fincaGuardada)
+    ? fincaGuardada
+    : '';
   const recientes = resumen?.recientes.slice(0, MAX_RECIENTES) ?? [];
 
   return (
@@ -281,16 +335,24 @@ export default function Inicio() {
             ),
           )}
 
-          <button
-            className="col-span-2 flex min-h-16 cursor-pointer items-center justify-center gap-3 rounded-3xl border border-border bg-card px-4 text-foreground shadow-[0_3px_0_var(--border-strong)] transition-[background-color,box-shadow,translate] duration-100 hover:bg-tint focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-ring active:translate-y-[3px] active:shadow-[0_0_0_var(--border-strong)] motion-reduce:transition-none"
-            onClick={() => abrirFormulario('trabajador')}
-            type="button"
-          >
-            <IconBadge icon={UserPlus} />
-            <span className="font-heading text-lg font-semibold">
-              Agregar trabajador
-            </span>
-          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          {accionesSecundarias.map(({ titulo, formulario: tipo, icono, tono }) => (
+            <button
+              className="flex min-h-28 min-w-0 cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl border border-border bg-card px-2 py-3 text-foreground shadow-[0_3px_0_var(--border-strong)] transition-[background-color,box-shadow,translate] duration-100 hover:bg-tint focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-ring active:translate-y-[3px] active:shadow-[0_0_0_var(--border-strong)] motion-reduce:transition-none sm:min-h-20 sm:flex-row sm:gap-3 sm:px-4"
+              key={tipo}
+              onClick={() => abrirFormulario(tipo)}
+              onFocus={tipoMovimiento[tipo] ? cargarFormularioMovimiento : undefined}
+              onPointerEnter={tipoMovimiento[tipo] ? cargarFormularioMovimiento : undefined}
+              type="button"
+            >
+              <IconBadge icon={icono} tone={tono} />
+              <span className="text-balance text-center font-heading text-base font-semibold leading-tight sm:text-lg">
+                {titulo}
+              </span>
+            </button>
+          ))}
         </div>
 
         <NoticeBanner isError={isError} message={notice} />
@@ -413,6 +475,17 @@ export default function Inicio() {
             onOpenChange={cerrarFormulario}
             onSave={guardarJornada}
             open
+          />
+        )}
+        {tipoMovimiento[formulario] && fincas !== null && (
+          <MovementFormDialog
+            farms={fincas}
+            key={formulario}
+            onOpenChange={cerrarFormulario}
+            onSave={guardarMovimiento}
+            open
+            selectedFarmId={fincaActivaValida}
+            type={tipoMovimiento[formulario]}
           />
         )}
         {formulario === 'trabajador' && (
