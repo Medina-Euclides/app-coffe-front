@@ -58,8 +58,10 @@ export default function PaymentPage() {
             <span aria-hidden="true" className="size-2 rounded-full bg-leaf" />
             <span>
               {filteredSettlements.length}{' '}
-              {filteredSettlements.length === 1 ? 'liquidación' : 'liquidaciones'}{' '}
-              {tab === 'paid' ? 'pagadas' : 'pendientes'} {periodLabel}
+              {filteredSettlements.length === 1
+                ? `liquidación ${tab === 'paid' ? 'pagada' : 'pendiente'}`
+                : `liquidaciones ${tab === 'paid' ? 'pagadas' : 'pendientes'}`}{' '}
+              {periodLabel}
             </span>
             <span aria-hidden="true">·</span>
             <span>{formatoDinero(total)} total</span>
