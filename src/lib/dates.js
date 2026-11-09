@@ -56,3 +56,9 @@ export function belongsToPeriod(dateKey, period, todayKey) {
   if (period === 'year') return dateKey.slice(0, 4) === todayKey.slice(0, 4);
   return true;
 }
+
+// Hora local actual en formato HH:MM (para campos <input type="time">).
+export function currentTimeKey() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}

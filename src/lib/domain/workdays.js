@@ -312,3 +312,37 @@ export function getHarvestDetails(workdays, activities, today) {
       });
   });
 }
+
+// Agrupa los pesajes por trabajador, del más reciente al más antiguo.
+export function groupHarvestRecords(records) {
+  const grouped = new Map();
+  for (const record of records) {
+    const key = record.workerId;
+    const group = grouped.get(key) || {
+      ...record,
+      records: [],
+    };
+    group.records.push(record);
+    grouped.set(key, group);
+  }
+  return [...grouped.values()]
+    .map((group) => {
+      const sortedRecords = [...group.records].sort(
+        (first, second) =>
+          second.dateKey.localeCompare(first.dateKey) ||
+          second.time.localeCompare(first.time),
+      );
+      return {
+        ...group,
+        records: sortedRecords,
+        latestRecord: sortedRecords[0],
+        totalKilograms: sortedRecords.reduce((total, record) => total + record.quantityKg, 0),
+      };
+    })
+    .sort(
+      (first, second) =>
+        second.latestRecord.dateKey.localeCompare(first.latestRecord.dateKey) ||
+        second.latestRecord.time.localeCompare(first.latestRecord.time) ||
+        first.workerName.localeCompare(second.workerName, 'es'),
+    );
+}

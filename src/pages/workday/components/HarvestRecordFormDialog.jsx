@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   CalendarDays,
   Clock3,
@@ -30,7 +30,9 @@ import ErrorBanner from '#components/shared/ErrorBanner';
 import LoadingState from '#components/shared/LoadingState';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { formatoDinero, formatoFechaAnio, hoy } from '#lib/formatters';
-import { getHarvestDetails } from '#lib/domain/workdays';
+import { currentTimeKey } from '#lib/dates';
+import { addDetailToWorkdays, createHarvestRecord } from '#lib/domain/harvestActions';
+import { useHarvestSelection } from '../hooks/useHarvestSelection.js';
 
 const MAX_KILOGRAMS = 9_999_999.999;
 
@@ -44,13 +46,6 @@ const fetchHarvestOptions = async () => {
   ]);
   return { workdays, activities, lots };
 };
-
-function getLocalTime() {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, '0')}:${String(
-    now.getMinutes(),
-  ).padStart(2, '0')}`;
-}
 
 function SelectField({ feedback, htmlFor, ...props }) {
   return (
@@ -79,87 +74,27 @@ export default function HarvestRecordFormDialog({
     initialData: EMPTY_OPTIONS,
     refreshOnSync: false,
   });
-  const [workdayId, setWorkdayId] = useState('');
-  const [workerId, setWorkerId] = useState('');
-  const [lotId, setLotId] = useState('');
   const [quantityKg, setQuantityKg] = useState('');
-  const [time, setTime] = useState(getLocalTime);
+  const [time, setTime] = useState(currentTimeKey);
   const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
   const [today] = useState(hoy);
-
-  const harvestDetails = useMemo(
-    () => getHarvestDetails(workdays, activities, today),
-    [activities, today, workdays],
-  );
-
-  const harvestWorkdays = useMemo(() => {
-    const uniqueWorkdays = new Map();
-    for (const detail of harvestDetails) {
-      if (!uniqueWorkdays.has(detail.workdayId)) {
-        uniqueWorkdays.set(detail.workdayId, detail);
-      }
-    }
-    return [...uniqueWorkdays.values()].sort((first, second) =>
-      second.dateKey.localeCompare(first.dateKey),
-    );
-  }, [harvestDetails]);
-
-  const workers = useMemo(() => {
-    const uniqueWorkers = new Map();
-    for (const detail of harvestDetails) {
-      if (detail.workdayId !== workdayId) continue;
-      if (!uniqueWorkers.has(detail.workerId)) {
-        uniqueWorkers.set(detail.workerId, detail);
-      }
-    }
-    return [...uniqueWorkers.values()].sort((first, second) =>
-      first.workerName.localeCompare(second.workerName, 'es'),
-    );
-  }, [harvestDetails, workdayId]);
-
-  const selectedWorkday = harvestWorkdays.find(
-    (workday) => workday.workdayId === workdayId,
-  );
-  const selectedWorker = workers.find((worker) => worker.workerId === workerId);
-  const availableLots = lots
-    .filter(
-      (lot) =>
-        lot.is_active !== false &&
-        String(lot.fincaId ?? lot.id_farm) === selectedWorkday?.farmId,
-    )
-    .sort((first, second) =>
-      (first.nombre || first.name || '').localeCompare(
-        second.nombre || second.name || '',
-        'es',
-      ),
-    );
-  const workerDetails = harvestDetails.filter(
-    (detail) =>
-      detail.workdayId === workdayId && detail.workerId === workerId,
-  );
-  const selectedLot = availableLots.find(
-    (lot) => String(lot.id) === lotId,
-  );
-  const selectedDetail = workerDetails.find(
-    (detail) => detail.lotId === lotId,
-  );
-
-  const handleWorkdayChange = (nextWorkdayId) => {
-    setWorkdayId(nextWorkdayId);
-    setWorkerId('');
-    setLotId('');
-    ['harvest-workday', 'harvest-worker', 'harvest-lot'].forEach(feedback.clearField);
-    feedback.clearFormError();
-  };
-
-  const handleWorkerChange = (nextWorkerId) => {
-    setWorkerId(nextWorkerId);
-    setLotId('');
-    feedback.clearField('harvest-worker');
-    feedback.clearField('harvest-lot');
-    feedback.clearFormError();
-  };
+  const {
+    harvestDetails,
+    harvestWorkdays,
+    workers,
+    availableLots,
+    workdayId,
+    workerId,
+    lotId,
+    setLotId,
+    changeWorkday,
+    changeWorker,
+    selectedWorkday,
+    selectedWorker,
+    selectedLot,
+    selectedDetail,
+  } = useHarvestSelection({ workdays, activities, lots, today, feedback });
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -186,64 +121,21 @@ export default function HarvestRecordFormDialog({
 
     setSaving(true);
     try {
-      let detailForRecord = selectedDetail;
-      if (!detailForRecord) {
-        const createdDetail = await api.workdayDetails.create({
-          workday_worker: selectedWorker.participantId,
-          activity_type: selectedWorker.activityTypeId,
-          lot: selectedLot.id,
-        });
-        const apiDetail = {
-          ...createdDetail,
-          activity_type:
-            createdDetail.activity_type ?? selectedWorker.activityTypeId,
-          activity_name:
-            createdDetail.activity_name || selectedWorker.activityName,
-          activity_is_harvest: true,
-          lot: selectedLot.id,
-          lot_name: selectedLot.nombre || selectedLot.name || 'Lote',
-          harvest_records: [],
-        };
+      const { record, detail, createdDetail } = await createHarvestRecord({
+        detail: selectedDetail,
+        worker: selectedWorker,
+        lot: selectedLot,
+        kilograms,
+        time,
+      });
+      // La labor nueva queda en las opciones por si se registra otro pesaje en el mismo lote.
+      if (createdDetail) {
         setOptions((current) => ({
           ...current,
-          workdays: current.workdays.map((workday) =>
-            String(workday.id) !== selectedWorkday.workdayId
-              ? workday
-              : {
-                  ...workday,
-                  participants: workday.participants.map((participation) =>
-                    String(participation.id) !== selectedWorker.participantId
-                      ? participation
-                      : {
-                          ...participation,
-                          details: [
-                            ...(participation.details || []),
-                            apiDetail,
-                          ],
-                        },
-                  ),
-                },
-          ),
+          workdays: addDetailToWorkdays(current.workdays, selectedWorker, createdDetail),
         }));
-        detailForRecord = {
-          ...selectedWorker,
-          ...apiDetail,
-          id: String(apiDetail.id),
-          lotId: String(selectedLot.id),
-          lotName: selectedLot.nombre || selectedLot.name || 'Lote',
-          activityName: apiDetail.activity_name,
-          activityTypeId: String(
-            apiDetail.activity_type,
-          ),
-          existingRecords: [],
-        };
       }
-      const record = await api.harvestRecords.create({
-        workday_detail: detailForRecord.id,
-        quantity_kg: kilograms.toFixed(3),
-        time: `${time}:00`,
-      });
-      await onSave(record, detailForRecord);
+      await onSave(record, detail);
       onOpenChange(false);
     } catch (saveError) {
       console.error('Error al registrar el pesaje:', saveError);
@@ -300,7 +192,7 @@ export default function HarvestRecordFormDialog({
             >
               <SelectField feedback={feedback} htmlFor="harvest-workday" label="¿De qué jornada?">
                 <Select
-                  onValueChange={handleWorkdayChange}
+                  onValueChange={changeWorkday}
                   value={workdayId}
                 >
                   <SelectTrigger
@@ -345,7 +237,7 @@ export default function HarvestRecordFormDialog({
 
               <SelectField feedback={feedback} htmlFor="harvest-worker" label="¿Quién entregó?">
                 <Select
-                  onValueChange={handleWorkerChange}
+                  onValueChange={changeWorker}
                   value={workerId}
                   disabled={!workdayId}
                 >

@@ -1,102 +1,28 @@
 // Página de finanzas: registra ventas y gastos, muestra resumen y movimientos.
 import { useMemo, useState } from 'react';
-import {
-  ArrowDownCircle,
-  PlusCircle,
-  ReceiptText,
-  Search,
-} from 'lucide-react';
+import { ArrowDownCircle, PlusCircle, ReceiptText } from 'lucide-react';
 import { Button } from '#components/ui/button';
-import { Card } from '#components/ui/card';
-import { Input } from '#components/ui/input';
-import { api } from '#services/api';
 import MovementFormDialog from './components/MovementFormDialog.jsx';
 import MovementCard from './components/MovementCard.jsx';
 import MovementDetailDialog from './components/MovementDetailDialog.jsx';
-import { expenseCategoryLabels } from '#lib/domain/movements';
+import {
+  EMPTY_FINANCE,
+  fetchFinanceData,
+  getMovementSearchText,
+  saveMovementRequest,
+} from '#lib/domain/movements';
+import { hoy } from '#lib/formatters';
+import FinanceSummary from './components/FinanceSummary.jsx';
+import MovementFilters from './components/MovementFilters.jsx';
+import { DATE_FILTERS } from './financeFilters.js';
 import { belongsToPeriod } from '#lib/dates';
-import { formatoDinero, hoy } from '#lib/formatters';
 import { guardarFincaActiva, leerFincaActiva } from '#services/farmStorage';
 import { useApiResource } from '#hooks/useApiResource';
 import { filterBySearch, sumBy } from '#lib/utils';
 import EmptyState from '#components/shared/EmptyState';
 import ErrorBanner from '#components/shared/ErrorBanner';
-import FarmSelect from '#components/shared/FarmSelect';
 import LoadingState from '#components/shared/LoadingState';
 import PageTitle from '#components/shared/PageTitle';
-import SegmentedControl from '#components/shared/SegmentedControl';
-
-const categories = expenseCategoryLabels;
-
-const filters = [
-  { value: 'all', label: 'Todos' },
-  { value: 'sale', label: 'Ventas' },
-  { value: 'expense', label: 'Gastos' },
-];
-
-const dateFilters = [
-  { value: 'today', label: 'Hoy' },
-  { value: 'month', label: 'Este mes' },
-  { value: 'year', label: 'Este año' },
-];
-
-function getMovementFarmId(movement) {
-  const farm = movement.farm ?? movement.farm_id;
-  return farm && typeof farm === 'object' ? String(farm.id) : String(farm || '');
-}
-
-function mapMovements(sales, expenses, farms) {
-  const farmNames = new Map(farms.map((farm) => [String(farm.id), farm.nombre]));
-  const mappedSales = sales.map((sale) => ({
-    ...sale,
-    type: 'sale',
-    date: sale.sale_date,
-    farmId: getMovementFarmId(sale),
-    farmName: farmNames.get(getMovementFarmId(sale)) || '',
-    title:
-      sale.coffee_type === 'pasilla'
-        ? 'Café pasilla'
-        : 'Café pergamino seco',
-    amount: Number(sale.total_amount) || 0,
-  }));
-  const mappedExpenses = expenses.map((expense) => ({
-    ...expense,
-    type: 'expense',
-    farmId: getMovementFarmId(expense),
-    farmName:
-      expense.farm_name ||
-      farmNames.get(getMovementFarmId(expense)) ||
-      '',
-    title: expense.concept,
-    amount: Number(expense.amount) || 0,
-    categoryLabel: categories[expense.category] || 'Otros gastos',
-    isAutomatic: Boolean(expense.labor_payment),
-  }));
-  return [...mappedSales, ...mappedExpenses].sort((first, second) =>
-    String(second.date).localeCompare(String(first.date)),
-  );
-}
-
-const EMPTY_FINANCE = { farms: [], movements: [] };
-
-const fetchFinanceData = async () => {
-  const [farms, sales, expenses] = await Promise.all([
-    api.farms.list(),
-    api.production.sales.list(),
-    api.finance.expenses.list(),
-  ]);
-  return { farms, movements: mapMovements(sales, expenses, farms) };
-};
-
-const getMovementSearchText = (movement) =>
-  [
-    movement.title,
-    movement.buyer,
-    movement.categoryLabel,
-    ...(movement.type === 'sale' ? [movement.notes] : []),
-  ]
-    .filter(Boolean)
-    .join(' ');
 
 export default function FinanceActivityPage({ usuario }) {
   const userId = usuario?.id || 'default';
@@ -142,21 +68,11 @@ export default function FinanceActivityPage({ usuario }) {
   };
 
   const saveMovement = async (payload) => {
+    if (dialogType === 'expense' && movementToEdit?.isAutomatic) {
+      return 'Los gastos de mano de obra se administran desde Pagos laborales.';
+    }
     try {
-      if (dialogType === 'sale') {
-        if (movementToEdit) {
-          await api.production.sales.update(movementToEdit.id, payload);
-        } else {
-          await api.production.sales.create(payload);
-        }
-      } else if (movementToEdit) {
-        if (movementToEdit.isAutomatic) {
-          return 'Los gastos de mano de obra se administran desde Pagos laborales.';
-        }
-        await api.finance.expenses.update(movementToEdit.id, payload);
-      } else {
-        await api.finance.expenses.create(payload);
-      }
+      await saveMovementRequest(dialogType, payload, movementToEdit);
       refetch();
       return '';
     } catch (saveError) {
@@ -166,7 +82,7 @@ export default function FinanceActivityPage({ usuario }) {
   };
 
   const selectedDateFilter =
-    dateFilters.find((item) => item.value === dateFilter)?.label || 'Este mes';
+    DATE_FILTERS.find((item) => item.value === dateFilter)?.label || 'Este mes';
   const filteredSales = sumBy(
     filteredMovements.filter((movement) => movement.type === 'sale'),
     (movement) => movement.amount,
@@ -209,61 +125,26 @@ export default function FinanceActivityPage({ usuario }) {
         </div>
       </header>
 
-      <section
-        aria-label="Filtros de movimientos"
-        className="flex flex-col gap-3 lg:flex-row lg:items-center"
-      >
-        <SegmentedControl label="Tipo de movimiento" onChange={setTypeFilter} options={filters} value={typeFilter} />
+      <MovementFilters
+        dateFilter={dateFilter}
+        farms={farms}
+        onDateFilterChange={setDateFilter}
+        onFarmChange={(farmId) => {
+          setSelectedFarmId(farmId);
+          if (farmId) guardarFincaActiva(userId, farmId);
+        }}
+        onSearchChange={setSearch}
+        onTypeFilterChange={setTypeFilter}
+        search={search}
+        selectedFarmId={selectedFarmId}
+        typeFilter={typeFilter}
+      />
 
-        <div className="relative min-w-0 flex-1">
-          <label className="sr-only" htmlFor="finance-search">
-            Buscar por concepto, comprador o categoría
-          </label>
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            className="h-12 rounded-xl border-border bg-card pl-10 text-base shadow-sm placeholder:text-subtle"
-            id="finance-search"
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por concepto, comprador o categoría…"
-            type="search"
-            value={search}
-          />
-        </div>
-
-        <FarmSelect
-          farms={farms}
-          id="finance-farm"
-          label="Filtrar por finca"
-          onChange={(farmId) => {
-            setSelectedFarmId(farmId);
-            if (farmId) guardarFincaActiva(userId, farmId);
-          }}
-          value={selectedFarmId}
-        />
-
-        <SegmentedControl label="Período" onChange={setDateFilter} options={dateFilters} value={dateFilter} />
-      </section>
-
-      <section
-        aria-label={`Resumen ${selectedDateFilter.toLocaleLowerCase()}`}
-        className="grid gap-3 sm:grid-cols-2"
-      >
-        <Card className="flex flex-row items-center justify-between rounded-2xl border-border/60 bg-muted px-4 py-3 shadow-none">
-          <span className="text-sm text-ink-soft">Ventas · {selectedDateFilter.toLocaleLowerCase()}</span>
-          <strong className="text-base text-leaf">
-            {formatoDinero(filteredSales)}
-          </strong>
-        </Card>
-        <Card className="flex flex-row items-center justify-between rounded-2xl border-destructive/20 bg-destructive-soft px-4 py-3 shadow-none">
-          <span className="text-sm text-muted-foreground">Gastos · {selectedDateFilter.toLocaleLowerCase()}</span>
-          <strong className="text-base text-destructive">
-            {formatoDinero(filteredExpenses)}
-          </strong>
-        </Card>
-      </section>
+      <FinanceSummary
+        expenses={filteredExpenses}
+        periodLabel={selectedDateFilter.toLocaleLowerCase()}
+        sales={filteredSales}
+      />
 
       <ErrorBanner message={error} onRetry={refetch} />
 

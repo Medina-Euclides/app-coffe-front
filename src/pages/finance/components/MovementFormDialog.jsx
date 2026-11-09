@@ -1,43 +1,16 @@
+// Formulario para registrar o editar una venta de café o un gasto.
 import { useState } from 'react';
-import { Input } from '#components/ui/input';
-import MoneyInput from '#components/shared/MoneyInput';
 import FormDialog from '#components/shared/FormDialog';
-import { FormField } from '#components/shared/FormFeedback';
+import { SelectField, TextField } from '#components/shared/FormFields';
 import { useFormFeedback } from '#hooks/useFormFeedback';
-import SegmentedControl from '#components/shared/SegmentedControl';
-import { EXPENSE_CATEGORIES, KG_PER_ARROBA } from '#lib/constants';
-import { formatoDinero, formatoNumero, hoy } from '#lib/formatters';
-import { guardarLocal, leerLocal } from '#lib/storage';
-import {
-  arrobasToKg,
-  kgToArrobas,
-  pricePerArrobaToKg,
-  pricePerKgToArroba,
-} from '#lib/domain/movements';
+import { hoy } from '#lib/formatters';
+import { useSaleUnit } from '../hooks/useSaleUnit.js';
+import { ExpenseFields, SaleFields } from './MovementFields.jsx';
 
-const UNIT_STORAGE_KEY = 'cafesmart:sale-unit';
-
-const unitOptions = [
-  { value: 'arroba', label: 'Arrobas' },
-  { value: 'kg', label: 'Kilos' },
-];
-
-const readSavedUnit = () => (leerLocal(UNIT_STORAGE_KEY, 'arroba') === 'kg' ? 'kg' : 'arroba');
-const saveUnit = (unit) => guardarLocal(UNIT_STORAGE_KEY, unit);
-
-// Unidad con la que se abre el formulario. Una venta existente se abre en arrobas
-// solo si sus kilos dan arrobas enteras o medias (25 kg → 2 @); si no (37 kg), en kilos.
-function initialUnit(movement) {
-  if (!movement) return readSavedUnit();
-  const kg = Number(movement.quantity_kg);
-  if (!(kg > 0)) return readSavedUnit();
-  return Number.isInteger((kg / KG_PER_ARROBA) * 2) ? 'arroba' : 'kg';
-}
-
-const toFieldValue = (number) => (Number.isFinite(number) && number > 0 ? String(number) : '');
-
-// La mano de obra se registra sola al pagar jornales; no se elige a mano.
-const expenseCategories = EXPENSE_CATEGORIES.filter(({ value }) => value !== 'labor');
+const titles = {
+  sale: { new: 'Registrar venta', edit: 'Editar venta' },
+  expense: { new: 'Registrar gasto', edit: 'Editar gasto' },
+};
 
 export default function MovementFormDialog({
   open,
@@ -48,84 +21,37 @@ export default function MovementFormDialog({
   selectedFarmId,
   onSave,
 }) {
-  const [farmId, setFarmId] = useState(
-    String(movement?.farm || selectedFarmId || farms[0]?.id || ''),
-  );
+  const isSale = type === 'sale';
+  const [farmId, setFarmId] = useState(String(movement?.farm || selectedFarmId || farms[0]?.id || ''));
   const [date, setDate] = useState(movement?.sale_date || movement?.date || hoy());
   const [concept, setConcept] = useState(
-    type === 'sale' ? movement?.coffee_type || 'pergamino' : movement?.concept || '',
+    isSale ? movement?.coffee_type || 'pergamino' : movement?.concept || '',
   );
-  const [unit, setUnit] = useState(() => initialUnit(movement));
-  // Cantidad y precio se guardan en la unidad que se muestra; al enviar se pasan a kg.
-  const [quantity, setQuantity] = useState(() => {
-    if (!movement?.quantity_kg) return '';
-    return unit === 'arroba'
-      ? toFieldValue(kgToArrobas(movement.quantity_kg))
-      : String(movement.quantity_kg);
-  });
-  const [unitPrice, setUnitPrice] = useState(() => {
-    if (!movement?.unit_price) return '';
-    return unit === 'arroba'
-      ? toFieldValue(pricePerKgToArroba(movement.unit_price))
-      : String(movement.unit_price);
-  });
+  const sale = useSaleUnit(movement);
   const [amount, setAmount] = useState(movement?.amount || '');
   const [buyer, setBuyer] = useState(movement?.buyer || '');
   const [category, setCategory] = useState(movement?.category || 'inputs');
   const [notes, setNotes] = useState(movement?.notes || '');
   const feedback = useFormFeedback();
-  const isArroba = unit === 'arroba';
-
-  // Cambia la unidad convirtiendo lo ya escrito, para que no se pierda ni quede mal.
-  const handleUnitChange = (nextUnit) => {
-    if (nextUnit === unit) return;
-    const toArroba = nextUnit === 'arroba';
-    if (Number(quantity) > 0) {
-      setQuantity(toFieldValue(toArroba ? kgToArrobas(quantity) : arrobasToKg(quantity)));
-    }
-    if (Number(unitPrice) > 0) {
-      setUnitPrice(
-        toFieldValue(toArroba ? pricePerKgToArroba(unitPrice) : pricePerArrobaToKg(unitPrice)),
-      );
-    }
-    setUnit(nextUnit);
-    saveUnit(nextUnit);
-  };
-
-  const quantityNumber = Number(quantity);
-  const priceNumber = Number(unitPrice);
-  const quantityKg = isArroba ? arrobasToKg(quantityNumber) : quantityNumber;
-  const saleTotal = quantityNumber > 0 && priceNumber > 0 ? quantityNumber * priceNumber : 0;
-  const saleSummary =
-    quantityNumber > 0
-      ? [
-          isArroba
-            ? `${formatoNumero(quantityNumber)} @ = ${formatoNumero(quantityKg)} kg`
-            : `${formatoNumero(quantityNumber)} kg = ${formatoNumero(kgToArrobas(quantityNumber))} @`,
-          saleTotal > 0 ? `Total ${formatoDinero(saleTotal)}` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ')
-      : '';
 
   const handleSubmit = () => {
     // MoneyInput es un campo de texto: el mínimo se revisa aquí.
-    if (type === 'sale' && !(Number(unitPrice) > 0)) {
+    if (isSale && !(Number(sale.unitPrice) > 0)) {
       feedback.setFieldError('sale-unit-price', 'Escribe un precio mayor que cero.');
       return false;
     }
-    if (type !== 'sale' && !(Number(amount) > 0)) {
+    if (!isSale && !(Number(amount) > 0)) {
       feedback.setFieldError('expense-amount', 'Escribe un valor mayor que cero.');
       return false;
     }
-    const payload =
-      type === 'sale'
+    return onSave(
+      isSale
         ? {
             farm: farmId,
             sale_date: date,
             coffee_type: concept,
-            quantity_kg: quantityKg,
-            unit_price: isArroba ? pricePerArrobaToKg(priceNumber) : priceNumber,
+            quantity_kg: sale.quantityKg,
+            unit_price: sale.pricePerKg,
             buyer: buyer.trim(),
             notes: notes.trim(),
           }
@@ -135,220 +61,63 @@ export default function MovementFormDialog({
             concept: concept.trim(),
             amount: Number(amount),
             category,
-          };
-    return onSave(payload);
+          },
+    );
   };
 
   return (
     <FormDialog
-      description={
-        type === 'sale'
-          ? '¿Cuánto café vendiste y a qué precio?'
-          : 'Los pagos a trabajadores se anotan solos.'
-      }
+      description={isSale ? '¿Cuánto café vendiste y a qué precio?' : 'Los pagos a trabajadores se anotan solos.'}
       errorFallback="No se pudo guardar el movimiento. Revisa tu conexión e inténtalo de nuevo."
       feedback={feedback}
       onOpenChange={onOpenChange}
       onSubmit={handleSubmit}
       open={open}
       submitLabel={movement ? 'Guardar cambios' : 'Registrar'}
-      title={
-        movement
-          ? type === 'sale'
-            ? 'Editar venta'
-            : 'Editar gasto'
-          : type === 'sale'
-            ? 'Registrar venta'
-            : 'Registrar gasto'
-      }
+      title={titles[type][movement ? 'edit' : 'new']}
     >
-      <FormField
-        {...feedback.field('movement-farm')}
-        htmlFor="movement-farm"
+      <SelectField
+        data-required-message="Elige la finca del movimiento."
+        feedback={feedback}
+        id="movement-farm"
         label="¿De qué finca?"
-      >
-        <select
-          className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          data-required-message="Elige la finca del movimiento."
-          id="movement-farm"
-          onChange={(event) => setFarmId(event.target.value)}
-          required
-          value={farmId}
-        >
-          <option disabled value="">
-            Selecciona una finca
-          </option>
-          {farms.map((farm) => (
-            <option key={farm.id} value={farm.id}>
-              {farm.nombre}
-            </option>
-          ))}
-        </select>
-      </FormField>
-
-      <FormField
-        {...feedback.field('movement-date')}
-        htmlFor="movement-date"
+        onChange={(event) => setFarmId(event.target.value)}
+        options={farms.map((farm) => ({ value: String(farm.id), label: farm.nombre }))}
+        placeholder="Selecciona una finca"
+        required
+        value={farmId}
+      />
+      <TextField
+        feedback={feedback}
+        id="movement-date"
         label="¿Qué día?"
-      >
-        <Input
-          className="h-11 rounded-xl"
-          id="movement-date"
-          max={hoy()}
-          onChange={(event) => setDate(event.target.value)}
-          required
-          type="date"
-          value={date}
+        max={hoy()}
+        onChange={(event) => setDate(event.target.value)}
+        required
+        type="date"
+        value={date}
+      />
+      {isSale ? (
+        <SaleFields
+          buyer={buyer}
+          coffeeType={concept}
+          feedback={feedback}
+          notes={notes}
+          onBuyerChange={setBuyer}
+          onCoffeeTypeChange={setConcept}
+          onNotesChange={setNotes}
+          sale={sale}
         />
-      </FormField>
-
-      {type === 'sale' ? (
-        <>
-          <FormField
-            {...feedback.field('sale-coffee-type')}
-            htmlFor="sale-coffee-type"
-            label="¿Qué café vendiste?"
-          >
-            <select
-              className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              id="sale-coffee-type"
-              onChange={(event) => setConcept(event.target.value)}
-              value={concept}
-            >
-              <option value="pergamino">Café pergamino seco</option>
-              <option value="pasilla">Pasilla</option>
-            </select>
-          </FormField>
-          <div className="space-y-2">
-            <SegmentedControl
-              label="Unidad de venta"
-              onChange={handleUnitChange}
-              options={unitOptions}
-              value={unit}
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                {...feedback.field('sale-quantity')}
-                htmlFor="sale-quantity"
-                label={isArroba ? '¿Cuántas arrobas?' : '¿Cuántos kilos?'}
-              >
-                <Input
-                  className="h-11 rounded-xl"
-                  data-required-message={
-                    isArroba ? 'Escribe cuántas arrobas vendiste.' : 'Escribe cuántos kilos vendiste.'
-                  }
-                  id="sale-quantity"
-                  inputMode="decimal"
-                  min="0.01"
-                  onChange={(event) => setQuantity(event.target.value)}
-                  required
-                  step="0.01"
-                  type="number"
-                  value={quantity}
-                />
-              </FormField>
-              <FormField
-                {...feedback.field('sale-unit-price')}
-                htmlFor="sale-unit-price"
-                label={isArroba ? 'Precio por arroba' : 'Precio por kilo'}
-              >
-                <MoneyInput
-                  className="h-11 rounded-xl"
-                  data-required-message={
-                    isArroba ? 'Escribe el precio por arroba.' : 'Escribe el precio por kilo.'
-                  }
-                  id="sale-unit-price"
-                  onValueChange={setUnitPrice}
-                  required
-                  value={unitPrice}
-                />
-              </FormField>
-            </div>
-            {saleSummary && (
-              <p aria-live="polite" className="text-sm font-medium text-ink-soft">
-                {saleSummary}
-              </p>
-            )}
-          </div>
-          <FormField
-            {...feedback.field('sale-buyer')}
-            htmlFor="sale-buyer"
-            label="¿A quién le vendiste? (opcional)"
-          >
-            <Input
-              className="h-11 rounded-xl"
-              id="sale-buyer"
-              maxLength={150}
-              onChange={(event) => setBuyer(event.target.value)}
-              value={buyer}
-            />
-          </FormField>
-        </>
       ) : (
-        <>
-          <FormField
-            {...feedback.field('expense-category')}
-            htmlFor="expense-category"
-            label="¿En qué gastaste?"
-          >
-            <select
-              className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              id="expense-category"
-              onChange={(event) => setCategory(event.target.value)}
-              value={category}
-            >
-              {expenseCategories.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </FormField>
-          <FormField
-            {...feedback.field('expense-concept')}
-            htmlFor="expense-concept"
-            label="¿Qué compraste o pagaste?"
-          >
-            <Input
-              className="h-11 rounded-xl"
-              data-required-message="Escribe en qué se gastó."
-              id="expense-concept"
-              maxLength={200}
-              onChange={(event) => setConcept(event.target.value)}
-              required
-              value={concept}
-            />
-          </FormField>
-          <FormField
-            {...feedback.field('expense-amount')}
-            htmlFor="expense-amount"
-            label="¿Cuánto costó?"
-          >
-            <MoneyInput
-              className="h-11 rounded-xl"
-              data-required-message="Escribe el valor del gasto."
-              id="expense-amount"
-              onValueChange={setAmount}
-              required
-              value={amount}
-            />
-          </FormField>
-        </>
-      )}
-
-      {type === 'sale' && (
-        <FormField
-          {...feedback.field('movement-notes')}
-          htmlFor="movement-notes"
-          label="Notas (opcional)"
-        >
-          <textarea
-            className="min-h-20 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            id="movement-notes"
-            onChange={(event) => setNotes(event.target.value)}
-            value={notes}
-          />
-        </FormField>
+        <ExpenseFields
+          amount={amount}
+          category={category}
+          concept={concept}
+          feedback={feedback}
+          onAmountChange={setAmount}
+          onCategoryChange={setCategory}
+          onConceptChange={setConcept}
+        />
       )}
     </FormDialog>
   );

@@ -1,7 +1,6 @@
-import { Search } from 'lucide-react';
 import { Button } from '#components/ui/button';
-import { Input } from '#components/ui/input';
 import PageTitle from './PageTitle.jsx';
+import SearchInput from './SearchInput.jsx';
 
 export default function ManagementPage({
   title,
@@ -34,25 +33,14 @@ export default function ManagementPage({
         </Button>
       </header>
 
-      <div className="relative max-w-xl">
-        <label className="sr-only" htmlFor="management-search">
-          {searchLabel}
-        </label>
-        <Search
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          autoComplete="off"
-          className="h-12 rounded-xl border-border bg-card pl-10 text-base shadow-sm placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-ring/20"
-          id="management-search"
-          name="search"
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder={`Buscar ${searchLabel.toLowerCase()}…`}
-          type="search"
-          value={searchValue}
-        />
-      </div>
+      <SearchInput
+        className="max-w-xl"
+        id="management-search"
+        label={searchLabel}
+        onChange={onSearchChange}
+        placeholder={`Buscar ${searchLabel.toLowerCase()}…`}
+        value={searchValue}
+      />
 
       {children}
     </section>

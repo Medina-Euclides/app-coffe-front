@@ -1,430 +1,95 @@
 // Página de analíticas: muestra producción de café, gastos y balance por finca.
-import { useCallback, useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
-import {
-  ChartContainer,
-  ChartTooltipContent,
-} from '#components/ui/chart';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '#components/ui/card';
-import { api } from '#services/api';
-import { useApiList } from '#hooks/useApiList';
-import { useApiResource } from '#hooks/useApiResource';
 import ErrorBanner from '#components/shared/ErrorBanner';
 import FarmSelect from '#components/shared/FarmSelect';
 import LoadingState from '#components/shared/LoadingState';
+import NoticeBanner from '#components/shared/NoticeBanner';
 import PageTitle from '#components/shared/PageTitle';
-import StatCard from '#components/shared/StatCard';
 import SegmentedControl from '#components/shared/SegmentedControl';
-import { parseLocalDate } from '#lib/dates';
-import {
-  formatoCompacto,
-  formatoConteo,
-  formatoDinero,
-  formatoFechaAnio,
-  formatoFechaCorta,
-  formatoKilos,
-} from '#lib/formatters';
+import StatCard from '#components/shared/StatCard';
+import { formatoDinero } from '#lib/formatters';
+import { formatPeriodRange, periods } from './analyticsFormat.js';
+import ExpenseBreakdown from './components/ExpenseBreakdown.jsx';
+import LotProductionChart from './components/LotProductionChart.jsx';
+import ProductionChart from './components/ProductionChart.jsx';
+import { useAnalyticsSummary } from './hooks/useAnalyticsSummary.js';
 
-// Etiquetas cortas para que los cuatro botones quepan en el celular; el rango de
-// fechas debajo del filtro aclara qué se está viendo. `produccion` completa la
-// frase «Producción de…» bajo el título del gráfico.
-const periods = [
-  { value: 'week', label: 'Semana', produccion: 'esta semana' },
-  { value: 'month', label: 'Mes', produccion: 'este mes' },
-  { value: 'year', label: 'Año', produccion: 'este año' },
-  { value: 'all', label: 'Histórico', produccion: 'los últimos 5 años' },
-];
-
-const categoryColors = {
-  labor: 'var(--chart-1)',
-  inputs: 'var(--chart-4)',
-  tools_materials: 'var(--chart-3)',
-  transport: 'var(--chart-2)',
-  services: 'var(--chart-5)',
-  other: 'var(--subtle)',
-};
-
-const productionChartConfig = {
-  total_quantity_kg: {
-    label: 'Café recolectado',
-    color: 'var(--chart-4)',
-  },
-};
-
-const lotChartConfig = {
-  total_quantity_kg: {
-    label: 'Producción',
-    color: 'var(--chart-1)',
-  },
-};
-
-const weekdayShort = new Intl.DateTimeFormat('es-CO', { weekday: 'short' });
-const monthShort = new Intl.DateTimeFormat('es-CO', { month: 'short' });
-
-function formatBucket(point, period) {
-  const start = parseLocalDate(point.start_date);
-  const end = parseLocalDate(point.end_date);
-  if (!start || !end) return '';
-
-  if (period === 'week') {
-    return weekdayShort.format(start);
-  }
-  if (period === 'all') return String(start.getFullYear());
-  if (period === 'year') {
-    return monthShort.format(start);
-  }
-  return `${String(start.getDate()).padStart(2, '0')}–${String(
-    end.getDate(),
-  ).padStart(2, '0')}`;
-}
-
-function formatPeriodRange(series) {
-  if (!series) return '';
-  return `${formatoFechaCorta(series.start_date, '')} – ${formatoFechaAnio(series.end_date, '')}`;
-}
-
+const money = (value) => formatoDinero(Number(value) || 0);
 
 export default function AnalyticPage({ usuario }) {
-  const userId = usuario?.id || 'default';
-  const [selectedFarmId, setSelectedFarmId] = useState('');
-  const [period, setPeriod] = useState('month');
-  // Abre con «Todas las fincas» para cuadrar con el resumen de Inicio.
-  const {
-    data: farms,
-    loading: farmsLoading,
-    error: farmsError,
-    refetch: refetchFarms,
-  } = useApiList(`farms:${userId}`, api.farms.list);
-  // Al sincronizar, el resumen local se reemplaza por el del servidor.
-  const fetchSummary = useCallback(
-    () => api.analytics.summary({ farmId: selectedFarmId || undefined, period }),
-    [period, selectedFarmId],
-  );
-  const {
-    data: summary,
-    error,
-    refetch: refetchSummary,
-  } = useApiResource(`analytics:${selectedFarmId}:${period}`, fetchSummary, {
-    enabled: !farmsLoading && !farmsError,
-  });
-
-  const activeSummary =
-    summary &&
-    summary.period === period &&
-    String(summary.farm_id || '') === selectedFarmId
-      ? summary
-      : null;
-  const loading = farmsLoading || (!farmsError && !error && !activeSummary);
-  const productionSeries = activeSummary?.production_series;
-  const productionData = useMemo(
-    () =>
-      (productionSeries?.points || []).map((point) => ({
-        ...point,
-        label: formatBucket(point, period),
-        total_quantity_kg: Number(point.total_quantity_kg) || 0,
-      })),
-    [period, productionSeries],
-  );
-  const lotProductionData = useMemo(
-    () =>
-      (activeSummary?.production_by_lot || [])
-        .map((lot) => ({
-          ...lot,
-          total_quantity_kg: Number(lot.total_quantity_kg) || 0,
-        }))
-        .sort((first, second) => second.total_quantity_kg - first.total_quantity_kg),
-    [activeSummary],
-  );
-
-  const expenses = activeSummary?.expenses_by_category || [];
-  const totalExpenses =
-    Number(activeSummary?.financial_summary?.total_expenses) || 0;
-  const periodOption =
-    periods.find((option) => option.value === period) || periods[1];
+  const analytics = useAnalyticsSummary(usuario?.id || 'default');
+  const { summary, periodOption, productionSeries } = analytics;
+  const periodText = periodOption.produccion;
+  const finance = summary?.financial_summary;
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
       <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <PageTitle>
-            Analítica de la finca
-          </PageTitle>
+          <PageTitle>Analítica de la finca</PageTitle>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Consulta la producción de café y el destino de tus gastos de forma
-            clara y sencilla.
+            Consulta la producción de café y el destino de tus gastos de forma clara y sencilla.
           </p>
         </div>
         <FarmSelect
           className="w-full lg:w-64"
-          disabled={farmsLoading || farms.length === 0}
-          farms={farms}
+          disabled={analytics.farmsLoading || analytics.farms.length === 0}
+          farms={analytics.farms}
           id="analytics-farm"
-          onChange={setSelectedFarmId}
+          onChange={analytics.setSelectedFarmId}
           showLabel
-          value={selectedFarmId}
+          value={analytics.selectedFarmId}
         />
       </header>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SegmentedControl
           label="Período de producción"
-          onChange={setPeriod}
+          onChange={analytics.setPeriod}
           options={periods}
-          value={period}
+          value={analytics.period}
         />
-        <p className="text-sm text-muted-foreground" aria-live="polite">
+        <p aria-live="polite" className="text-sm text-muted-foreground">
           {productionSeries ? formatPeriodRange(productionSeries) : ''}
         </p>
       </div>
 
-      <ErrorBanner message={farmsError} onRetry={refetchFarms} retryLabel="Recargar" />
-      <ErrorBanner message={error} onRetry={refetchSummary} />
+      <ErrorBanner message={analytics.farmsError} onRetry={analytics.refetchFarms} retryLabel="Recargar" />
+      <ErrorBanner message={analytics.error} onRetry={analytics.refetchSummary} />
 
-      {loading && !activeSummary ? (
+      {analytics.loading && !summary ? (
         <LoadingState className="py-12">Cargando analíticas…</LoadingState>
-      ) : activeSummary ? (
+      ) : summary ? (
         <>
-          {activeSummary._local && (
-            <p
-              aria-live="polite"
-              className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-primary"
-              role="status"
-            >
-              Calculado con los datos de este dispositivo (sin conexión o con registros
-              pendientes de sincronizar).
-            </p>
+          {summary._local && (
+            <NoticeBanner message="Calculado con los datos de este dispositivo (sin conexión o con registros pendientes de sincronizar)." />
           )}
-          <section
-            aria-label="Resumen financiero"
-            className="grid gap-4 sm:grid-cols-3"
-          >
+          <section aria-label="Resumen financiero" className="grid gap-4 sm:grid-cols-3">
+            <StatCard title={`Ingresos por ventas de ${periodText}`} tone="positive" value={money(finance.sales_income)} />
+            <StatCard title={`Egresos de ${periodText}`} tone="negative" value={money(finance.total_expenses)} />
             <StatCard
-              title={`Ingresos por ventas de ${periodOption.produccion}`}
-              value={formatoDinero(Number(activeSummary.financial_summary.sales_income) || 0)}
-              tone="positive"
-            />
-            <StatCard
-              title={`Egresos de ${periodOption.produccion}`}
-              value={formatoDinero(Number(activeSummary.financial_summary.total_expenses) || 0)}
-              tone="negative"
-            />
-            <StatCard
-              title={`Balance neto de ${periodOption.produccion}`}
-              value={formatoDinero(Number(activeSummary.financial_summary.net_income) || 0)}
-              tone={
-                Number(activeSummary.financial_summary.net_income) < 0
-                  ? 'negative'
-                  : 'positive'
-              }
+              title={`Balance neto de ${periodText}`}
+              tone={Number(finance.net_income) < 0 ? 'negative' : 'positive'}
+              value={money(finance.net_income)}
             />
           </section>
 
           <section className="grid gap-5 lg:grid-cols-2">
-            <Card className="rounded-2xl border-border bg-card shadow-sm">
-              <CardHeader className="flex-row items-start justify-between gap-3">
-                <div>
-                  <CardTitle className="text-base font-semibold text-foreground">
-                    Café recolectado
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    Producción de {periodOption.produccion}
-                  </CardDescription>
-                </div>
-                <div className="shrink-0 rounded-full border border-border bg-tint px-3 py-1.5 text-sm font-semibold text-primary">
-                  {formatoKilos(
-                    Number(productionSeries?.total_quantity_kg) || 0,
-                  )}{' '}
-                  kg
-                </div>
-              </CardHeader>
-              <CardContent>
-                {productionData.length > 0 ? (
-                  <ChartContainer
-                    className="mt-3 h-[280px] w-full aspect-auto"
-                    config={productionChartConfig}
-                  >
-                    <BarChart
-                      accessibilityLayer
-                      data={productionData}
-                      margin={{ top: 12, right: 8, left: -16, bottom: 0 }}
-                    >
-                      <CartesianGrid vertical={false} stroke="var(--border)" />
-                      <XAxis
-                        axisLine={false}
-                        dataKey="label"
-                        tickLine={false}
-                        tickMargin={10}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickFormatter={formatoCompacto}
-                        tickLine={false}
-                        tickMargin={8}
-                        width={48}
-                      />
-                      <Tooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value) => (
-                              <span className="font-semibold">
-                                {formatoKilos(Number(value))} kg
-                              </span>
-                            )}
-                          />
-                        }
-                        cursor={{ fill: 'var(--muted)' }}
-                      />
-                      <Bar
-                        dataKey="total_quantity_kg"
-                        fill="var(--color-total_quantity_kg)"
-                        maxBarSize={56}
-                        radius={[7, 7, 0, 0]}
-                      />
-                    </BarChart>
-                  </ChartContainer>
-                ) : (
-                  <p className="py-16 text-center text-sm text-muted-foreground">
-                    No hay producción registrada para este período.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border-border bg-card shadow-sm">
-              <CardHeader className="flex-row items-start justify-between gap-3">
-                <div>
-                  <CardTitle className="text-base font-semibold text-foreground">
-                    ¿En qué se fue la plata?
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    Egresos de {periodOption.produccion} por categoría
-                  </CardDescription>
-                </div>
-                <div className="shrink-0 rounded-full border border-border bg-muted px-3 py-1.5 text-sm font-semibold text-foreground">
-                  {formatoDinero(totalExpenses)}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-5 pt-4">
-                {expenses.map((expense) => {
-                  const amount = Number(expense.total_amount) || 0;
-                  const percentage =
-                    totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0;
-
-                  return (
-                    <div className="space-y-2" key={expense.category}>
-                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                        <span className="text-sm font-medium text-ink-soft">
-                          {expense.label}
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {formatoDinero(amount)}{' '}
-                          <span className="font-normal text-muted-foreground">
-                            ({Math.round(percentage)}%)
-                          </span>
-                        </span>
-                      </div>
-                      <div
-                        aria-label={`${expense.label}: ${Math.round(percentage)}%`}
-                        className="h-2.5 overflow-hidden rounded-full bg-muted"
-                        role="progressbar"
-                        aria-valuemax={100}
-                        aria-valuemin={0}
-                        aria-valuenow={Math.round(percentage)}
-                      >
-                        <div
-                          className="h-full rounded-full transition-[width]"
-                          style={{
-                            backgroundColor:
-                              categoryColors[expense.category] || 'var(--subtle)',
-                            width: `${Math.min(percentage, 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
+            <ProductionChart
+              data={analytics.productionData}
+              periodText={periodText}
+              totalKg={productionSeries?.total_quantity_kg}
+            />
+            <ExpenseBreakdown
+              expenses={analytics.expenses}
+              periodText={periodText}
+              totalExpenses={analytics.totalExpenses}
+            />
           </section>
 
-          <Card className="rounded-2xl border-border bg-card shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Producción por lote
-              </CardTitle>
-              <CardDescription>
-                Kilos de {periodOption.produccion}; los lotes sin cosecha también aparecen
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {lotProductionData.length > 0 ? (
-                <ChartContainer
-                  className="h-[min(420px,65vh)] min-h-[240px] w-full aspect-auto"
-                  config={lotChartConfig}
-                >
-                  <BarChart
-                    accessibilityLayer
-                    data={lotProductionData}
-                    layout="vertical"
-                    margin={{ top: 4, right: 20, left: 8, bottom: 4 }}
-                  >
-                    <CartesianGrid horizontal={false} stroke="var(--border)" />
-                    <XAxis
-                      axisLine={false}
-                      tickFormatter={(value) =>
-                        `${formatoKilos(value)} kg`
-                      }
-                      tickLine={false}
-                      type="number"
-                    />
-                    <YAxis
-                      axisLine={false}
-                      dataKey="lot_name"
-                      tickLine={false}
-                      type="category"
-                      width={130}
-                    />
-                    <Tooltip
-                      content={
-                        <ChartTooltipContent
-                          formatter={(value, _name, item) => (
-                            <span className="font-semibold">
-                              {formatoKilos(Number(value))} kg
-                              {item.payload.plant_count !== null &&
-                                item.payload.plant_count !== undefined &&
-                                ` · ${formatoConteo(item.payload.plant_count)} plantas`}
-                            </span>
-                          )}
-                        />
-                      }
-                      cursor={{ fill: 'var(--muted)' }}
-                    />
-                    <Bar
-                      dataKey="total_quantity_kg"
-                      fill="var(--color-total_quantity_kg)"
-                      maxBarSize={26}
-                      radius={[0, 6, 6, 0]}
-                    />
-                  </BarChart>
-                </ChartContainer>
-              ) : (
-                <p className="py-10 text-center text-sm text-muted-foreground">
-                  No hay lotes registrados para mostrar.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <LotProductionChart data={analytics.lotProductionData} periodText={periodText} />
         </>
-      ) : !error && !farmsError ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          No hay datos para mostrar.
-        </p>
+      ) : !analytics.error && !analytics.farmsError ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">No hay datos para mostrar.</p>
       ) : null}
     </main>
   );

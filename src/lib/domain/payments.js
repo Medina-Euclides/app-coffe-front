@@ -1,8 +1,9 @@
 // Pagos laborales: arma las liquidaciones (pendientes, en curso y pagadas) a partir de
 // jornadas, pesajes y liquidaciones de la API, y el pedido de "liquidar y pagar".
-import { toDateKey } from '#lib/dates';
+import { belongsToPeriod, toDateKey } from '#lib/dates';
 import { hoy } from '#lib/formatters';
 import { api } from '#services/api';
+import { matchesSearch } from '#lib/utils';
 import { getFarmId, getId, getWorkerId, getWorkerName, mergeById } from './entities.js';
 
 export function getPaymentMethodLabel(method) {
@@ -385,4 +386,48 @@ export async function fetchPaymentData() {
     }),
     historyOffline: paidHistory.offline,
   };
+}
+
+const PENDING_STATUSES = ['abierta', 'liquidada', 'pendiente'];
+
+// ¿La liquidación va en la pestaña "Pagados" o en "Pendientes de pago"?
+export const isInTab = (settlement, tab) =>
+  tab === 'paid' ? settlement.status === 'pagada' : PENDING_STATUSES.includes(settlement.status);
+
+// Liquidaciones de la pestaña que cumplen periodo, modalidad y búsqueda, de la más reciente.
+export function filterSettlements(settlements, { tab, period, modality, search, todayKey }) {
+  return settlements
+    .filter((settlement) => isInTab(settlement, tab))
+    // Una liquidación abierta sin detalles no tiene nada que pagar.
+    .filter((settlement) => settlement.status !== 'abierta' || settlement.items.length > 0)
+    .filter((settlement) => belongsToPeriod(settlement.dateKey, period, todayKey))
+    .filter(
+      (settlement) =>
+        modality === 'all' || settlement.items.some((item) => item.type === modality),
+    )
+    .filter((settlement) =>
+      matchesSearch(
+        [settlement.workerName, settlement.identification, settlement.farmName].join(' '),
+        search,
+      ),
+    )
+    .sort(
+      (first, second) =>
+        second.dateKey.localeCompare(first.dateKey) ||
+        first.workerName.localeCompare(second.workerName, 'es'),
+    );
+}
+
+// Motivo por el que no se puede pagar la liquidación, o '' si se puede.
+export function getPaymentBlocker(target) {
+  if (target.status === 'pendiente' && !target.farmId) {
+    return 'No se pudo identificar la finca de la jornada. Actualiza la página; si el problema continúa, verifica que la jornada tenga una finca asociada.';
+  }
+  if (target.status === 'pendiente' && !target.workerId) {
+    return 'No se pudo identificar al trabajador de la jornada. Actualiza la página; si el problema continúa, verifica que la jornada tenga un trabajador asociado.';
+  }
+  if (!Number.isFinite(target.total) || target.total <= 0) {
+    return 'La liquidación no tiene un total válido para pagar.';
+  }
+  return '';
 }
