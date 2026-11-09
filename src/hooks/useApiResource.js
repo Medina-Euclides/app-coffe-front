@@ -66,9 +66,10 @@ export function useApiResource(
   }, [enabled, load, refreshOnSync]);
 
   // refetch() muestra "Cargando…"; refetch({ background: true }) actualiza sin ocultar lo actual.
+  // Devuelve la promesa de carga para poder agrupar varias recargas con Promise.all.
   const refetch = useCallback(
     (options) => {
-      void load({ background: options?.background === true });
+      return load({ background: options?.background === true });
     },
     [load],
   );

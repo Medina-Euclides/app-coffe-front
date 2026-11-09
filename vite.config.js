@@ -17,6 +17,29 @@ const apiProxy = {
 export default defineConfig({
   server: { proxy: apiProxy, allowedHosts: ['.trycloudflare.com'] },
   preview: { proxy: apiProxy, allowedHosts: ['.trycloudflare.com'] },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'axios', 'dexie', 'lucide-react', 'recharts'],
+  },
+  build: {
+    target: 'baseline-widely-available',
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        // manualChunks como función (requerido por Rolldown/Vite 8).
+        // Separa librerías de terceros en chunks propios para caché independiente.
+        manualChunks: (id) => {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('react') || id.includes('react-dom'))
+            return 'vendor-react';
+          if (id.includes('react-router-dom')) return 'vendor-router';
+          if (id.includes('axios') || id.includes('dexie'))
+            return 'vendor-data';
+          if (id.includes('recharts')) return 'vendor-charts';
+          if (id.includes('lucide-react')) return 'vendor-icons';
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

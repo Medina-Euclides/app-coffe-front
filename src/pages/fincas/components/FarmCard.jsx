@@ -1,4 +1,5 @@
 // Tarjeta de finca: ubicación, totales de sus lotes y acceso a ellos.
+import React from 'react';
 import { MapPin, Mountain, Pencil, Sprout } from 'lucide-react';
 import CardActionBar from '#components/shared/CardActionBar';
 import CardShell, { CardIdentity } from '#components/shared/CardShell';
@@ -18,7 +19,7 @@ function sumar(lots, leer) {
   return total;
 }
 
-export default function FarmCard({ farm, lots, onOpenLots, onEdit }) {
+export default React.memo(function FarmCard({ farm, lots, onOpenLots, onEdit }) {
   const name = farm.nombre || 'Finca sin nombre';
 
   return (
@@ -47,4 +48,4 @@ export default function FarmCard({ farm, lots, onOpenLots, onEdit }) {
       />
     </CardShell>
   );
-}
+});

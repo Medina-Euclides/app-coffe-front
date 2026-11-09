@@ -1,4 +1,5 @@
 // Tarjeta de lote: variedad, cifras del cultivo y acciones.
+import React from 'react';
 import { Eye, Pencil, Power, Sprout } from 'lucide-react';
 import CardActionBar from '#components/shared/CardActionBar';
 import CardShell, { CardIdentity } from '#components/shared/CardShell';
@@ -8,7 +9,7 @@ import Tag from '#components/shared/Tag';
 import { formatoArea, formatoConteo } from '#lib/formatters';
 import { getLotArea, getLotPlants } from '#lib/domain/farms';
 
-export default function LotCard({ lot, onView, onEdit, onToggleStatus }) {
+export default React.memo(function LotCard({ lot, onView, onEdit, onToggleStatus }) {
   const isActive = lot.estado !== 'inactivo';
   const name = lot.nombre || 'Lote sin nombre';
   const area = getLotArea(lot);
@@ -53,4 +54,4 @@ export default function LotCard({ lot, onView, onEdit, onToggleStatus }) {
       />
     </CardShell>
   );
-}
+});

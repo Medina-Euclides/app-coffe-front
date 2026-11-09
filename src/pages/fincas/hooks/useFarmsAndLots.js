@@ -1,6 +1,6 @@
 // Datos y acciones de Fincas y lotes: listas, finca abierta, búsqueda, formularios,
 // guardado con validación y activar/desactivar lotes.
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { useConfirm } from '#hooks/useConfirm';
 import { useCrudList } from '#hooks/useCrudList';
 import { useDialog } from '#hooks/useDialog';
@@ -26,21 +26,27 @@ export function useFarmsAndLots(userId) {
 
   const [selectedFarmId, setSelectedFarmId] = useState(() => leerFincaActiva(userId) || null);
   const [search, setSearch] = useState('');
+  // Búsqueda diferida: el input se siente inmediato, pero el filtrado de listas
+  // costosas no bloquea cada pulsación de tecla (use-deferred-value).
+  const deferredSearch = useDeferredValue(search);
   const farmDialog = useDialog();
   const lotDialog = useDialog();
   const [lotToView, setLotToView] = useState(null);
   const { notice, isError, show: setNotice } = useNotice();
   const confirmer = useConfirm();
 
-  const selectedFarm = farms.find(
-    (farm) => String(farm.id) === String(selectedFarmId),
+  // Búsqueda por ID en O(1) con Map en lugar de .find() en cada render.
+  const farmById = useMemo(
+    () => new Map(farms.map((f) => [String(f.id), f])),
+    [farms],
   );
+  const selectedFarm = farmById.get(String(selectedFarmId)) || null;
   const farmToEdit = farmDialog.item;
   const lotToEdit = lotDialog.item;
 
   const farmsInSearch = useMemo(
-    () => filterBySearch(farms, search, getFarmSearchText),
-    [farms, search],
+    () => filterBySearch(farms, deferredSearch, getFarmSearchText),
+    [farms, deferredSearch],
   );
 
   const lotsOfSelectedFarm = useMemo(
@@ -51,8 +57,8 @@ export function useFarmsAndLots(userId) {
     [lots, selectedFarm],
   );
   const lotsForFarm = useMemo(
-    () => filterBySearch(lotsOfSelectedFarm, search, getLotSearchText),
-    [lotsOfSelectedFarm, search],
+    () => filterBySearch(lotsOfSelectedFarm, deferredSearch, getLotSearchText),
+    [lotsOfSelectedFarm, deferredSearch],
   );
 
   const saveFarm = async (data) => {
@@ -150,9 +156,9 @@ export function useFarmsAndLots(userId) {
     setSearch('');
   };
 
-  const retry = () => {
-    farmsList.refetch();
-    lotsList.refetch();
+  // Recarga en paralelo las listas independientes (async-parallel).
+  const retry = async () => {
+    await Promise.all([farmsList.refetch(), lotsList.refetch()]);
   };
 
   return {
