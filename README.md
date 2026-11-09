@@ -1,162 +1,227 @@
 # CafeSmart Frontend
 
-Interfaz web construida con React y Vite.
+Interfaz web de **CafeSmart**, un sistema de gestión cafetera **offline-first** para pequeños y medianos productores. Construido con **React 19, Vite, Tailwind CSS 4 y shadcn/ui**, consume una API en **Django REST Framework** y funciona como **PWA** instalable con almacenamiento local en IndexedDB y sincronización en segundo plano.
 
-## Estructura de `src`
+## Stack tecnológico
 
-```text
-src/
-├── App.jsx
-├── main.jsx
-├── index.css
-├── components/
-│   ├── ui/          # Componentes shadcn/ui; mantenerlos independientes de las pantallas
-│   ├── layout/      # Estructura y navegación global
-│   └── shared/      # Componentes compartidos entre áreas: ItemCard, StatusBadge,
-│   │                  ActionButton, NoticeBanner, SectionHeader, EmptyState,
-│   │                  ManagementPage, SyncStatus
-├── pages/
-│   ├── inicio/
-│   ├── trabajadores/
-│   ├── actividades/
-│   ├── fincas/
-│   ├── operaciones/
-│   ├── personal/
-│   ├── inventario/
-│   ├── auth/
-│   └── configuracion/
-├── routes/          # Definición de rutas y guardas de acceso
-├── lib/             # Utilidades, formato, almacenamiento y constantes
-├── hooks/           # Hooks reutilizables globales
-└── services/        # API y sincronización
+| Tecnología | Versión aproximada | Uso |
+|---|---|---|
+| React | 19.x | Interfaz de usuario |
+| Vite | 8.x | Servidor de desarrollo y compilación |
+| Tailwind CSS | 4.x | Estilos utilitarios |
+| shadcn/ui (base `@shadcn/react`, `@base-ui/react`) | — | Componentes de interfaz base |
+| react-router-dom | 7.x | Navegación y guardas de acceso |
+| axios | 1.x | Cliente HTTP para la API |
+| Dexie | 4.x | Almacenamiento local en IndexedDB (modo offline) |
+| lucide-react | 1.x | Iconografía |
+| recharts | 3.x | Gráficos y analíticas |
+| react-day-picker | 10.x | Selector de fechas |
+| vite-plugin-pwa | 2.x | Progressive Web App y service worker |
+| oxlint | 1.x | Linter de código |
+
+## Estructura del proyecto
+
+```
+app-coffe-front/
+├── public/
+│   ├── icon.png
+│   ├── pwa-192.png
+│   └── pwa-512.png
+├── src/
+│   ├── App.jsx              # Componente raíz de la aplicación
+│   ├── main.jsx             # Punto de entrada (Vite + React)
+│   ├── index.css            # Estilos globales de Tailwind
+│   ├── components/
+│   │   ├── ui/              # Base de shadcn/ui (no modificar directamente)
+│   │   ├── layout/          # Estructura y navegación global (menús, barras laterales)
+│   │   └── shared/          # Componentes compartidos entre áreas:
+│   │                        #   ItemCard, StatusBadge, ActionButton,
+│   │                        #   NoticeBanner, SectionHeader, EmptyState,
+│   │                        #   ManagementPage, SyncStatus
+│   ├── pages/               # Pantallas agrupadas por área funcional
+│   │   ├── inicio/
+│   │   ├── actividades/
+│   │   ├── fincas/
+│   │   ├── trabajadores/
+│   │   ├── workday/         # Jornadas laborales
+│   │   ├── payment/         # Liquidaciones y pagos
+│   │   ├── finance/         # Finanzas
+│   │   ├── analytics/       # Métricas y gráficos
+│   │   ├── assistant/       # Asistente
+│   │   ├── auth/            # Autenticación (login, registro)
+│   │   └── configuracion/
+│   ├── routes/
+│   │   ├── RoutesApp.jsx    # Definición de rutas de la aplicación
+│   │   └── RouteGuards.jsx  # Guardas de acceso y protección de rutas
+│   ├── lib/
+│   │   ├── constants.js     # Constantes de la aplicación
+│   │   ├── dates.js         # Utilidades de fechas
+│   │   ├── db.js            # Esquema y conexión de Dexie (IndexedDB)
+│   │   ├── formatters.js    # Formateo de datos para pantallas
+│   │   ├── storage.js       # Utilidades de almacenamiento local
+│   │   ├── utils.js         # Funciones de utilidad generales
+│   │   ├── validation.js    # Validaciones de formularios
+│   │   └── domain/          # Lógica de dominio por entidad
+│   ├── hooks/
+│   │   ├── useApiList.js
+│   │   ├── useApiResource.js
+│   │   ├── useCrudList.js
+│   │   ├── useDialog.js
+│   │   ├── useNotice.js
+│   │   ├── useSearchFilter.js
+│   │   ├── useOnlineStatus.js
+│   │   ├── use-mobile.js
+│   │   ├── useConfirm.js
+│   │   ├── useFormFeedback.js
+│   │   └── usePendingWorkdays.js
+│   └── services/
+│       ├── api.js           # Cliente de axios y endpoints de la API
+│       ├── syncService.js   # Servicio de sincronización con el backend
+│       ├── syncQueue.js     # Cola de operaciones pendientes offline
+│       ├── offlineStore.js  # Almacenamiento de datos en modo offline
+│       ├── connectivity.js  # Detección de conectividad de red
+│       ├── farmStorage.js   # Almacenamiento local de fincas y lotes
+│       └── localAnalytics.js
+├── vite.config.js           # Configuración de Vite, proxy de API y PWA
+├── netlify.toml             # Despliegue en Netlify (build, redirects, headers)
+├── .env.local               # Variables de entorno de desarrollo
+├── package.json             # Dependencias y scripts
+└── README.md
 ```
 
-Cada carpeta dentro de `pages/` contiene las pantallas de esa área y, cuando aplica,
-su propia carpeta `components/`. Mantén ahí los componentes de uso local; comparte
-componentes entre áreas desde `components/shared/`. Los componentes base de shadcn
-permanecen en `components/ui/`.
+Cada carpeta dentro de `pages/` contiene las pantallas de esa área y, cuando aplica, su propia carpeta `components/` para componentes de uso local. Los componentes que se reutilizan entre áreas van en `components/shared/`. Los componentes base de shadcn permanecen en `components/ui/` sin modificarlos directamente.
 
-### Componentes compartidos (`components/shared/`)
+## Componentes compartidos (`components/shared/`)
 
-- `ItemCard` — tarjeta genérica de entidad (avatar, título, subtítulo, detalles,
-  badge y fila de acciones). Reemplaza las tarjetas repetidas de trabajadores,
-  fincas, lotes y actividades.
-- `StatusBadge` — badge de estado con colores consistentes (Activo/Inactivo,
-  Recolección/Labor).
-- `ActionButton` — botón ghost con estilos consistentes para acciones de tarjeta.
-- `NoticeBanner` — banner de aviso (éxito/error) con `aria-live` para accesibilidad.
-- `SectionHeader` — título de sección con `id` para accesibilidad.
-- `EmptyState`, `ManagementPage`, `SyncStatus` — ya existentes, reutilizados en
-  páginas de listado.
+- **ItemCard** — tarjeta genérica de entidad (avatar, título, subtítulo, detalles, badge y fila de acciones).
+- **StatusBadge** — badge de estado con colores consistentes (Activo/Inactivo, Recolección/Labor).
+- **ActionButton** — botón ghost con estilos consistentes para acciones de tarjeta.
+- **NoticeBanner** — banner de aviso (éxito/error) con `aria-live` para accesibilidad.
+- **SectionHeader** — título de sección con `id` para accesibilidad.
+- **EmptyState**, **ManagementPage**, **SyncStatus** — componentes de listado reutilizados en páginas de gestión.
 
-### Buenas prácticas aplicadas (Vercel React Best Practices)
+## Hooks globales (`src/hooks/`)
 
-- `rendering-conditional-render`: ternarios en lugar de `&&` para condicionales.
-- `rerender-memo`: tarjetas y componentes de lista aislados para evitar re-renders.
-- `rerender-use-deferred-value`: búsquedas/filtros diferidos para inputs fluidos.
-- `async-parallel`: `Promise.all` para cargas independientes (fincas+lotes, finanzas, pagos).
-- `js-set-map-lookups`: `Map` para búsquedas por ID en lugar de `.find` repetido.
-- `rendering-content-visibility`: listas largas con contención de render.
-- `components/ui/` sin modificar: se compone sobre shadcn sin tocar los base.
-
-### Hooks globales (`src/hooks/`)
-
-- `useApiList(storageKey, fetchFn, saveFn)` — carga una lista desde la API con caché en localStorage. Devuelve `data`, `setData`, `loading`, `error` y `refetch`. Usado en Trabajadores, Actividades y Fincas/Lotes.
-- `useSearchFilter(items, getSearchText)` — filtra una lista por texto de búsqueda sobre los campos indicados. Devuelve `search`, `setSearch` y `filtered`.
-- `useNotice()` — maneja un mensaje de aviso temporal (éxito o error) con `show(message, isError)` y `clear()`.
-- `useDialog()` — maneja apertura/cierre de un diálogo con un elemento opcional seleccionado. Devuelve `open`, `item`, `setOpen`, `setItem`, `openWith(item)` y `close()`.
+- `useApiList(storageKey, fetchFn, saveFn)` — carga una lista desde la API con caché en localStorage. Devuelve `data`, `setData`, `loading`, `error` y `refetch`.
+- `useApiResource(resource)` — gestiona un recurso único (CRUD) desde la API.
+- `useCrudList(...)` — operaciones de listado con creación, edición y eliminación.
+- `useDialog()` — maneja apertura/cierre de diálogos con un elemento opcional seleccionado.
+- `useNotice()` — mensaje de aviso temporal (éxito o error) con `show(message, isError)` y `clear()`.
+- `useSearchFilter(items, getSearchText)` — filtra una lista por texto de búsqueda. Devuelve `search`, `setSearch` y `filtered`.
 - `useOnlineStatus()` — detecta si el navegador está en línea o fuera de línea.
-- `useIsMobile()` — detecta si la pantalla está por debajo del breakpoint móvil (768px).
+- `use-mobile()` — detecta si la pantalla está por debajo del breakpoint móvil (768px).
+- `useConfirm()` — solicita confirmación al usuario antes de una acción.
+- `useFormFeedback()` — retroalimentación de estado en formularios.
+- `usePendingWorkdays()` — jornadas con operaciones pendientes de sincronización.
 
-## Comandos
+## Capa de datos y modo offline
 
-- `npm run dev`: inicia el servidor local de Vite.
-- `npm run build`: genera la compilación de producción.
-- `npm run lint`: ejecuta Oxlint.
+La aplicación almacena datos localmente con **Dexie sobre IndexedDB** (`src/lib/db.js`) para funcionar sin conexión:
 
-## Conexión con Django REST Framework
+- `offlineStore.js` — guarda registros mientras no hay conexión.
+- `syncQueue.js` — cola de operaciones pendientes (crear, editar, eliminar) para reenviar al recuperar conexión.
+- `syncService.js` — procesa la cola y sincroniza con el backend.
+- `connectivity.js` — detecta cambios de estado de red (en línea / fuera de línea).
+- `farmStorage.js` — copia local de fincas y lotes para módulos que aún leen desde el almacenamiento del navegador.
 
-El cliente consume la API local en `http://127.0.0.1:8000` de forma predeterminada.
-Para usar otra instancia, define `VITE_API_URL` en un archivo `.env.local`, por
-ejemplo:
+## PWA (Progressive Web App)
+
+Configurada con `vite-plugin-pwa` y Workbox en `vite.config.js`:
+
+- Precachea todo el build (JS, CSS, HTML, imágenes, fuentes) para que la app abra sin internet.
+- Navigate fallback a `/index.html` para soporte de rutas de React Router.
+- Service worker con `Cache-Control: no-cache` en Netlify para que las actualizaciones llegue rápidamente.
+- Manifest con nombre `CafeSmart - Gestión Cafetera`, íconos 192 y 512 px, modo `standalone` y orientación `portrait`.
+- Las peticiones a la API no se cachean en el service worker: los datos viven en IndexedDB.
+
+## Comandos disponibles
+
+| Comando | Descripción |
+|---|---|
+| `npm run dev` | Inicia el servidor local de Vite (host expuesto para redes locales). |
+| `npm run dev:cloud` | Inicia Vite con `BACKEND_URL=https://mysite-cmyl.onrender.com` para pruebas en la nube. |
+| `npm run build` | Genera la compilación de producción en `dist/`. |
+| `npm run preview` | Previsualiza la compilación de producción localmente. |
+| `npm run lint` | Ejecuta Oxlint sobre el proyecto. |
+
+## Variables de entorno y proxy de API
+
+En desarrollo, Vite reenvía las llamadas de la API a Django en el mismo dominio, de modo que front y backend comparten origen y no se requiere configurar CORS. Esto permite probar con un solo túnel HTTPS (por ejemplo, cloudflared) desde el celular.
+
+Archivo `.env.local`:
+
+```env
+VITE_API_URL=/
+```
+
+La URL del backend se define en `vite.config.js`:
+
+```js
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8000'
+```
+
+Se reenvían los prefijos `/accounts`, `/farms`, `/labor`, `/payroll`, `/finance`, `/production`, `/analytics`, `/assistant` y `/sync` al backend.
+
+Para otra instancia, define `VITE_API_URL` en `.env.local`:
 
 ```env
 VITE_API_URL=http://127.0.0.1:8000
 ```
 
-Inicia Django con `python manage.py runserver` y React con `npm run dev`. El
-inicio de sesión usa `POST /accounts/login/`; el registro envía
-`first_name`, `last_name`, `email`, `phone_number` y `password` a
-`POST /accounts/register/`. Después de registrarse, el cliente inicia sesión
-para obtener los tokens JWT. Conserva los tokens en el navegador y envía el
-token de acceso como `Authorization: Bearer <access>` en las peticiones
-protegidas. La API local debe permitir CORS desde el origen de Vite
-(`http://localhost:5173`).
+## Autenticación y conexión con Django REST Framework
 
-La gestión de fincas y lotes consume `GET`/`POST`/`PATCH /farms/` y
-`GET`/`POST`/`PATCH /farms/lots/`. El cliente envía los nombres del modelo DRF:
-`name`, `location`, `description`, `id_farm`, `coffee_variety`,
-`area_hectares` e `is_active`. Los formularios convierten las respuestas al
-formato que usan las pantallas actuales y guardan una copia local para los
-módulos que todavía leen fincas y lotes desde el almacenamiento del navegador.
+El cliente consume la API local en `http://127.0.0.1:8000` de forma predeterminada.
 
-La gestión de trabajadores consume `GET`/`POST /labor/workers/` y
-`PATCH /labor/workers/{id}/` con los campos `first_name`, `last_name`,
-`identification`, `phone` e `is_active`. La identificación y el teléfono son
-opcionales según el modelo. El cliente conserva una copia local para su
-consulta y usa la desactivación/reactivación para preservar el historial de
-jornadas; no ofrece borrado físico desde la interfaz.
+1. Inicia Django con `python manage.py runserver`.
+2. Inicia React con `npm run dev`.
+3. La API local debe permitir CORS desde el origen de Vite (`http://localhost:5173`) si no usas el proxy de Vite.
 
-La gestión de tipos de actividad consume el CRUD de
-`/labor/activity-types/` con los campos `name`, `description` e `is_harvest`.
-Este último indica si la actividad admite pago por kilogramo y también se usa
-al asignar labores desde Personal. El cliente conserva una copia local para
-consulta, pero los cambios requieren conexión; el servidor impide borrar
-actividades asociadas a jornadas existentes.
+### Endpoints de autenticación
 
-Las jornadas usan el modelo relacional del backend: se crea una jornada con
-`farm` y `date` en `/labor/workdays/`, luego una participación por trabajador
-en `/labor/workday-workers/` con `workday`, `worker`, `payment_mode` y
-`agreed_rate`, y un detalle por cada lote en `/labor/workday-details/` con
-`workday_worker`, `activity_type` y `lot`. El formulario permite seleccionar
-varios trabajadores y varios lotes de una misma finca; aplica la misma
-actividad y tarifa a las participaciones de esa jornada. La consulta de
-jornadas recibe las participaciones y sus detalles anidados. En jornadas
-abiertas se pueden agregar trabajadores mediante nuevas participaciones y
-detalles, retirar una participación pendiente con
-`POST /labor/workday-workers/{id}/cancel/` y cerrar la jornada con
-`POST /labor/workdays/{id}/close/`. Una jornada cerrada no permite agregar o
-modificar registros. Desde una jornada abierta, `PATCH /labor/workdays/{id}/labor/`
-actualiza actividad, modalidad y tarifa para todas las participaciones
-no anuladas y sus detalles; el cambio se rechaza si hay participaciones
-bloqueadas o es incompatible con pesajes.
-Una participación retirada puede volver a agregarse en la misma jornada
-mediante `POST /labor/workday-workers/{id}/reactivate/`, siempre que el
-trabajador siga activo y la jornada continúe abierta.
+- `POST /accounts/login/` — inicio de sesión; devuelve tokens JWT (access y refresh).
+- `POST /accounts/register/` — registro; envía `first_name`, `last_name`, `email`, `phone_number` y `password`.
 
-El formulario de pesajes consulta las jornadas abiertas y sus detalles
-anidados, muestra primero las jornadas que tienen una actividad marcada como
-`is_harvest`, y permite seleccionar dentro de ellas un trabajador y su lote.
-El selector de lotes muestra todos los lotes activos de la finca de la
-jornada. Si el trabajador aún no tiene un detalle para el lote elegido, el
-cliente crea uno con una actividad de recolección de la jornada antes de enviar
-`workday_detail`, `quantity_kg` y `time` a `POST /labor/harvest-records/`; el
-servidor valida que el detalle sea de recolección y que la jornada y la
-participación sigan abiertas.
+Después de registrarse, el cliente inicia sesión para obtener los JWT. Conserva los tokens en el navegador y envía el token de acceso como `Authorization: Bearer <access>` en las peticiones protegidas.
 
-La página de pagos laborales consulta `/payroll/settlements/`,
-`/payroll/settlement-workdays/`, `/payroll/settlement-harvests/` y
-`/payroll/payments/`, junto con jornadas, trabajadores y fincas para completar
-los detalles legibles. En pendientes muestra liquidaciones abiertas o
-liquidadas y también calcula registros aún no incluidos en una liquidación,
-siempre que pertenezcan a jornadas cerradas: participaciones por jornal y
-pesajes registrados por kilogramo. Las liquidaciones pagadas aparecen en la
-pestaña correspondiente. Ambas pestañas comparten filtros por período,
-modalidad y búsqueda. Al confirmar el botón **Pagar**, se selecciona el método,
-se crea o completa y cierra la liquidación si hace falta, y se registra el
-pago por `/payroll/settlements/pay/`; después se recarga la lista en la pestaña
-de pagos realizados. La finca de una liquidación nueva se toma del campo de
-finca de la jornada cerrada; no se solicita al usuario de nuevo. Si la jornada
-no incluye un identificador de finca, el pago se detiene y se informa el
-problema en lugar de enviar una liquidación inválida. Las tarjetas pagadas
-muestran el botón desactivado.
+### Endpoints principales por grupo
+
+- **Fincas y lotes**: `GET`/`POST`/`PATCH /farms/` y `GET`/`POST`/`PATCH /farms/lots/`. Campos del modelo DRF: `name`, `location`, `description`, `id_farm`, `coffee_variety`, `area_hectares`, `is_active`.
+- **Trabajadores**: `GET`/`POST /labor/workers/` y `PATCH /labor/workers/{id}/`. Campos: `first_name`, `last_name`, `identification`, `phone`, `is_active`. La identificación y el teléfono son opcionales. No ofrece borrado físico desde la interfaz; se usa desactivación/reactivación para preservar el historial de jornadas.
+- **Tipos de actividad**: CRUD de `/labor/activity-types/` con `name`, `description` e `is_harvest` (indica si admite pago por kilogramo).
+- **Jornadas**: creación en `/labor/workdays/` con `farm` y `date`; participación de trabajador en `/labor/workday-workers/` con `workday`, `worker`, `payment_mode` y `agreed_rate`; detalle por lote en `/labor/workday-details/` con `workday_worker`, `activity_type` y `lot`.
+  - `POST /labor/workday-workers/{id}/cancel/` — retira una participación pendiente.
+  - `POST /labor/workday-workers/{id}/reactivate/` — reactiva una participación retirada en la misma jornada.
+  - `POST /labor/workdays/{id}/close/` — cierra una jornada (no permite modificaciones después).
+  - `PATCH /labor/workdays/{id}/labor/` — actualiza actividad, modalidad y tarifa para participaciones no anuladas.
+- **Pesajes**: `POST /labor/harvest-records/` con `workday_detail`, `quantity_kg` y `time`. El servidor valida que el detalle sea de recolección y que la jornada y participación sigan abiertas.
+- **Pagos y liquidaciones**: `/payroll/settlements/`, `/payroll/settlement-workdays/`, `/payroll/settlement-harvests/` y `/payroll/payments/`.
+  - `POST /payroll/settlements/pay/` — registra el pago y cierra la liquidación si hace falta.
+
+## Despliegue en Netlify
+
+Configurado en `netlify.toml`:
+
+- Comando de build: `npm run build`
+- Carpeta publicada: `dist`
+- Redirects SPA: cualquier ruta sirve `/index.html` (estado 200) para navegación con React Router.
+- Headers: el service worker (`/sw.js`) no se cachea (`Cache-Control: no-cache`) para que las actualizaciones lleguen al usuario.
+
+## Buenas prácticas y convenciones
+
+- Usar ternarios en lugar de `&&` para renderizado condicional.
+- Aislar tarjetas y componentes de lista para evitar re-renders innecesarios (`memo`).
+- Usar `use-deferred-value` en búsquedas y filtros para mantener los inputs fluidos.
+- Usar `Promise.all` para cargas independientes en paralelo (por ejemplo, fincas + lotes).
+- Usar `Map` para búsquedas por ID en lugar de llamar a `.find` repetidamente.
+- Aplicar `content-visibility` en listas largas para contención de render.
+- No modificar los componentes base de `components/ui/`; componer sobre shadcn sin tocar los archivos originales.
+
+## Requisitos previos
+
+- Node.js 22 o superior (definido en `netlify.toml`).
+- npm o tu gestor de paquetes preferido.
+- Backend Django REST Framework ejecutándose (local u otro instancia definida en `VITE_API_URL`).
+
+---
+
+Documentación del frontend de CafeSmart. Mantén este archivo actualizado cuando se agreguen nuevas rutas, páginas, hooks o servicios.
