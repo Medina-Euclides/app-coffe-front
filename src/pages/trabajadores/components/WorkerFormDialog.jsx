@@ -1,7 +1,7 @@
 // Formulario para agregar o editar un trabajador.
 import { useState } from 'react';
 import FormDialog from '#components/shared/FormDialog';
-import { TextField } from '#components/shared/FormFields';
+import { CedulaField, NameField, PhoneField } from '#components/shared/FormFields';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { splitFullName } from '#lib/domain/workers';
 
@@ -33,56 +33,49 @@ export default function WorkerFormDialog({ open, onOpenChange, worker, onSave })
       submitLabel="Guardar trabajador"
       title={worker ? 'Editar trabajador' : 'Agregar trabajador'}
     >
-      <TextField
+      <NameField
         autoComplete="off"
         data-required-message="Escribe el nombre del trabajador."
         feedback={feedback}
         id="worker-first-name"
         label="Nombre"
-        maxLength={150}
-        minLength={2}
         name="first_name"
         onChange={(event) => setFirstName(event.target.value)}
         placeholder="Ej. María…"
         required
         value={firstName}
       />
-      <TextField
+      <NameField
         autoComplete="family-name"
         data-required-message="Escribe el apellido del trabajador."
         feedback={feedback}
         id="worker-last-name"
+        kind="apellido"
         label="Apellido"
-        maxLength={150}
-        minLength={2}
         name="last_name"
         onChange={(event) => setLastName(event.target.value)}
         placeholder="Ej. Gómez…"
         required
         value={lastName}
       />
-      <TextField
+      <CedulaField
         autoComplete="off"
         feedback={feedback}
         id="worker-id"
         label="Cédula (opcional)"
-        maxLength={150}
         name="identification"
         onChange={(event) => setIdentification(event.target.value)}
         placeholder="Ej. 1061234567…"
-        type="text"
         value={identification}
       />
-      <TextField
+      <PhoneField
         autoComplete="tel"
         feedback={feedback}
         id="worker-phone"
         label="Teléfono (opcional)"
-        maxLength={150}
         name="phone"
         onChange={(event) => setPhone(event.target.value)}
         placeholder="Ej. 3001234567…"
-        type="tel"
         value={phone}
       />
     </FormDialog>

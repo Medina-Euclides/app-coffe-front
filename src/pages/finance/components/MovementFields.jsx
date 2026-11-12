@@ -1,9 +1,14 @@
 // Campos propios de una venta de café o de un gasto, dentro de MovementFormDialog.
+import DecimalInput from '#components/shared/DecimalInput';
 import MoneyInput from '#components/shared/MoneyInput';
 import SegmentedControl from '#components/shared/SegmentedControl';
 import { FormField } from '#components/shared/FormFeedback';
 import { SelectField, TextareaField, TextField } from '#components/shared/FormFields';
 import { EXPENSE_CATEGORIES } from '#lib/constants';
+import { TEXT_LIMITS, sanitizeLabelText, validateLabelText } from '#lib/validation';
+
+const validateBuyer = (value) => validateLabelText(value, { label: 'el nombre del comprador', min: 3 });
+const validateConcept = (value) => validateLabelText(value, { label: 'el concepto', min: 3 });
 
 const unitOptions = [
   { value: 'arroba', label: 'Arrobas' },
@@ -33,21 +38,24 @@ export function SaleFields({ feedback, sale, coffeeType, onCoffeeTypeChange, buy
       <div className="space-y-2">
         <SegmentedControl label="Unidad de venta" onChange={sale.changeUnit} options={unitOptions} value={sale.unit} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
-            data-required-message={
-              isArroba ? 'Escribe cuántas arrobas vendiste.' : 'Escribe cuántos kilos vendiste.'
-            }
-            feedback={feedback}
-            id="sale-quantity"
-            inputMode="decimal"
+          <FormField
+            {...feedback.field('sale-quantity')}
+            htmlFor="sale-quantity"
             label={isArroba ? '¿Cuántas arrobas?' : '¿Cuántos kilos?'}
-            min="0.01"
-            onChange={(event) => sale.setQuantity(event.target.value)}
-            required
-            step="0.01"
-            type="number"
-            value={sale.quantity}
-          />
+          >
+            <DecimalInput
+              className="h-11 rounded-xl"
+              data-required-message={
+                isArroba ? 'Escribe cuántas arrobas vendiste.' : 'Escribe cuántos kilos vendiste.'
+              }
+              id="sale-quantity"
+              maxInteger={6}
+              onValueChange={sale.setQuantity}
+              placeholder={isArroba ? 'Ej. 10' : 'Ej. 125'}
+              required
+              value={sale.quantity}
+            />
+          </FormField>
           <FormField
             {...feedback.field('sale-unit-price')}
             htmlFor="sale-unit-price"
@@ -73,8 +81,10 @@ export function SaleFields({ feedback, sale, coffeeType, onCoffeeTypeChange, buy
         feedback={feedback}
         id="sale-buyer"
         label="¿A quién le vendiste? (opcional)"
-        maxLength={150}
+        maxLength={TEXT_LIMITS.buyer}
         onChange={(event) => onBuyerChange(event.target.value)}
+        sanitize={sanitizeLabelText}
+        validate={validateBuyer}
         value={buyer}
       />
       <TextareaField
@@ -105,9 +115,11 @@ export function ExpenseFields({ feedback, category, onCategoryChange, concept, o
         feedback={feedback}
         id="expense-concept"
         label="¿Qué compraste o pagaste?"
-        maxLength={200}
+        maxLength={TEXT_LIMITS.concept}
         onChange={(event) => onConceptChange(event.target.value)}
         required
+        sanitize={sanitizeLabelText}
+        validate={validateConcept}
         value={concept}
       />
       <FormField {...feedback.field('expense-amount')} htmlFor="expense-amount" label="¿Cuánto costó?">

@@ -2,9 +2,21 @@
 // avanzar; el último guarda todo (ver useSetupWizard).
 import { CardContent } from '#components/ui/card';
 import { FormAlert } from '#components/shared/FormFeedback';
-import { SelectField, TextField } from '#components/shared/FormFields';
+import { CedulaField, EntityNameField, NameField, SelectField, TextField } from '#components/shared/FormFields';
 import { VARIEDADES_CAFE } from '#lib/constants';
+import {
+  TEXT_LIMITS,
+  sanitizeHectares,
+  sanitizeLabelText,
+  sanitizePlantCount,
+  validateEntityName,
+  validateHectares,
+  validateLabelText,
+  validatePlantCount,
+} from '#lib/validation';
 import WizardActions, { WizardPrimaryButton } from './WizardActions.jsx';
+
+const validateLocation = (value) => validateLabelText(value, { label: 'la ubicación', min: 3 });
 
 const inputClass = 'h-12 rounded-xl px-4';
 const labelClass = 'font-medium text-foreground';
@@ -67,12 +79,12 @@ export function StepFarm({ wizard }) {
       onSubmit={requireThen(wizard, 'nombreFinca', 'nombre-finca', 'Escribe el nombre de tu finca.', 3)}
       wizard={wizard}
     >
-      <TextField
-        autoComplete="off"
+      <EntityNameField
         className={inputClass}
         data-required-message="Escribe el nombre de tu finca."
         feedback={feedback}
         id="nombre-finca"
+        kind="farm"
         label="Nombre de la finca"
         labelClassName={labelClass}
         name="farmName"
@@ -88,9 +100,12 @@ export function StepFarm({ wizard }) {
         id="ubicacion-finca"
         label="¿Dónde queda? (opcional)"
         labelClassName={labelClass}
+        maxLength={TEXT_LIMITS.location}
         name="farmLocation"
         onChange={setValue('ubicacion')}
         placeholder="Ej.: Vereda El Roble…"
+        sanitize={sanitizeLabelText}
+        validate={validateLocation}
         value={values.ubicacion}
       />
       <WizardActions onBack={() => wizard.goTo(1)} primaryLabel="Continuar al lote" />
@@ -105,12 +120,12 @@ export function StepLot({ wizard }) {
       onSubmit={requireThen(wizard, 'nombreLote', 'nombre-lote', 'Escribe el nombre de tu lote.', 4)}
       wizard={wizard}
     >
-      <TextField
-        autoComplete="off"
+      <EntityNameField
         className={inputClass}
         data-required-message="Escribe el nombre de tu lote."
         feedback={feedback}
         id="nombre-lote"
+        kind="lot"
         label="Nombre del lote"
         labelClassName={labelClass}
         name="lotName"
@@ -135,14 +150,14 @@ export function StepLot({ wizard }) {
         className={inputClass}
         feedback={feedback}
         id="hectareas-lote"
+        inputMode="decimal"
         label="Área (hectáreas, opcional)"
         labelClassName={labelClass}
-        min="0.1"
         name="areaHectares"
         onChange={setValue('hectareas')}
-        placeholder="Ej.: 2.5…"
-        step="0.1"
-        type="number"
+        placeholder="Ej.: 2,5…"
+        sanitize={sanitizeHectares}
+        validate={validateHectares}
         value={values.hectareas}
       />
       <TextField
@@ -150,14 +165,14 @@ export function StepLot({ wizard }) {
         className={inputClass}
         feedback={feedback}
         id="plantas-lote"
+        inputMode="numeric"
         label="¿Cuántas plantas? (opcional)"
         labelClassName={labelClass}
-        min="0"
         name="plantCount"
         onChange={setValue('plantas')}
         placeholder="Ej.: 1200…"
-        step="1"
-        type="number"
+        sanitize={sanitizePlantCount}
+        validate={validatePlantCount}
         value={values.plantas}
       />
       <WizardActions
@@ -173,9 +188,9 @@ export function StepLot({ wizard }) {
 export function StepActivity({ wizard }) {
   const { feedback, values, setValue, clearValue, guardando, creados } = wizard;
   const submit = () => {
-    const nombre = values.nombreActividad.trim();
-    if (nombre && nombre.length < 2) {
-      feedback.setFieldError('nombre-actividad', 'Escribe al menos 2 caracteres o usa la predeterminada.');
+    const error = validateEntityName(values.nombreActividad, 'activity');
+    if (error) {
+      feedback.setFieldError('nombre-actividad', `${error} O usa la predeterminada.`);
       return;
     }
     feedback.clearFormError();
@@ -183,16 +198,14 @@ export function StepActivity({ wizard }) {
   };
   return (
     <StepForm onSubmit={submit} wizard={wizard}>
-      <TextField
-        autoComplete="off"
+      <EntityNameField
         className={inputClass}
         feedback={feedback}
         hint="La actividad quedará marcada como recolección y se usará de forma predeterminada al registrar pesajes."
         id="nombre-actividad"
+        kind="activity"
         label="¿Cómo se llama la labor?"
         labelClassName={labelClass}
-        maxLength={150}
-        minLength={2}
         name="activityName"
         onChange={setValue('nombreActividad')}
         placeholder="Ej.: Recolección de café…"
@@ -220,7 +233,7 @@ export function StepWorker({ wizard }) {
   return (
     <StepForm onSubmit={() => guardarConfiguracion()} wizard={wizard}>
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField
+        <NameField
           autoComplete="off"
           className={inputClass}
           data-required-message="Escribe el nombre del trabajador, o toca Omitir por ahora."
@@ -229,25 +242,22 @@ export function StepWorker({ wizard }) {
           id="nombre-trabajador"
           label="Nombre"
           labelClassName={labelClass}
-          maxLength={150}
-          minLength={2}
           name="first_name"
           onChange={setValue('nombreTrabajador')}
           placeholder="Ej.: María…"
           required
           value={values.nombreTrabajador}
         />
-        <TextField
+        <NameField
           autoComplete="off"
           className={inputClass}
           data-required-message="Escribe el apellido del trabajador."
           disabled={locked}
           feedback={feedback}
           id="apellido-trabajador"
+          kind="apellido"
           label="Apellido"
           labelClassName={labelClass}
-          maxLength={150}
-          minLength={2}
           name="last_name"
           onChange={setValue('apellidoTrabajador')}
           placeholder="Ej.: Gómez…"
@@ -255,17 +265,15 @@ export function StepWorker({ wizard }) {
           value={values.apellidoTrabajador}
         />
       </div>
-      <TextField
+      <CedulaField
         autoComplete="off"
         className={inputClass}
         disabled={locked}
         feedback={feedback}
         hint="El teléfono y los demás datos los puedes completar luego en Trabajadores."
         id="cedula-trabajador"
-        inputMode="numeric"
         label="Cédula (opcional)"
         labelClassName={labelClass}
-        maxLength={150}
         name="identification"
         onChange={setValue('cedulaTrabajador')}
         placeholder="Ej.: 1061234567…"

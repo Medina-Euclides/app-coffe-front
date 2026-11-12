@@ -32,9 +32,19 @@ import { useFormFeedback } from '#hooks/useFormFeedback';
 import { formatoDinero, formatoFechaAnio, hoy } from '#lib/formatters';
 import { currentTimeKey } from '#lib/dates';
 import { addDetailToWorkdays, createHarvestRecord } from '#lib/domain/harvestActions';
+import { HARVEST_TIME, LIMITS, validateHarvestTime, validateRange } from '#lib/validation';
+import DecimalInput from '#components/shared/DecimalInput';
 import { useHarvestSelection } from '../hooks/useHarvestSelection.js';
 
-const MAX_KILOGRAMS = 9_999_999.999;
+const HARVEST_KG = LIMITS.harvestKg;
+// Hora sugerida: la actual, dentro del horario de la jornada (6 a. m. a 6 p. m.).
+const initialHarvestTime = () => {
+  const now = currentTimeKey();
+  if (now < HARVEST_TIME.min) return HARVEST_TIME.min;
+  return now > HARVEST_TIME.max ? HARVEST_TIME.max : now;
+};
+const validateHarvestKg = (value) =>
+  validateRange(value, { ...HARVEST_KG, label: 'el peso', unit: 'kg' });
 
 const EMPTY_OPTIONS = { workdays: [], activities: [], lots: [] };
 
@@ -75,7 +85,7 @@ export default function HarvestRecordFormDialog({
     refreshOnSync: false,
   });
   const [quantityKg, setQuantityKg] = useState('');
-  const [time, setTime] = useState(currentTimeKey);
+  const [time, setTime] = useState(initialHarvestTime);
   const feedback = useFormFeedback();
   const [saving, setSaving] = useState(false);
   const [today] = useState(hoy);
@@ -101,6 +111,10 @@ export default function HarvestRecordFormDialog({
     feedback.clearFormError();
 
     const kilograms = Number(quantityKg);
+    const timeError = validateHarvestTime(time, {
+      isToday: selectedWorkday?.dateKey === today,
+      now: currentTimeKey(),
+    });
     // Se marcan todos los campos que faltan; el primero recibe el foco.
     const missing = [
       !selectedWorkday && ['harvest-workday', 'Elige la jornada de recolección.'],
@@ -108,11 +122,9 @@ export default function HarvestRecordFormDialog({
         !selectedWorker && ['harvest-worker', 'Elige quién recogió el café.'],
       selectedWorker &&
         !selectedLot && ['harvest-lot', 'Elige el lote donde se recogió.'],
-      (!Number.isFinite(kilograms) || kilograms <= 0 || kilograms > MAX_KILOGRAMS) && [
-        'harvest-quantity',
-        'Escribe los kilos recogidos, mayor que cero.',
-      ],
+      validateHarvestKg(quantityKg) && ['harvest-quantity', validateHarvestKg(quantityKg)],
       !time && ['harvest-time', 'Elige la hora en que se entregó el café.'],
+      timeError && ['harvest-time', timeError],
     ].filter(Boolean);
     if (missing.length) {
       missing.forEach(([key, message]) => feedback.setFieldError(key, message));
@@ -364,22 +376,18 @@ export default function HarvestRecordFormDialog({
                       aria-hidden="true"
                       className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground"
                     />
-                    <Input
-                      autoComplete="off"
+                    <DecimalInput
                       className="h-13 rounded-xl border-input bg-card pl-11 pr-12 text-base font-semibold text-foreground"
                       aria-describedby="harvest-quantity-error"
                       aria-invalid={feedback.field('harvest-quantity').invalid || undefined}
                       data-required-message="Escribe los kilos recogidos."
+                      decimals={HARVEST_KG.decimals}
                       id="harvest-quantity"
-                      inputMode="decimal"
-                      max={MAX_KILOGRAMS}
-                      min="0.001"
+                      maxInteger={3}
                       name="quantity_kg"
-                      onChange={(event) => setQuantityKg(event.target.value)}
-                      placeholder="Ej. 35.5…"
+                      onValueChange={setQuantityKg}
+                      placeholder="Ej. 35,5…"
                       required
-                      step="0.001"
-                      type="number"
                       value={quantityKg}
                     />
                     <span
@@ -410,6 +418,8 @@ export default function HarvestRecordFormDialog({
                       aria-invalid={feedback.field('harvest-time').invalid || undefined}
                       data-required-message="Elige la hora en que se entregó el café."
                       id="harvest-time"
+                      max={HARVEST_TIME.max}
+                      min={HARVEST_TIME.min}
                       name="time"
                       onChange={(event) => setTime(event.target.value)}
                       required

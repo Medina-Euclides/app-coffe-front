@@ -10,27 +10,50 @@ import {
 } from '#components/ui/card';
 import { Input } from '#components/ui/input';
 import { FormAlert, FormField } from '#components/shared/FormFeedback';
+import { useValidatedInput } from '#hooks/useValidatedInput';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { api } from '#services/api';
 import MaduracionStripe from '#components/shared/MaduracionStripe';
+import {
+  NAME_MAX_LENGTH,
+  TEXT_LIMITS,
+  PHONE_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  sanitizeDigits,
+  sanitizeEmail,
+  sanitizeName,
+  validateEmail,
+  validateNewPassword,
+  validatePersonName,
+  validatePhone,
+} from '#lib/validation';
+
+const validateFirstName = (value) => validatePersonName(value, { label: 'nombre' });
+const validateLastName = (value) => validatePersonName(value, { label: 'apellido' });
+const sanitizePhone = (value) => sanitizeDigits(value, PHONE_LENGTH);
 
 export function AuthField({
   autoComplete,
   error,
   hint,
   id,
+  inputMode,
   invalid,
   label,
+  maxLength,
   minLength,
   name,
   onChange,
   placeholder,
   required = true,
   requiredMessage,
+  sanitize,
   spellCheck,
   type,
+  validate,
   value,
 }) {
+  const { ref: inputRef, onChange: handleChange } = useValidatedInput({ value, onChange, sanitize, validate });
   return (
     <FormField
       error={error}
@@ -45,9 +68,12 @@ export function AuthField({
         className="h-12 rounded-xl bg-background px-4"
         data-required-message={requiredMessage}
         id={id}
+        inputMode={inputMode}
+        maxLength={maxLength}
         minLength={minLength}
         name={name}
-        onChange={onChange}
+        onChange={handleChange}
+        ref={inputRef}
         placeholder={placeholder}
         required={required}
         spellCheck={spellCheck}
@@ -160,10 +186,14 @@ export default function Auth({
                 requiredMessage="Escribe tu nombre."
                 id="nombre"
                 label="Nombre"
+                maxLength={NAME_MAX_LENGTH}
                 name="first_name"
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Ej.: Juan…"
+                sanitize={sanitizeName}
+                spellCheck={false}
                 type="text"
+                validate={validateFirstName}
                 value={nombre}
               />
             )}
@@ -175,10 +205,14 @@ export default function Auth({
                 requiredMessage="Escribe tu apellido."
                 id="apellido"
                 label="Apellido"
+                maxLength={NAME_MAX_LENGTH}
                 name="last_name"
                 onChange={(e) => setApellido(e.target.value)}
                 placeholder="Ej.: Pérez…"
+                sanitize={sanitizeName}
+                spellCheck={false}
                 type="text"
+                validate={validateLastName}
                 value={apellido}
               />
             )}
@@ -188,12 +222,16 @@ export default function Auth({
                 autoComplete="tel"
                 {...feedback.field('telefono')}
                 id="telefono"
+                inputMode="numeric"
                 label="Teléfono (opcional)"
+                maxLength={PHONE_LENGTH}
                 name="phone_number"
                 onChange={(e) => setTelefono(e.target.value)}
                 placeholder="Ej.: 3001234567"
                 required={false}
+                sanitize={sanitizePhone}
                 type="tel"
+                validate={validatePhone}
                 value={telefono}
               />
             )}
@@ -204,11 +242,14 @@ export default function Auth({
               requiredMessage="Escribe tu correo electrónico."
               id="correo"
               label="Correo electrónico"
+              maxLength={TEXT_LIMITS.email}
               name="email"
               onChange={(e) => setCorreo(e.target.value)}
               placeholder="Ej.: productor@cafesmart.com…"
+              sanitize={sanitizeEmail}
               spellCheck={false}
               type="email"
+              validate={validateEmail}
               value={correo}
             />
 
@@ -218,12 +259,17 @@ export default function Auth({
               requiredMessage="Escribe tu contraseña."
               id="contrasena"
               label="Contraseña"
+              maxLength={TEXT_LIMITS.password}
               name="password"
               onChange={(e) => setPassword(e.target.value)}
-              hint={esRegistro ? 'Usa al menos 8 caracteres.' : undefined}
-              minLength={esRegistro ? 8 : undefined}
+              hint={
+                esRegistro
+                  ? `Usa al menos ${PASSWORD_MIN_LENGTH} caracteres, con letras y números.`
+                  : undefined
+              }
               placeholder="Ingresa tu contraseña…"
               type="password"
+              validate={esRegistro ? validateNewPassword : undefined}
               value={password}
             />
 

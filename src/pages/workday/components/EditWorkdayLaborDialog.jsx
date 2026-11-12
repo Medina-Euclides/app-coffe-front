@@ -16,6 +16,7 @@ import { useApiList } from '#hooks/useApiList';
 import ErrorBanner from '#components/shared/ErrorBanner';
 import LoadingState from '#components/shared/LoadingState';
 import { useFormFeedback } from '#hooks/useFormFeedback';
+import { validateRate } from '#lib/validation';
 import { getParticipantDetails, getReferenceId } from '#lib/domain/entities';
 
 export default function EditWorkdayLaborDialog({
@@ -95,13 +96,9 @@ export default function EditWorkdayLaborDialog({
     }
 
     const agreedRate = Number(rate);
-    if (!Number.isFinite(agreedRate) || agreedRate <= 0) {
-      feedback.setFieldError(
-        'edit-workday-rate',
-        paymentMode === 'kg'
-          ? 'Escribe la tarifa por kilo, mayor que cero.'
-          : 'Escribe el valor del jornal, mayor que cero.',
-      );
+    const rateError = validateRate(rate, paymentMode);
+    if (rateError) {
+      feedback.setFieldError('edit-workday-rate', rateError);
       return false;
     }
 

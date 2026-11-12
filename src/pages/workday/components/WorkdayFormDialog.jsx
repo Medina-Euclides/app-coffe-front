@@ -21,6 +21,7 @@ import LoadingState from '#components/shared/LoadingState';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { PAYMENT_MODES } from '#lib/constants';
 import { hoy } from '#lib/formatters';
+import { MIN_RECORD_DATE, validateRate } from '#lib/validation';
 import { getLotLabel, getWorkerLabel } from '#lib/domain/entities';
 
 
@@ -147,13 +148,9 @@ export default function WorkdayFormDialog({
       !selectedWorkers.length && ['workday-workers', 'Marca al menos un trabajador.'],
       !selectedActivity && ['workday-activity', 'Elige qué actividad se hizo.'],
       !selectedLots.length && ['workday-lots', 'Marca al menos un lote donde se trabajó.'],
-      !(Number(rate) > 0) && [
-        'workday-rate',
-        paymentMode === PAYMENT_MODES.KILOGRAM
-          ? 'Escribe la tarifa por kilo, mayor que cero.'
-          : 'Escribe el valor del jornal, mayor que cero.',
-      ],
+      validateRate(rate, paymentMode) && ['workday-rate', validateRate(rate, paymentMode)],
       date > todayDate && ['workday-date', 'La fecha no puede ser posterior a hoy.'],
+      date < MIN_RECORD_DATE && ['workday-date', 'Revisa el año de la fecha.'],
     ].filter(Boolean);
     if (missing.length) {
       missing.forEach(([key, message]) => feedback.setFieldError(key, message));
@@ -365,6 +362,7 @@ export default function WorkdayFormDialog({
             className="h-12 rounded-xl border-input bg-card px-3 text-base font-semibold text-foreground"
             id="workday-date"
             max={todayDate}
+            min={MIN_RECORD_DATE}
             name="date"
             onChange={(event) => setDate(event.target.value)}
             required

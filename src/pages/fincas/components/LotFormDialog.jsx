@@ -1,9 +1,15 @@
 // Formulario para agregar o editar un lote de una finca.
 import { useState } from 'react';
 import FormDialog from '#components/shared/FormDialog';
-import { SelectField, TextareaField, TextField } from '#components/shared/FormFields';
+import { EntityNameField, SelectField, TextareaField, TextField } from '#components/shared/FormFields';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { VARIEDADES_CAFE } from '#lib/constants';
+import {
+  sanitizeHectares,
+  sanitizePlantCount,
+  validateHectares,
+  validatePlantCount,
+} from '#lib/validation';
 
 const toFieldValue = (value) => (value === null || value === undefined ? '' : String(value));
 
@@ -34,14 +40,12 @@ export default function LotFormDialog({ open, onOpenChange, lot, farmName, onSav
       submitLabel="Guardar lote"
       title={lot ? 'Editar lote' : 'Agregar lote'}
     >
-      <TextField
-        autoComplete="off"
+      <EntityNameField
         data-required-message="Escribe el nombre del lote."
         feedback={feedback}
         id="lot-name"
+        kind="lot"
         label="Nombre del lote"
-        maxLength={150}
-        minLength={2}
         name="lote"
         onChange={(event) => setName(event.target.value)}
         placeholder="Ej. El Mirador…"
@@ -51,13 +55,13 @@ export default function LotFormDialog({ open, onOpenChange, lot, farmName, onSav
       <TextField
         feedback={feedback}
         id="lot-plant-count"
+        inputMode="numeric"
         label="¿Cuántas plantas? (opcional)"
-        min="0"
         name="plant_count"
         onChange={(event) => setPlantCount(event.target.value)}
         placeholder="Ej. 1200"
-        step="1"
-        type="number"
+        sanitize={sanitizePlantCount}
+        validate={validatePlantCount}
         value={plantCount}
       />
       <SelectField
@@ -72,13 +76,13 @@ export default function LotFormDialog({ open, onOpenChange, lot, farmName, onSav
       <TextField
         feedback={feedback}
         id="lot-hectares"
+        inputMode="decimal"
         label="Área (hectáreas, opcional)"
-        min="0.1"
         name="hectareas"
         onChange={(event) => setHectares(event.target.value)}
-        placeholder="Ej. 2.5…"
-        step="0.1"
-        type="number"
+        placeholder="Ej. 2,5…"
+        sanitize={sanitizeHectares}
+        validate={validateHectares}
         value={hectares}
       />
       <TextareaField
