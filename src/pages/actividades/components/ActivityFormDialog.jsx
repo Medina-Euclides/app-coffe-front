@@ -1,8 +1,9 @@
 // Formulario para crear o editar un tipo de actividad laboral.
 import { useState } from 'react';
 import FormDialog from '#components/shared/FormDialog';
-import { CheckField, TextField } from '#components/shared/FormFields';
+import { CheckField, EntityNameField, TextField } from '#components/shared/FormFields';
 import { useFormFeedback } from '#hooks/useFormFeedback';
+import { TEXT_LIMITS, sanitizeLongText, validateLongText } from '#lib/validation';
 
 export default function ActivityFormDialog({ open, onOpenChange, activity, onSave }) {
   const [name, setName] = useState(activity?.name || '');
@@ -28,14 +29,12 @@ export default function ActivityFormDialog({ open, onOpenChange, activity, onSav
       submitLabel="Guardar actividad"
       title={activity ? 'Editar actividad laboral' : 'Nueva actividad laboral'}
     >
-      <TextField
-        autoComplete="off"
+      <EntityNameField
         data-required-message="Escribe el nombre de la actividad."
         feedback={feedback}
         id="activity-name"
+        kind="activity"
         label="¿Cómo se llama la labor?"
-        maxLength={150}
-        minLength={2}
         name="actividad"
         onChange={(event) => setName(event.target.value)}
         placeholder="Ej. Preparación del almácigo…"
@@ -46,10 +45,12 @@ export default function ActivityFormDialog({ open, onOpenChange, activity, onSav
         feedback={feedback}
         id="activity-description"
         label="Descripción (opcional)"
-        maxLength={150}
+        maxLength={TEXT_LIMITS.longText}
         name="description"
         onChange={(event) => setDescription(event.target.value)}
         placeholder="Ej. Recolección de cerezas maduras…"
+        sanitize={sanitizeLongText}
+        validate={validateLongText}
         value={description}
       />
       <CheckField

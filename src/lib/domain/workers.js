@@ -1,5 +1,6 @@
 // Nombre, validación y guardado de trabajadores (Trabajadores, Inicio, Configuración, Jornadas).
 import { api } from '#services/api';
+import { validateCedula, validatePersonName, validatePhone } from '#lib/validation';
 import { getWorkerName } from './entities.js';
 
 export { getWorkerName, getWorkerLabel, getWorkerIdentification } from './entities.js';
@@ -30,8 +31,14 @@ export function normalizeWorker(worker) {
 
 // Devuelve el mensaje de error para mostrar en el formulario, o '' si los datos son válidos.
 export function validateWorker(data, workers, editingId) {
-  if (data.first_name.length < 2) return 'Escribe un nombre de al menos 2 caracteres.';
-  if (data.last_name.length < 2) return 'Escribe un apellido de al menos 2 caracteres.';
+  if (!data.first_name) return 'Escribe el nombre del trabajador.';
+  if (!data.last_name) return 'Escribe el apellido del trabajador.';
+  const fieldError =
+    validatePersonName(data.first_name, { label: 'nombre' }) ||
+    validatePersonName(data.last_name, { label: 'apellido' }) ||
+    validateCedula(data.identification) ||
+    validatePhone(data.phone);
+  if (fieldError) return fieldError;
   if (
     data.identification &&
     workers.some(

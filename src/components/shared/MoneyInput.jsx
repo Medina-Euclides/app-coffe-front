@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { Input } from '#components/ui/input';
 
 const MAX_DECIMALS = 2;
+const MAX_INTEGER_DIGITS = 10;
 
 // Valor limpio («1250000.5» o «1250.») → texto visible («1.250.000,5» o «1.250,»).
 export function formatMoneyInput(raw) {
@@ -14,12 +15,17 @@ export function formatMoneyInput(raw) {
 }
 
 // Texto escrito → valor limpio. Los puntos son de miles; la coma es el decimal.
+// El valor debe empezar por un dígito: una coma sin números antes se ignora.
 function parseMoneyInput(text) {
   const [integerPart, ...rest] = text.split(',');
-  const integer = integerPart.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+  const integerDigits = integerPart.replace(/\D/g, '');
+  if (!integerDigits) {
+    return rest.join('').replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, MAX_INTEGER_DIGITS);
+  }
+  const integer = integerDigits.replace(/^0+(?=\d)/, '').slice(0, MAX_INTEGER_DIGITS);
   if (rest.length === 0) return integer;
   const decimals = rest.join('').replace(/\D/g, '').slice(0, MAX_DECIMALS);
-  return `${integer || '0'}.${decimals}`;
+  return `${integer}.${decimals}`;
 }
 
 // Cuántos dígitos y comas hay antes de la posición dada (los puntos no cuentan).

@@ -18,6 +18,7 @@ import { useSpeechDictation } from './hooks/useSpeechDictation.js';
 import AnswerText from './components/AnswerText.jsx';
 import { formatoHora, getFirstName } from '#lib/formatters';
 import { prefersReducedMotion } from '#lib/utils';
+import { TEXT_LIMITS } from '#lib/validation';
 
 // Preguntas frecuentes como teclas, con el color de su tema en toda la app
 // (recolección = cereza, ingreso = leaf, labor = verde primario).
@@ -255,6 +256,7 @@ function AssistantPage({ usuario }) {
               aria-label="Escribe tu pregunta"
               autoComplete="off"
               className="min-h-11 max-h-36 px-3 py-2.5 text-base leading-6 text-foreground placeholder:text-muted-foreground"
+              maxLength={TEXT_LIMITS.assistantPrompt}
               name="prompt"
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={(event) => {

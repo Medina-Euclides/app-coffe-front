@@ -4,6 +4,13 @@ import FormDialog from '#components/shared/FormDialog';
 import { SelectField, TextField } from '#components/shared/FormFields';
 import { useFormFeedback } from '#hooks/useFormFeedback';
 import { hoy } from '#lib/formatters';
+import {
+  LIMITS,
+  MIN_RECORD_DATE,
+  validateRange,
+  validateSalePrice,
+  validateSaleQuantity,
+} from '#lib/validation';
 import { useSaleUnit } from '../hooks/useSaleUnit.js';
 import { ExpenseFields, SaleFields } from './MovementFields.jsx';
 
@@ -35,13 +42,16 @@ export default function MovementFormDialog({
   const feedback = useFormFeedback();
 
   const handleSubmit = () => {
-    // MoneyInput es un campo de texto: el mínimo se revisa aquí.
-    if (isSale && !(Number(sale.unitPrice) > 0)) {
-      feedback.setFieldError('sale-unit-price', 'Escribe un precio mayor que cero.');
-      return false;
-    }
-    if (!isSale && !(Number(amount) > 0)) {
-      feedback.setFieldError('expense-amount', 'Escribe un valor mayor que cero.');
+    // Cantidades y precios son campos de texto: los rangos se revisan aquí.
+    const errors = isSale
+      ? [
+          ['sale-quantity', validateSaleQuantity(sale.quantity, sale)],
+          ['sale-unit-price', validateSalePrice(sale.unitPrice, sale)],
+        ]
+      : [['expense-amount', validateRange(amount, { ...LIMITS.expense, label: 'el valor del gasto', money: true })]];
+    const failed = errors.filter(([, message]) => message);
+    if (failed.length) {
+      failed.forEach(([key, message]) => feedback.setFieldError(key, message));
       return false;
     }
     return onSave(
@@ -92,6 +102,7 @@ export default function MovementFormDialog({
         id="movement-date"
         label="¿Qué día?"
         max={hoy()}
+        min={MIN_RECORD_DATE}
         onChange={(event) => setDate(event.target.value)}
         required
         type="date"

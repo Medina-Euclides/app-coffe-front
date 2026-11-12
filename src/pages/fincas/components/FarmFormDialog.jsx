@@ -1,8 +1,11 @@
 // Formulario para agregar o editar una finca.
 import { useState } from 'react';
 import FormDialog from '#components/shared/FormDialog';
-import { TextareaField, TextField } from '#components/shared/FormFields';
+import { EntityNameField, TextareaField, TextField } from '#components/shared/FormFields';
 import { useFormFeedback } from '#hooks/useFormFeedback';
+import { TEXT_LIMITS, sanitizeLabelText, validateLabelText } from '#lib/validation';
+
+const validateLocation = (value) => validateLabelText(value, { label: 'la ubicación', min: 3 });
 
 export default function FarmFormDialog({ open, onOpenChange, farm, onSave }) {
   const [name, setName] = useState(farm?.nombre || '');
@@ -28,14 +31,12 @@ export default function FarmFormDialog({ open, onOpenChange, farm, onSave }) {
       submitLabel="Guardar finca"
       title={farm ? 'Editar finca' : 'Agregar finca'}
     >
-      <TextField
-        autoComplete="off"
+      <EntityNameField
         data-required-message="Escribe el nombre de la finca."
         feedback={feedback}
         id="farm-name"
+        kind="farm"
         label="Nombre de la finca"
-        maxLength={150}
-        minLength={2}
         name="finca"
         onChange={(event) => setName(event.target.value)}
         placeholder="Ej. Finca San José…"
@@ -46,10 +47,12 @@ export default function FarmFormDialog({ open, onOpenChange, farm, onSave }) {
         feedback={feedback}
         id="farm-location"
         label="¿Dónde queda? (opcional)"
-        maxLength={150}
+        maxLength={TEXT_LIMITS.location}
         name="location"
         onChange={(event) => setLocation(event.target.value)}
         placeholder="Ej. Vereda El Tablón…"
+        sanitize={sanitizeLabelText}
+        validate={validateLocation}
         value={location}
       />
       <TextareaField

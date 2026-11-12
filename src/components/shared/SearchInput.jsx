@@ -2,6 +2,7 @@
 import { Search } from 'lucide-react';
 import { Input } from '#components/ui/input';
 import { cn } from '#lib/utils';
+import { TEXT_LIMITS } from '#lib/validation';
 
 export default function SearchInput({ id, label, value, onChange, placeholder, className, inputClassName }) {
   return (
@@ -20,6 +21,7 @@ export default function SearchInput({ id, label, value, onChange, placeholder, c
           inputClassName,
         )}
         id={id}
+        maxLength={TEXT_LIMITS.search}
         name="search"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}

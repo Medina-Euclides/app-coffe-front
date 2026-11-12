@@ -18,6 +18,7 @@ import { useApiResource } from '#hooks/useApiResource';
 import ErrorBanner from '#components/shared/ErrorBanner';
 import LoadingState from '#components/shared/LoadingState';
 import { useFormFeedback } from '#hooks/useFormFeedback';
+import { validateRate } from '#lib/validation';
 import { getParticipantDetails, getReferenceId, getWorkerLabel } from '#lib/domain/entities';
 
 const EMPTY_OPTIONS = { workers: [], activities: [], lots: [] };
@@ -157,10 +158,7 @@ export default function AddWorkdayWorkersDialog({
     const missing = [
       !selectedWorkers.length && ['add-workday-workers', 'Marca al menos un trabajador.'],
       !activity && ['add-workday-activity', 'Elige qué actividad hará.'],
-      !(Number.isFinite(agreedRate) && agreedRate > 0) && [
-        'add-workday-rate',
-        'Escribe la tarifa, mayor que cero.',
-      ],
+      validateRate(rate, paymentMode) && ['add-workday-rate', validateRate(rate, paymentMode)],
       !selectedLots.length && ['add-workday-lots', 'Marca al menos un lote.'],
     ].filter(Boolean);
     if (missing.length) {
